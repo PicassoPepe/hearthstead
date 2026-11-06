@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { provisionOrganization } from "@/server/orgs";
+import { provisionOrganization, purgeOrganizations } from "@/server/orgs";
 
 export const admin = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
 export const app = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
@@ -12,6 +12,6 @@ export async function makeOrg(label: string) {
 }
 
 export async function cleanup(orgIds: string[], userIds: string[]) {
-  await admin.organization.deleteMany({ where: { id: { in: orgIds } } });
+  await purgeOrganizations(admin, orgIds);
   await admin.user.deleteMany({ where: { id: { in: userIds } } });
 }

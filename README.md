@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 1 (Foundation) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: Phase 2 (Rentals) complete.** See [Roadmap](#roadmap) for what each phase adds.
 
 ## Quick start
 
@@ -90,6 +90,8 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 | `EMAIL_PROVIDER` | `mock` | `mock` (records to DB, view at `/dev/outbox`) or `smtp` |
 | `SMTP_URL` | `smtp://localhost:1025` | Mailpit in docker-compose; any SMTP relay in prod |
 | `EMAIL_FROM` | `Hearthstead <no-reply@…>` | Sender |
+| `STORAGE_PROVIDER` | `local` | `local` writes to `./storage`; `s3` uses the vars below |
+| `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | — | MinIO: `http://localhost:9000`, `minio` / `minio12345` |
 
 ## Architecture
 
@@ -148,7 +150,7 @@ do; `requirePermission()` re-checks on the server in every action.
 ### Folder structure
 
 ```
-prisma/              schema.prisma, migrations/, rls.sql, apply-rls.ts, seed.ts
+prisma/              schema.prisma, migrations/, rls.sql, apply-rls.ts, backfill.ts, seed.ts, seed-rentals.ts
 scripts/dev.mjs      one-command dev (Windows/macOS/Linux)
 src/
   app/
@@ -170,6 +172,10 @@ src/
     auth/            Auth.js config (edge-safe + full), password hashing
     permissions/     modules, levels, built-in roles, can()
     settings/        registry, resolver, service
+    rentals/         properties, units, owners, portfolios (service + queries)
+    records/         polymorphic notes & files
+    importer/        CSV/XLSX import: validate, then write atomically
+    accounting/      chart of accounts (ledger arrives in Phase 3)
     search/          global search provider registry
     actions/         server actions (uniform ActionResult)
   adapters/          third-party adapters; each has a working mock
@@ -184,7 +190,8 @@ API keys. Select an implementation with its env var.
 | Adapter | Env var | Implementations | Phase |
 | --- | --- | --- | --- |
 | EmailProvider | `EMAIL_PROVIDER` | `mock`, `smtp` | 1 ✅ |
-| StorageProvider | `STORAGE_PROVIDER` | `local`, `s3` (MinIO in dev) | 2 |
+| StorageProvider | `STORAGE_PROVIDER` | `local` (./storage), `s3` (MinIO / AWS) | 2 ✅ |
+| AddressProvider | `ADDRESS_PROVIDER` | `mock` (offline autocomplete) | 2 ✅ |
 | PaymentsProvider | `PAYMENTS_PROVIDER` | `mock`, `stripe` (Connect Express + Financial Connections) | 4 |
 | InsuranceProvider | `INSURANCE_PROVIDER` | `mock` | 4 |
 | BankFeedProvider | `BANKFEED_PROVIDER` | `mock`, `plaid` | 6 |
@@ -204,7 +211,7 @@ provider's credentials. To add an implementation, implement the interface in
 | Phase | Scope | Status |
 | --- | --- | --- |
 | P1 | Foundation: repo, docker, auth, orgs, roles, app shell, design system, command palette, settings resolver | ✅ |
-| P2 | Rentals: properties, units, owners, property wizard, importer | |
+| P2 | Rentals: properties, units, owners, property wizard, importer | ✅ |
 | P3 | Leasing & ledger: chart of accounts, ledger service, lease wizard, recurring/late-fee jobs | |
 | P4 | Payments & tenant portal | |
 | P5 | Maintenance: tasks, requests, work orders, vendors, inspections | |
@@ -213,6 +220,26 @@ provider's credentials. To add an implementation, implement the interface in
 | P8 | Owner portal, communications, announcements, SMS | |
 | P9 | Listings, showings, applications, screening, e-sign, renewals | |
 | P10 | Public API, webhooks, workflows, AI assistant and agents | |
+
+## Phase 2 demo script (Rentals)
+
+Sign in as `admin@example.com`. The seed has **3 portfolios, 12 properties, 60 units and 9 owners**.
+
+1. **Rentals → Properties**: filter by *Commercial* portfolio, search "ironbridge", export CSV.
+2. **Add property** (opens over the page): try *Next* with nothing selected → inline error.
+   Pick *Multi-family*, type `418 oak` in the street field and pick a suggestion (fills city/state/ZIP).
+   On *Units*: duplicate a row, *Add unit* (names auto-increment), watch the rent total.
+   On *Owners*: quick-create "Rosa Delgado" → 100% ✓. *Review* → *Create property*.
+3. Pick *Single-family* in the wizard → exactly one unit named "Main", no add button. *Save as draft*, reopen → "Draft restored".
+4. **Maple Court → Settings**: Grace period is a *Custom property value* (7 days); flat fee shows
+   *Inherited from Company: $75.00*. Toggle *Override* to customize just this property.
+5. **Maple Court → Owners**: edit the split (must total 100%, *Split evenly* helps). **Notes** / **Files**: add a note, drag in a PDF.
+6. **Files → Import**: *Download template*, or drop `tests/e2e/fixtures-data/properties.csv` → columns auto-map →
+   *Validate* → *Import*. Try `bad.csv` to see per-row errors (nothing is written).
+7. **People → Owners → Dana Whitfield**: properties with shares, tax ID shown as last 4 only.
+8. **⌘K** → "harborview", "whitfield", "suite".
+9. **Settings → Users & roles**: Marco (Maintenance) has *4 properties* access. Sign in as `maint@example.com`
+   → only the North Side properties appear.
 
 ## Phase 1 demo script
 

@@ -61,6 +61,7 @@ if (!ok) {
 step("Migrating database and applying row-level security...");
 must("pnpm -s prisma migrate deploy");
 must("pnpm -s tsx prisma/apply-rls.ts");
+must("pnpm -s tsx prisma/backfill.ts");
 
 const { PrismaClient } = (await import("@prisma/client")).default;
 const db = new PrismaClient();

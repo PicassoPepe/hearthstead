@@ -3,6 +3,8 @@ import type { AppContext } from "@/server/context";
 import { can, type Module } from "@/server/permissions";
 import { SETTINGS, SETTING_GROUP_LABELS } from "@/server/settings/registry";
 import type { SearchResult } from "./types";
+import { ownerDisplayName, PROPERTY_TYPE_META } from "@/lib/rentals";
+import { propertyScopeWhere } from "@/server/rentals/service";
 
 /**
  * Global search registry. Each phase registers a provider for its entities (properties,
@@ -22,6 +24,60 @@ const GROUP_HREF: Record<string, string> = {
 };
 
 const providers: Provider[] = [
+  {
+    module: "rentals",
+    async search(ctx, q) {
+      const rows = await ctx.db.property.findMany({
+        where: {
+          ...propertyScopeWhere(ctx.membership.propertyScope),
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { addressLine1: { contains: q, mode: "insensitive" } },
+            { city: { contains: q, mode: "insensitive" } },
+            { postalCode: { startsWith: q } },
+          ],
+        },
+        take: 6,
+        orderBy: { name: "asc" },
+      });
+      return rows.map((p) => ({
+        id: `property:${p.id}`, type: "property", group: "Properties", title: p.name,
+        subtitle: `${PROPERTY_TYPE_META[p.type].label} · ${p.addressLine1}, ${p.city}`, href: `/app/rentals/${p.id}`,
+      }));
+    },
+  },
+  {
+    module: "rentals",
+    async search(ctx, q) {
+      const scope = ctx.membership.propertyScope;
+      const rows = await ctx.db.unit.findMany({
+        where: {
+          property: { deletedAt: null, ...(scope.length ? { id: { in: scope } } : {}) },
+          OR: [{ name: { contains: q, mode: "insensitive" } }, { property: { name: { contains: q, mode: "insensitive" } } }],
+        },
+        include: { property: { select: { name: true } } },
+        take: 6,
+      });
+      return rows.map((u) => ({ id: `unit:${u.id}`, type: "unit", group: "Units", title: `${u.property.name} · ${u.name}`, href: `/app/rentals/units/${u.id}` }));
+    },
+  },
+  {
+    module: "people",
+    async search(ctx, q) {
+      const rows = await ctx.db.owner.findMany({
+        where: {
+          OR: [
+            { firstName: { contains: q, mode: "insensitive" } },
+            { lastName: { contains: q, mode: "insensitive" } },
+            { companyName: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+          ],
+        },
+        take: 6,
+      });
+      return rows.map((o) => ({ id: `owner:${o.id}`, type: "owner", group: "Owners", title: ownerDisplayName(o), subtitle: o.email ?? "Owner", href: `/app/people/owners/${o.id}` }));
+    },
+  },
   {
     module: "users",
     async search(ctx, q) {

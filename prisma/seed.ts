@@ -3,13 +3,15 @@
  *  - "Maple & Main Property Co." with one user per built-in role
  *  - "Harbor Light Rentals", a second org (shows the org switcher + proves isolation)
  *  - a few company-level setting overrides and audit entries
- * Later phases extend this file with portfolios, properties, units, leases and history.
+ *  - Phase 2: 3 portfolios, 12 properties, 60 units, 9 owners (prisma/seed-rentals.ts)
+ * Later phases extend this with leases, 18 months of ledger history and work orders.
  *
  * Every demo password is: Demo1234!x
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { provisionOrganization } from "../src/server/orgs";
+import { provisionOrganization, purgeOrganizations } from "../src/server/orgs";
+import { seedRentals } from "./seed-rentals";
 
 const db = new PrismaClient();
 export const DEMO_PASSWORD = "Demo1234!x";
@@ -26,7 +28,8 @@ const PEOPLE = [
 async function main(): Promise<void> {
   const started = Date.now();
   // Reset demo data (cascades through memberships, roles, settings, audit logs).
-  await db.organization.deleteMany({ where: { slug: { in: ["maple-main", "harbor-light"] } } });
+  const old = await db.organization.findMany({ where: { slug: { in: ["maple-main", "harbor-light"] } }, select: { id: true } });
+  await purgeOrganizations(db, old.map((o) => o.id));
   await db.user.deleteMany({ where: { email: { in: [...PEOPLE.map((p) => p.email), "harbor@example.com", "invitee@example.com"] } } });
   await db.emailMessage.deleteMany({});
 
@@ -78,6 +81,11 @@ async function main(): Promise<void> {
   const harborPm = await db.role.findFirstOrThrow({ where: { organizationId: harbor.orgId, key: "PROPERTY_MANAGER" } });
   await db.membership.create({ data: { organizationId: harbor.orgId, userId: users["admin@example.com"]!, roleId: harborPm.id, status: "ACTIVE", acceptedAt: new Date() } });
   await db.setting.create({ data: { organizationId: harbor.orgId, scope: "ORG", scopeId: harbor.orgId, key: "lateFees.graceDays", value: 10 } });
+  // Phase 2: portfolios, properties, units, owners.
+  const rentals = await seedRentals(db, orgId, users["admin@example.com"]!);
+  // Maintenance is scoped to the North Side portfolio to demo per-member property access.
+  await db.membership.updateMany({ where: { organizationId: orgId, userId: users["maint@example.com"] }, data: { propertyScope: rentals.northSidePropertyIds } });
+
   // Admin lands in Maple & Main by default.
   await db.user.update({ where: { id: users["admin@example.com"] }, data: { lastOrgId: orgId } });
 
@@ -85,6 +93,7 @@ async function main(): Promise<void> {
   console.log(`  Sign in at http://localhost:3000/login — password for every demo user: ${DEMO_PASSWORD}`);
   for (const p of PEOPLE) console.log(`  ${p.role.padEnd(17)} ${p.email}`);
   console.log(`  ${"(2nd org admin)".padEnd(17)} harbor@example.com`);
+  console.log(`  Rentals: ${rentals.properties} properties, ${rentals.units} units, ${rentals.owners} owners in 3 portfolios.`);
 }
 
 main()

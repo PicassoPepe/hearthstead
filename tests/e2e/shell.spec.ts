@@ -60,7 +60,7 @@ test("Create new → User opens a modal route over the current page and invites"
   await expect(page.getByText("Invitation sent to nina@example.com")).toBeVisible();
   await expect(dialog).toBeHidden();
   await expect(page).toHaveURL(/\/app\/settings\/users$/);
-  await expect(page.getByRole("cell", { name: /Nina Newhire/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Nina Newhire/ })).toBeVisible();
 });
 
 test("deep-linking /app/new/user renders a full page", async ({ page }) => {
@@ -71,8 +71,8 @@ test("deep-linking /app/new/user renders a full page", async ({ page }) => {
 
 test("unbuilt create kinds explain which phase they arrive in", async ({ page }) => {
   await page.getByRole("button", { name: "Create new" }).click();
-  await page.getByRole("menuitem", { name: "Property" }).click();
-  await expect(page.getByRole("dialog", { name: "New property" })).toContainText("Phase 2");
+  await page.getByRole("menuitem", { name: "Bill" }).click();
+  await expect(page.getByRole("dialog", { name: "New bill" })).toContainText("Phase 6");
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/\/app\/overview$/);
 });

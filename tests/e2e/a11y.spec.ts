@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn } from "./fixtures";
 
-const PAGES = ["/app/overview", "/app/settings", "/app/settings/users", "/app/settings/late-fees", "/app/rentals"];
+const PAGES = ["/app/overview", "/app/settings", "/app/settings/users", "/app/settings/late-fees", "/app/rentals", "/app/rentals/units", "/app/rentals/portfolios", "/app/people/owners", "/app/files?tab=import", "/app/notes"];
 
 test("login page has no WCAG A/AA violations", async ({ page }) => {
   await page.goto("/login");
@@ -21,6 +21,25 @@ for (const theme of ["light", "dark"] as const) {
     }
   });
 }
+
+test("property detail tabs and the New Property wizard have no WCAG A/AA violations", async ({ page }) => {
+  await signIn(page, "admin@example.com");
+  await page.goto("/app/rentals");
+  await page.getByRole("link", { name: "Maple Court" }).click();
+  await page.waitForURL(/\/app\/rentals\/c/);
+  const base = page.url().split("?")[0];
+  for (const tab of ["overview", "owners", "notes", "files", "settings"]) {
+    await page.goto(`${base}?tab=${tab}`);
+    await page.waitForLoadState("networkidle");
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+    expect(r.violations.map((v) => `${tab} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  }
+  await page.goto("/app/rentals");
+  await page.getByRole("link", { name: "Add property" }).first().click();
+  await page.getByRole("dialog", { name: "New property" }).waitFor();
+  const r = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+  expect(r.violations.map((v) => v.id)).toEqual([]);
+});
 
 test("everything is reachable by keyboard with visible focus", async ({ page }) => {
   await signIn(page, "admin@example.com");

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { GettingStarted, type ChecklistItem } from "@/components/overview/getting-started";
 import { can } from "@/server/permissions";
+import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Overview" };
 
@@ -22,10 +23,14 @@ const WIDGETS = [
 
 export default async function OverviewPage() {
   const ctx = await requireContext();
-  const [org, memberCount, settingRows] = await Promise.all([
+  const scope = ctx.membership.propertyScope;
+  const [org, memberCount, settingRows, propertyCount, unitAgg, ownerCount] = await Promise.all([
     ctx.db.organization.findUniqueOrThrow({ where: { id: ctx.org.id } }),
     ctx.db.membership.count(),
     ctx.db.setting.findMany({ where: { scope: "ORG" }, select: { key: true } }),
+    ctx.db.property.count({ where: scope.length ? { id: { in: scope } } : {} }),
+    ctx.db.unit.aggregate({ where: { property: { deletedAt: null, ...(scope.length ? { id: { in: scope } } : {}) } }, _count: true, _sum: { marketRentCents: true } }),
+    ctx.db.owner.count(),
   ]);
   const keys = new Set(settingRows.map((s) => s.key));
   const has = (prefix: string) => [...keys].some((k) => k.startsWith(prefix));
@@ -35,7 +40,7 @@ export default async function OverviewPage() {
     { id: "team", label: "Invite a teammate", description: "Give your team the right role.", href: "/app/new/user", done: memberCount > 1 },
     { id: "late-fees", label: "Review your late-fee policy", description: "Grace period, amount and caps.", href: "/app/settings/late-fees", done: has("lateFees.") },
     { id: "portal", label: "Set up the tenant portal", description: "Choose what tenants can see and do.", href: "/app/settings/tenant-portal", done: has("tenantPortal.") },
-    { id: "property", label: "Add your first property", description: "Units, owners and bank accounts.", href: "/app/new/property", done: false, phase: 2 },
+    { id: "property", label: "Add your first property", description: "Units, owners and bank accounts.", href: propertyCount ? "/app/rentals" : "/app/new/property", done: propertyCount > 0 },
     { id: "payments", label: "Turn on online payments", description: "Collect rent by ACH and card.", href: "/app/settings/payments", done: false, phase: 4 },
   ];
   const showChecklist = ctx.user.preferences.checklistDismissed !== true && checklist.some((c) => !c.done);
@@ -59,9 +64,9 @@ export default async function OverviewPage() {
       <section aria-labelledby="kpis" className="mb-6">
         <h2 id="kpis" className="sr-only">Key numbers</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="Properties" value="0" hint="Add your first in Phase 2" />
-          <StatCard label="Occupancy" value="—" hint="No units yet" />
-          <StatCard label="Collected this month" value="$0.00" hint="No charges yet" />
+          <StatCard label="Properties" value={propertyCount} href="/app/rentals" hint={propertyCount ? `${ownerCount} owner${ownerCount === 1 ? "" : "s"}` : "Add your first property"} />
+          <StatCard label="Units" value={unitAgg._count} href="/app/rentals/units" hint={unitAgg._count ? `${formatMoney(unitAgg._sum.marketRentCents ?? 0, { showCents: false })} / mo market rent` : "No units yet"} />
+          <StatCard label="Occupancy" value="—" hint="Calculated from leases (Phase 3)" />
           <StatCard label="Team members" value={memberCount} href="/app/settings/users" hint="View team" />
         </div>
       </section>

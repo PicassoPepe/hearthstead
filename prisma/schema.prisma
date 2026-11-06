@@ -11,30 +11,30 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_ADMIN_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_ADMIN_URL")
 }
 
 // ─── Tenancy & identity ────────────────────────────────────────────────────
 
 model Organization {
-  id            String    @id @default(cuid())
-  name          String
-  slug          String    @unique
-  logoUrl       String?
-  brandColor    String    @default("#0F766E")
-  timezone      String    @default("America/New_York")
-  phone         String?
-  email         String?
-  addressLine1  String?
-  city          String?
-  state         String?
-  postalCode    String?
-  sandbox       Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  createdById   String?
-  deletedAt     DateTime?
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  logoUrl      String?
+  brandColor   String    @default("#0F766E")
+  timezone     String    @default("America/New_York")
+  phone        String?
+  email        String?
+  addressLine1 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  sandbox      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdById  String?
+  deletedAt    DateTime?
 
   memberships Membership[]
   roles       Role[]
@@ -217,4 +217,231 @@ model EmailMessage {
   deletedAt      DateTime?
 
   @@index([to, createdAt])
+}
+
+// ─── Phase 2: Rentals ─────────────────────────────────────────────────────
+
+model Portfolio {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  properties Property[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+enum PropertyType {
+  SINGLE_FAMILY
+  MULTI_FAMILY
+  CONDO
+  TOWNHOME
+  COMMERCIAL_OFFICE
+  COMMERCIAL_RETAIL
+  COMMERCIAL_INDUSTRIAL
+  HOA
+}
+
+model Property {
+  id                        String       @id @default(cuid())
+  organizationId            String
+  portfolioId               String?
+  name                      String
+  type                      PropertyType
+  addressLine1              String
+  addressLine2              String?
+  city                      String
+  state                     String
+  postalCode                String
+  country                   String       @default("US")
+  yearBuilt                 Int?
+  photoUrl                  String?
+  /// Default bank accounts used when posting money for this property (chart-of-accounts ids).
+  defaultOperatingAccountId String?
+  defaultDepositAccountId   String?
+  /// Cash held back from owner distributions (integer cents).
+  reserveCents              Int          @default(0)
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+  createdById               String?
+  deletedAt                 DateTime?
+
+  portfolio        Portfolio?          @relation(fields: [portfolioId], references: [id])
+  defaultOperating Account?            @relation("PropertyOperating", fields: [defaultOperatingAccountId], references: [id])
+  defaultDeposit   Account?            @relation("PropertyDeposit", fields: [defaultDepositAccountId], references: [id])
+  units            Unit[]
+  ownerships       PropertyOwnership[]
+
+  @@index([organizationId, deletedAt])
+  @@index([portfolioId])
+}
+
+model Unit {
+  id              String    @id @default(cuid())
+  organizationId  String
+  propertyId      String
+  name            String
+  beds            Int?
+  /// Stored in tenths so 1.5 baths is 15 — no floats.
+  bathsTenths     Int?
+  sqft            Int?
+  marketRentCents Int       @default(0)
+  amenities       String[]  @default([])
+  photos          String[]  @default([])
+  isListed        Boolean   @default(false)
+  inApplications  Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     String?
+  deletedAt       DateTime?
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, propertyId])
+}
+
+model Owner {
+  id             String    @id @default(cuid())
+  organizationId String
+  /// "PERSON" or "COMPANY"
+  kind           String    @default("PERSON")
+  firstName      String?
+  lastName       String?
+  companyName    String?
+  email          String?
+  phone          String?
+  addressLine1   String?
+  city           String?
+  state          String?
+  postalCode     String?
+  /// e.g. { taxIdType: "SSN" | "EIN", taxIdLast4: "1234", taxName: "...", send1099: true }
+  taxInfo        Json      @default("{}")
+  portalStatus   String    @default("NOT_INVITED") // NOT_INVITED | INVITED | ACTIVE
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  ownerships PropertyOwnership[]
+
+  @@index([organizationId, deletedAt])
+}
+
+model PropertyOwnership {
+  id             String    @id @default(cuid())
+  organizationId String
+  ownerId        String
+  propertyId     String
+  /// Ownership share in basis points (10000 = 100%).
+  percentBps     Int
+  agreementStart DateTime? @db.Date
+  agreementEnd   DateTime? @db.Date
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  owner    Owner    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, ownerId])
+  @@index([organizationId])
+}
+
+// Chart of accounts. Created now so properties can reference their default bank accounts;
+// the ledger that posts to these arrives in Phase 3.
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+model Account {
+  id             String      @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  type           AccountType
+  isBank         Boolean     @default(false)
+  /// System accounts (A/R, Undeposited Funds, ...) can't be deleted or renamed.
+  isSystem       Boolean     @default(false)
+  /// Stable key for system accounts, e.g. "ACCOUNTS_RECEIVABLE".
+  systemKey      String?
+  parentId       String?
+  active         Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  bankAccount         BankAccount?
+  operatingProperties Property[]   @relation("PropertyOperating")
+  depositProperties   Property[]   @relation("PropertyDeposit")
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, systemKey])
+  @@index([organizationId, type])
+}
+
+model BankAccount {
+  id             String    @id @default(cuid())
+  organizationId String
+  accountId      String    @unique
+  institution    String?
+  mask           String? // last 4 digits only
+  /// "OPERATING" | "TRUST" | "SECURITY_DEPOSIT"
+  purpose        String    @default("OPERATING")
+  externalRef    String? // Stripe / Plaid link id
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ─── Polymorphic notes & files ────────────────────────────────────────────
+
+model Note {
+  id             String    @id @default(cuid())
+  organizationId String
+  entityType     String // "Property" | "Unit" | "Owner" | ...
+  entityId       String
+  body           String
+  pinned         Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@index([organizationId, entityType, entityId])
+}
+
+/// A stored file. (Named Attachment to avoid clashing with the DOM `File` type in TypeScript.)
+model Attachment {
+  id             String    @id @default(cuid())
+  organizationId String
+  entityType     String?
+  entityId       String?
+  name           String
+  contentType    String
+  sizeBytes      Int
+  storageKey     String    @unique
+  category       String? // "Lease" | "Photo" | "Statement" | "Other" ...
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@index([organizationId, entityType, entityId])
 }

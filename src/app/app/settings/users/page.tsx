@@ -13,9 +13,10 @@ export const metadata = { title: "Users & roles" };
 export default async function UsersPage() {
   const ctx = await requireContext();
   if (!can(ctx.permissions, "users", "view")) return <Forbidden what="users and roles" />;
-  const [members, roles] = await Promise.all([
+  const [members, roles, properties] = await Promise.all([
     ctx.db.membership.findMany({ include: { user: true, role: true }, orderBy: { createdAt: "asc" } }),
     ctx.db.role.findMany({ orderBy: { createdAt: "asc" }, include: { _count: { select: { memberships: { where: { deletedAt: null } } } } } }),
+    ctx.db.property.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   const rows: MemberRow[] = members.map((m) => ({
     id: m.id,
@@ -26,6 +27,7 @@ export default async function UsersPage() {
     status: m.status,
     isSelf: m.userId === ctx.user.id,
     invitedAt: m.invitedAt?.toISOString() ?? null,
+    propertyScope: m.propertyScope,
   }));
   const roleRows: RoleRow[] = roles.map((r) => ({
     id: r.id, key: r.key, name: r.name, description: r.description, isSystem: r.isSystem,
@@ -43,11 +45,11 @@ export default async function UsersPage() {
       />
       <section aria-labelledby="members-h" className="mb-8">
         <h2 id="members-h" className="mb-3 text-[15px] font-semibold">Team members</h2>
-        <MembersTable rows={rows} roles={roles.map((r) => ({ id: r.id, name: r.name }))} canEdit={canEdit} canDelete={can(ctx.permissions, "users", "delete")} />
+        <MembersTable rows={rows} roles={roles.map((r) => ({ id: r.id, name: r.name }))} canEdit={canEdit} canDelete={can(ctx.permissions, "users", "delete")} properties={properties} />
       </section>
       <section aria-labelledby="roles-h">
         <h2 id="roles-h" className="mb-1 text-[15px] font-semibold">Roles & permissions</h2>
-        <p className="mb-3 text-sm text-muted-foreground">Built-in roles cover most teams. Create a custom role for anything else. Property scoping per member arrives with properties in Phase 2.</p>
+        <p className="mb-3 text-sm text-muted-foreground">Built-in roles cover most teams. Create a custom role for anything else.</p>
         <RolesEditor roles={roleRows} canEdit={canEdit} />
       </section>
     </>

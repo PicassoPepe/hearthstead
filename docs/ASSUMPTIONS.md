@@ -38,7 +38,26 @@ Decisions made without asking, per the brief. Each can be changed later.
   than 404, so navigation and permissions can be exercised now.
 - Next.js dev indicator is disabled so it doesn't cover the sidebar.
 
-**Not yet done in Phase 1 (by design)**
+**Phase 2 (Rentals)**
+- The chart of accounts and bank-account records are created in Phase 2 (not 3) so properties
+  can reference their default operating/deposit accounts. Every new org gets the default chart;
+  `prisma/backfill.ts` adds it to existing orgs. The ledger that posts to them is Phase 3.
+- Ownership is stored in basis points (10000 = 100%); bathrooms in tenths (15 = 1.5) — no floats.
+- If a property has owners, their shares must total exactly 100%. Owners are optional.
+- Only the last 4 digits of an owner's tax ID are stored.
+- "Archive" is a soft delete with undo; nothing in Rentals is hard-deleted from the UI.
+- The stored-file model is named `Attachment` (a model named `File` would clash with the DOM
+  `File` type in TypeScript). Uploads: 10 MB max, allow-listed types, served only through an
+  authenticated, tenant-scoped route with `nosniff` and a sandbox CSP.
+- Address autocomplete uses a mock `AddressProvider` (completes a typed street against a city
+  list) — swap in Google Places/Mapbox/Smarty by implementing `suggest()`.
+- The importer handles properties+units and owners in Phase 2; tenants, leases and opening
+  balances are added in Phase 3 when those tables exist. Rows with an existing property name add
+  units to that property. All rows must validate before anything is written (single transaction).
+- Occupancy and balances show "—" until leases and the ledger exist (Phase 3).
+- Members limited to specific properties can't create properties or run property imports.
+
+**Not yet done (by design)**
 - 2FA, session management and support-access toggle (Settings → Security) — Phase 10.
 - Per-member property scoping is stored and enforced by `canAccessProperty()` but has no UI
   until properties exist (Phase 2).

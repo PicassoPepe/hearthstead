@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/patterns/confirm-dialog";
+import { PropertyAccessButton } from "./property-access";
 import { changeMemberRole, removeMember, restoreMember } from "@/server/actions/members";
 
 export type MemberRow = {
@@ -24,9 +25,10 @@ export type MemberRow = {
   status: string;
   isSelf: boolean;
   invitedAt: string | null;
+  propertyScope: string[];
 };
 
-export function MembersTable({ rows, roles, canEdit, canDelete }: { rows: MemberRow[]; roles: { id: string; name: string }[]; canEdit: boolean; canDelete: boolean }) {
+export function MembersTable({ rows, roles, canEdit, canDelete, properties }: { rows: MemberRow[]; roles: { id: string; name: string }[]; canEdit: boolean; canDelete: boolean; properties: { id: string; name: string }[] }) {
   const router = useRouter();
   const [optimistic, setOptimistic] = React.useState<Record<string, string>>({});
   const [confirm, setConfirm] = React.useState<MemberRow | null>(null);
@@ -82,9 +84,23 @@ export function MembersTable({ rows, roles, canEdit, canDelete }: { rows: Member
           );
         },
       },
+      {
+        id: "access",
+        header: "Property access",
+        accessorFn: (m) => (m.propertyScope.length ? `${m.propertyScope.length} properties` : "All properties"),
+        cell: ({ row }) => (
+          <PropertyAccessButton
+            membershipId={row.original.id}
+            memberName={row.original.name}
+            scope={row.original.propertyScope}
+            properties={properties}
+            canEdit={canEdit && !row.original.isSelf}
+          />
+        ),
+      },
       { accessorKey: "status", header: "Status", filterFn: "equals", cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     ],
-    [canEdit, optimistic, roles, router],
+    [canEdit, optimistic, roles, router, properties],
   );
 
   return (

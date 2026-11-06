@@ -18,6 +18,10 @@ const MAP: Record<string, { tone: Tone; label: string; Icon: typeof Circle }> = 
   COMPLETED: { tone: "success", label: "Completed", Icon: CheckCircle2 },
   FAILED: { tone: "danger", label: "Failed", Icon: XCircle },
   SUCCEEDED: { tone: "success", label: "Succeeded", Icon: CheckCircle2 },
+  VACANT: { tone: "warning", label: "Vacant", Icon: CircleDashed },
+  OCCUPIED: { tone: "success", label: "Occupied", Icon: CheckCircle2 },
+  NOT_INVITED: { tone: "neutral", label: "Not invited", Icon: Circle },
+  ARCHIVED: { tone: "neutral", label: "Archived", Icon: Circle },
 };
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {

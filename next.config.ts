@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@prisma/client", "bcryptjs", "nodemailer"],
   typedRoutes: false,
   devIndicators: false,
+  experimental: { serverActions: { bodySizeLimit: "25mb" } },
 };
 
 export default nextConfig;

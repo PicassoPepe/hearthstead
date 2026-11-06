@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { useTheme } from "next-themes";
-import { ArrowRight, Building2, Loader2, LogOut, Moon, Plus, Search, Settings, Sun, User, FileText, Repeat } from "lucide-react";
+import { ArrowRight, Building2, DoorOpen, UserRound, Loader2, LogOut, Moon, Plus, Search, Settings, Sun, User, FileText, Repeat } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/misc";
 import { CREATE_MENU, NAV_BOTTOM, NAV_MAIN, SETTINGS_NAV } from "@/lib/nav";
@@ -14,7 +14,7 @@ import { NAV_ICONS } from "./icons";
 import { signOutAction, switchOrganization } from "@/server/actions/auth";
 import type { SearchResult } from "@/server/search/types";
 
-const ENTITY_ICON: Record<string, typeof User> = { user: User, setting: Settings, property: Building2, document: FileText };
+const ENTITY_ICON: Record<string, typeof User> = { user: User, setting: Settings, property: Building2, unit: DoorOpen, owner: UserRound, document: FileText };
 
 export const OPEN_PALETTE_EVENT = "hs:open-command-palette";
 
