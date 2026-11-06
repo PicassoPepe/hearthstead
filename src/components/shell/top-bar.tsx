@@ -24,7 +24,7 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   React.useEffect(() => setMounted(true), []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-surface/95 px-3 backdrop-blur sm:px-4">
+    <header className="sticky top-0 z-30 flex h-14 print:hidden items-center gap-2 border-b border-border bg-surface/95 px-3 backdrop-blur sm:px-4">
       <Button variant="ghost" size="icon" className="md:hidden" onClick={onOpenMobileNav} aria-label="Open navigation">
         <Menu aria-hidden />
       </Button>

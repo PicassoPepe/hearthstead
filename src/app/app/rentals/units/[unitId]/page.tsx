@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FileSignature, Megaphone, Receipt, ListChecks } from "lucide-react";
+import { Megaphone, ListChecks, Plus } from "lucide-react";
+import { listLeases, occupiedUnitIds } from "@/server/leasing/queries";
+import { LeasesTable } from "@/components/leasing/leases-table";
+import { Button } from "@/components/ui/button";
 import { requireContext } from "@/server/context";
 import { can, canAccessProperty } from "@/server/permissions";
 import { filesFor, notesFor } from "@/server/records/queries";
@@ -35,13 +38,16 @@ export default async function UnitPage({ params, searchParams }: { params: Promi
   if (!u || !canAccessProperty(ctx.membership.propertyScope, u.propertyId)) notFound();
   const canEdit = can(ctx.permissions, "rentals", "edit");
   const base = `/app/rentals/units/${u.id}`;
+  const [occupied, leases] = await Promise.all([occupiedUnitIds(ctx), listLeases(ctx, { units: { some: { unitId: u.id } } })]);
+  const isOccupied = occupied.has(u.id);
 
   return (
     <>
       <EntityHeader
         breadcrumb={<><Link href="/app/rentals" className="hover:underline">Properties</Link> / <Link href={`/app/rentals/${u.propertyId}`} className="hover:underline">{u.property.name}</Link> / {u.name}</>}
         title={`${u.property.name} · ${u.name}`}
-        status={<StatusBadge status="VACANT" />}
+        status={<StatusBadge status={isOccupied ? "OCCUPIED" : "VACANT"} />}
+        actions={!isOccupied && can(ctx.permissions, "leasing", "edit") ? <Button asChild><Link href={`/app/new/lease?unitId=${u.id}`} scroll={false}><Plus aria-hidden /> New lease</Link></Button> : null}
         subtitle={u.amenities.length ? u.amenities.join(" · ") : undefined}
         stats={[
           { label: "Beds / baths", value: `${u.beds ?? "—"} / ${formatBaths(u.bathsTenths)}` },
@@ -55,9 +61,8 @@ export default async function UnitPage({ params, searchParams }: { params: Promi
         active={tab}
         tabs={[
           { id: "overview", label: "Overview" },
-          { id: "leases", label: "Leases" },
+          { id: "leases", label: "Leases", count: leases.length },
           { id: "listing", label: "Listing" },
-          { id: "transactions", label: "Transactions" },
           { id: "tasks", label: "Tasks" },
           { id: "notes", label: "Notes" },
           { id: "files", label: "Files" },
@@ -83,10 +88,8 @@ export default async function UnitPage({ params, searchParams }: { params: Promi
         <FilesPanel entityType="Unit" entityId={u.id} files={await filesFor(ctx, "Unit", u.id)} canEdit={canEdit} />
       ) : tab === "listing" ? (
         <EmptyState icon={<Megaphone />} title="Listings arrive in Phase 9" description="Photos, description (with an AI writer), syndication and showings for this unit." />
-      ) : tab === "leases" ? (
-        <EmptyState icon={<FileSignature />} title="Leases arrive in Phase 3" description="Current and past leases for this unit." />
-      ) : tab === "transactions" ? (
-        <EmptyState icon={<Receipt />} title="Transactions arrive in Phase 3" description="Charges and payments for this unit." />
+      ) : tab === "leases" || tab === "transactions" ? (
+        <LeasesTable rows={leases} tab={`unit-${u.id}`} canEdit={can(ctx.permissions, "leasing", "edit")} />
       ) : (
         <EmptyState icon={<ListChecks />} title="Tasks arrive in Phase 5" description="Work orders and inspections for this unit." />
       )}

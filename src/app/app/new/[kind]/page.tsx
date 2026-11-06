@@ -13,10 +13,10 @@ export default async function CreatePage({ params, searchParams }: { params: Pro
   if (!item) notFound();
   const ctx = await requireContext();
   return (
-    <div className={item.kind === "property" ? "mx-auto max-w-3xl" : "mx-auto max-w-2xl"}>
+    <div className={["property", "lease", "journal-entry"].includes(item.kind) ? "mx-auto max-w-3xl" : "mx-auto max-w-2xl"}>
       <PageHeader title={`New ${item.label.toLowerCase()}`} />
-      <Card className={item.kind === "property" ? "flex min-h-[600px] flex-col overflow-hidden" : undefined}>
-        {item.kind === "property" ? (
+      <Card className={["property", "lease"].includes(item.kind) ? "flex min-h-[600px] flex-col overflow-hidden" : undefined}>
+        {["property", "lease"].includes(item.kind) ? (
           <CreateBody kind={item.kind} ctx={ctx} mode="page" query={query} />
         ) : (
           <CardContent className="pt-5">

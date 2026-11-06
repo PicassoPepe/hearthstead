@@ -17,7 +17,7 @@ export function CreateModal({
   description?: string;
   children: React.ReactNode;
   /** "wizard" = wide, tall, and the child manages its own padding/footer. */
-  size?: "default" | "wizard";
+  size?: "default" | "wizard" | "wide";
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(true);
@@ -30,7 +30,7 @@ export function CreateModal({
       <Dialog open={open} onOpenChange={(o) => (!o ? close() : setOpen(true))}>
         <DialogContent
           aria-describedby={description ? "create-desc" : undefined}
-          className={size === "wizard" ? "h-[min(860px,92dvh)] max-w-3xl" : undefined}
+          className={size === "wizard" ? "h-[min(860px,92dvh)] max-w-3xl" : size === "wide" ? "max-w-3xl" : undefined}
         >
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>

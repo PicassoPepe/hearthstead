@@ -21,7 +21,7 @@ export function AppShell({ data, children, modal }: { data: ShellData; children:
           Skip to content
         </a>
         <div className="app-density flex min-h-dvh">
-          <div className="sticky top-0 hidden h-dvh md:block">
+          <div className="sticky top-0 hidden h-dvh md:block print:hidden">
             <SidebarNav />
           </div>
 

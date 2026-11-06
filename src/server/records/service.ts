@@ -14,6 +14,8 @@ export const ENTITY_MODULE = {
   Unit: "rentals",
   Portfolio: "rentals",
   Owner: "people",
+  Lease: "leasing",
+  Tenant: "people",
 } as const satisfies Record<string, Module>;
 export type EntityType = keyof typeof ENTITY_MODULE;
 
@@ -26,6 +28,8 @@ export async function assertEntity(db: ScopedDb, type: EntityType, id: string): 
     type === "Property" ? await db.property.findFirst({ where: { id }, select: { id: true } })
     : type === "Unit" ? await db.unit.findFirst({ where: { id }, select: { id: true } })
     : type === "Portfolio" ? await db.portfolio.findFirst({ where: { id }, select: { id: true } })
+    : type === "Lease" ? await db.lease.findFirst({ where: { id }, select: { id: true } })
+    : type === "Tenant" ? await db.tenant.findFirst({ where: { id }, select: { id: true } })
     : await db.owner.findFirst({ where: { id }, select: { id: true } });
   if (!found) throw new UserFacingError(`${type} not found`);
 }

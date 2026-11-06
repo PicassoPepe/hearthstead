@@ -19,7 +19,10 @@ import { FilesPanel } from "@/components/records/files-panel";
 import { ScopedSettings } from "@/components/settings/scoped-settings";
 import { formatMoney, sumCents } from "@/lib/money";
 import { PROPERTY_TYPE_META, formatAddress, formatPercentBps, ownerDisplayName } from "@/lib/rentals";
-import { FileSignature, ListChecks, Receipt } from "lucide-react";
+import { ListChecks } from "lucide-react";
+import { balancesBy, listLeases } from "@/server/leasing/queries";
+import { LeasesTable } from "@/components/leasing/leases-table";
+import { formatDate } from "@/lib/dates";
 
 const TABS = ["overview", "units", "leases", "owners", "transactions", "tasks", "notes", "files", "settings"] as const;
 type Tab = (typeof TABS)[number];
@@ -49,11 +52,15 @@ export default async function PropertyPage({ params, searchParams }: { params: P
     },
   });
   if (!p) notFound();
-  const [units, noteCount, fileCount] = await Promise.all([
+  const [units, noteCount, fileCount, leases, balances] = await Promise.all([
     listUnits(ctx, p.id),
     ctx.db.note.count({ where: { entityType: "Property", entityId: p.id } }),
     ctx.db.attachment.count({ where: { entityType: "Property", entityId: p.id } }),
+    listLeases(ctx, { propertyId: p.id }),
+    balancesBy(ctx, "propertyId", [p.id]),
   ]);
+  const occupied = units.filter((u) => u.status === "OCCUPIED").length;
+  const propBalance = balances.get(p.id) ?? 0;
   const canEdit = can(ctx.permissions, "rentals", "edit");
   const meta = PROPERTY_TYPE_META[p.type];
   const base = `/app/rentals/${p.id}`;
@@ -68,9 +75,9 @@ export default async function PropertyPage({ params, searchParams }: { params: P
         subtitle={formatAddress(p)}
         stats={[
           { label: "Units", value: units.length },
-          { label: "Occupancy", value: <span title="Calculated from leases in Phase 3">—</span> },
+          { label: "Occupancy", value: units.length ? `${Math.round((occupied / units.length) * 100)}% (${occupied}/${units.length})` : "—" },
           { label: "Market rent / mo", value: formatMoney(sumCents(units.map((u) => u.marketRentCents))) },
-          { label: "Balance", value: <span className="text-muted-foreground">—</span> },
+          { label: "Tenant balances", value: <span className={propBalance > 0 ? "text-danger" : ""}>{formatMoney(propBalance)}</span> },
         ]}
         actions={
           canEdit && opts ? (
@@ -99,7 +106,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
         tabs={[
           { id: "overview", label: "Overview" },
           { id: "units", label: "Units", count: units.length },
-          { id: "leases", label: "Leases" },
+          { id: "leases", label: "Leases", count: leases.filter((l) => l.status === "ACTIVE" || l.status === "EVICTION").length },
           { id: "owners", label: "Owners", count: p.ownerships.length },
           { id: "transactions", label: "Transactions" },
           { id: "tasks", label: "Tasks" },
@@ -168,12 +175,43 @@ export default async function PropertyPage({ params, searchParams }: { params: P
       ) : tab === "settings" ? (
         <ScopedSettings ctx={ctx} scope="PROPERTY" scopeId={p.id} canEdit={canEdit} />
       ) : tab === "leases" ? (
-        <EmptyState icon={<FileSignature />} title="Leases arrive in Phase 3" description="Leases for this property — with balances, rent schedules and renewals — will appear here." />
+        <LeasesTable rows={leases} tab={`property-${p.id}`} canEdit={can(ctx.permissions, "leasing", "edit")} />
       ) : tab === "transactions" ? (
-        <EmptyState icon={<Receipt />} title="Transactions arrive in Phase 3" description="Charges, payments and bills posted to this property's ledger will appear here." />
+        <PropertyTransactions ctx={ctx} propertyId={p.id} />
       ) : (
         <EmptyState icon={<ListChecks />} title="Tasks arrive in Phase 5" description="Work orders, tenant requests and inspections for this property will appear here." />
       )}
     </>
+  );
+}
+
+async function PropertyTransactions({ ctx, propertyId }: { ctx: Awaited<ReturnType<typeof requireContext>>; propertyId: string }) {
+  const txs = await ctx.db.leaseTransaction.findMany({
+    where: { lease: { propertyId } },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    take: 200,
+    include: { lease: { include: { units: { include: { unit: { select: { name: true } } } } } } },
+  });
+  if (!txs.length) return <EmptyState title="No transactions yet" description="Charges and payments on this property's leases appear here." />;
+  return (
+    <div className="overflow-x-auto rounded-card border border-border bg-surface">
+      <table className="w-full text-sm">
+        <caption className="sr-only">Recent transactions</caption>
+        <thead className="bg-surface-muted/60 text-left text-xs text-muted-foreground">
+          <tr>{["Date", "Unit", "Type", "Description", "Amount"].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {txs.map((t) => (
+            <tr key={t.id} className={`border-t border-border ${t.voidedAt ? "text-muted-foreground line-through" : ""}`}>
+              <td className="px-3 py-2 tabular">{formatDate(t.date)}</td>
+              <td className="px-3 py-2"><Link href={`/app/leasing/${t.leaseId}?tab=transactions`} className="hover:underline">{t.lease.units.map((u) => u.unit.name).join(", ")}</Link></td>
+              <td className="px-3 py-2">{t.type.replace("_", " ").toLowerCase()}</td>
+              <td className="px-3 py-2">{t.memo}</td>
+              <td className="px-3 py-2 text-right tabular">{formatMoney(t.amountCents)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

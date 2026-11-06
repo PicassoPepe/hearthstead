@@ -2,6 +2,7 @@ import "server-only";
 import type { AppContext } from "@/server/context";
 import { ownerDisplayName } from "@/lib/rentals";
 import { propertyScopeWhere } from "./service";
+import { balancesBy, occupiedUnitIds } from "@/server/leasing/queries";
 
 /** Read models for rentals pages. All go through the tenant-scoped db and member property scope. */
 
@@ -36,6 +37,7 @@ export type PropertyRow = {
   occupied: number;
   owners: string;
   marketRentCents: number;
+  balanceCents: number;
 };
 
 export async function listProperties(ctx: AppContext): Promise<PropertyRow[]> {
@@ -43,11 +45,12 @@ export async function listProperties(ctx: AppContext): Promise<PropertyRow[]> {
     where: propertyScopeWhere(ctx.membership.propertyScope),
     include: {
       portfolio: { select: { name: true } },
-      units: { where: { deletedAt: null }, select: { marketRentCents: true } },
+      units: { where: { deletedAt: null }, select: { id: true, marketRentCents: true } },
       ownerships: { where: { deletedAt: null }, include: { owner: true }, orderBy: { percentBps: "desc" } },
     },
     orderBy: { name: "asc" },
   });
+  const [occupied, balances] = await Promise.all([occupiedUnitIds(ctx), balancesBy(ctx, "propertyId", rows.map((p) => p.id))]);
   return rows.map((p) => ({
     id: p.id,
     name: p.name,
@@ -57,7 +60,8 @@ export async function listProperties(ctx: AppContext): Promise<PropertyRow[]> {
     portfolio: p.portfolio?.name ?? "",
     portfolioId: p.portfolioId,
     units: p.units.length,
-    occupied: 0, // leases arrive in Phase 3
+    occupied: p.units.filter((u) => occupied.has(u.id)).length,
+    balanceCents: balances.get(p.id) ?? 0,
     owners: p.ownerships.map((o) => ownerDisplayName(o.owner)).join(", "),
     marketRentCents: p.units.reduce((s, u) => s + u.marketRentCents, 0),
   }));
@@ -86,6 +90,7 @@ export async function listUnits(ctx: AppContext, propertyId?: string): Promise<U
     include: { property: { select: { name: true } } },
     orderBy: [{ property: { name: "asc" } }, { name: "asc" }],
   });
+  const occupied = await occupiedUnitIds(ctx);
   return units.map((u) => ({
     id: u.id,
     name: u.name,
@@ -95,7 +100,7 @@ export async function listUnits(ctx: AppContext, propertyId?: string): Promise<U
     bathsTenths: u.bathsTenths,
     sqft: u.sqft,
     marketRentCents: u.marketRentCents,
-    status: "VACANT",
+    status: occupied.has(u.id) ? "OCCUPIED" : "VACANT",
     isListed: u.isListed,
   }));
 }

@@ -14,7 +14,7 @@ import { NAV_ICONS } from "./icons";
 import { signOutAction, switchOrganization } from "@/server/actions/auth";
 import type { SearchResult } from "@/server/search/types";
 
-const ENTITY_ICON: Record<string, typeof User> = { user: User, setting: Settings, property: Building2, unit: DoorOpen, owner: UserRound, document: FileText };
+const ENTITY_ICON: Record<string, typeof User> = { user: User, setting: Settings, property: Building2, unit: DoorOpen, owner: UserRound, tenant: User, document: FileText };
 
 export const OPEN_PALETTE_EVENT = "hs:open-command-palette";
 

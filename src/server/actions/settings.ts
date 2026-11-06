@@ -12,7 +12,7 @@ import { audit } from "@/server/audit";
  * Who may change a setting depends on the scope:
  *   ORG      → Company settings: edit
  *   PROPERTY → Rentals: edit, plus access to that property
- *   LEASE    → Leasing: edit (lease table arrives in Phase 3)
+ *   LEASE    → Leasing: edit, plus access to the lease's property
  * The scope id is always verified to belong to the caller's organization.
  */
 async function authorize(scope: Scope, scopeId?: string): Promise<{ ctx: AppContext; id: string }> {
@@ -28,6 +28,9 @@ async function authorize(scope: Scope, scopeId?: string): Promise<{ ctx: AppCont
     return { ctx, id: scopeId };
   }
   const ctx = await requirePermission("leasing", "edit");
+  const lease = await ctx.db.lease.findFirst({ where: { id: scopeId }, select: { propertyId: true } });
+  if (!lease) throw new UserFacingError("Lease not found");
+  if (!canAccessProperty(ctx.membership.propertyScope, lease.propertyId)) throw new UserFacingError("You don't have access to that lease.");
   return { ctx, id: scopeId };
 }
 

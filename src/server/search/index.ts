@@ -5,6 +5,7 @@ import { SETTINGS, SETTING_GROUP_LABELS } from "@/server/settings/registry";
 import type { SearchResult } from "./types";
 import { ownerDisplayName, PROPERTY_TYPE_META } from "@/lib/rentals";
 import { propertyScopeWhere } from "@/server/rentals/service";
+import { tenantDisplayName } from "@/lib/leasing";
 
 /**
  * Global search registry. Each phase registers a provider for its entities (properties,
@@ -24,6 +25,30 @@ const GROUP_HREF: Record<string, string> = {
 };
 
 const providers: Provider[] = [
+  {
+    module: "people",
+    async search(ctx, q) {
+      const scope = ctx.membership.propertyScope;
+      const rows = await ctx.db.tenant.findMany({
+        where: {
+          OR: [
+            { firstName: { contains: q, mode: "insensitive" } },
+            { lastName: { contains: q, mode: "insensitive" } },
+            { companyName: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+            { phone: { contains: q } },
+          ],
+          ...(scope.length ? { leases: { some: { lease: { propertyId: { in: scope } } } } } : {}),
+        },
+        include: { leases: { where: { lease: { status: { in: ["ACTIVE", "EVICTION"] } } }, include: { lease: { include: { property: { select: { name: true } }, units: { include: { unit: { select: { name: true } } } } } } }, take: 1 } },
+        take: 6,
+      });
+      return rows.map((t) => {
+        const l = t.leases[0]?.lease;
+        return { id: `tenant:${t.id}`, type: "tenant", group: "Tenants", title: tenantDisplayName(t), subtitle: l ? `${l.property.name} · ${l.units.map((u) => u.unit.name).join(", ")}` : (t.email ?? "Tenant"), href: `/app/people/tenants/${t.id}` };
+      });
+    },
+  },
   {
     module: "rentals",
     async search(ctx, q) {

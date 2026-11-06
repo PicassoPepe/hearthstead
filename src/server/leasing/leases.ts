@@ -65,59 +65,7 @@ export async function createLease(db: ScopedDb, raw: LeaseWizardInput, today: Da
     if (isSettingKey(k) && !SETTINGS[k].schema.safeParse(val).success) throw new UserFacingError(`Invalid value for ${SETTINGS[k].label}`, { overrides: "Check the overrides" });
   }
 
-  const a = actor(db);
-  const start = parseISODate(v.startDate);
-  const leaseId = await db.tx(
-    async (tx) => {
-      const tenantIds: { id: string; role: (typeof v.tenants)[number]["role"] }[] = [];
-      for (const t of v.tenants) {
-        if ("tenantId" in t) tenantIds.push({ id: t.tenantId, role: t.role });
-        else {
-          const n = t.newTenant;
-          const created = await tx.tenant.create({
-            data: {
-              organizationId: a.orgId, kind: n.kind,
-              firstName: n.kind === "PERSON" ? n.firstName : null, lastName: n.kind === "PERSON" ? n.lastName : null,
-              companyName: n.companyName || null, email: n.email ? n.email.toLowerCase() : null, phone: n.phone || null,
-              portalStatus: v.portalInvite && n.email ? "INVITED" : "NOT_INVITED", createdById: a.userId,
-            },
-          });
-          tenantIds.push({ id: created.id, role: t.role });
-        }
-      }
-      const lease = await tx.lease.create({
-        data: {
-          organizationId: a.orgId, propertyId: property.id, status: v.status, termType: v.termType,
-          startDate: start, endDate: end ? parseISODate(end) : null, moveInDate: start, rentDueDay: v.rentDueDay,
-          depositCents: v.deposit.handling === "NONE" ? 0 : v.deposit.amountCents, createdById: a.userId,
-        },
-      });
-      await tx.leaseUnit.createMany({ data: v.unitIds.map((unitId) => ({ organizationId: a.orgId, leaseId: lease.id, unitId })) });
-      await tx.leaseTenant.createMany({ data: tenantIds.map((t) => ({ organizationId: a.orgId, leaseId: lease.id, tenantId: t.id, role: t.role })) });
-      if (v.portalInvite) await tx.tenant.updateMany({ where: { id: { in: tenantIds.map((t) => t.id) }, email: { not: null }, portalStatus: "NOT_INVITED" }, data: { portalStatus: "INVITED" } });
-      if (v.recurring.length) {
-        await tx.recurringCharge.createMany({
-          data: v.recurring.map((r) => ({
-            organizationId: a.orgId, leaseId: lease.id, kind: r.kind, accountId: r.accountId, description: r.description,
-            amountCents: r.amountCents, startDate: start, nextRunDate: startOfMonth(start), createdById: a.userId,
-          })),
-        });
-      }
-      for (const [key, value] of overrides) {
-        await tx.setting.create({ data: { organizationId: a.orgId, scope: "LEASE", scopeId: lease.id, key, value: value as Prisma.InputJsonValue, createdById: a.userId } });
-      }
-      if (v.status === "ACTIVE") {
-        if (v.deposit.handling === "RECEIVED") await recordDeposit(tx, a, { leaseId: lease.id, amountCents: v.deposit.amountCents, date: start });
-        if (v.deposit.handling === "CHARGE") {
-          const held = await new AccountResolver(tx).id("DEPOSITS_HELD");
-          await postCharge(tx, a, { leaseId: lease.id, accountId: held, amountCents: v.deposit.amountCents, date: start, memo: "Security deposit", chargeKind: "DEPOSIT" });
-        }
-        await runRecurringForLease(tx, a, lease.id, today);
-      }
-      return lease.id;
-    },
-    { timeout: 60_000 },
-  );
+  const leaseId = await db.tx((tx) => createLeaseInTx(tx, actor(db), v, today), { timeout: 60_000 });
   await audit(db, { action: "lease.created", entityType: "Lease", entityId: leaseId, after: { ...v } });
   return { id: leaseId };
 }
@@ -182,6 +130,65 @@ export async function setEviction(db: ScopedDb, leaseId: string, on: boolean): P
   if (!on && lease.status !== "EVICTION") throw new UserFacingError("This lease isn't in eviction");
   await db.lease.update({ where: { id: leaseId }, data: { status: on ? "EVICTION" : "ACTIVE" } });
   await audit(db, { action: on ? "lease.eviction_started" : "lease.eviction_cancelled", entityType: "Lease", entityId: leaseId });
+}
+
+
+export type ParsedLease = ReturnType<typeof leaseWizardSchema.parse>;
+
+/**
+ * Create a validated lease inside an existing transaction. `opts.billFrom` lets imports skip
+ * back-billing (rent starts posting from that date; history comes in as an opening balance).
+ */
+export async function createLeaseInTx(tx: ScopedTx, a: Actor, v: ParsedLease, today: Date, opts: { billFrom?: Date; depositDate?: Date } = {}): Promise<string> {
+  const start = parseISODate(v.startDate);
+  const end = v.endDate || null;
+
+      const tenantIds: { id: string; role: (typeof v.tenants)[number]["role"] }[] = [];
+      for (const t of v.tenants) {
+        if ("tenantId" in t) tenantIds.push({ id: t.tenantId, role: t.role });
+        else {
+          const n = t.newTenant;
+          const created = await tx.tenant.create({
+            data: {
+              organizationId: a.orgId, kind: n.kind,
+              firstName: n.kind === "PERSON" ? n.firstName : null, lastName: n.kind === "PERSON" ? n.lastName : null,
+              companyName: n.companyName || null, email: n.email ? n.email.toLowerCase() : null, phone: n.phone || null,
+              portalStatus: v.portalInvite && n.email ? "INVITED" : "NOT_INVITED", createdById: a.userId,
+            },
+          });
+          tenantIds.push({ id: created.id, role: t.role });
+        }
+      }
+      const lease = await tx.lease.create({
+        data: {
+          organizationId: a.orgId, propertyId: v.propertyId, status: v.status, termType: v.termType,
+          startDate: start, endDate: end ? parseISODate(end) : null, moveInDate: start, rentDueDay: v.rentDueDay,
+          depositCents: v.deposit.handling === "NONE" ? 0 : v.deposit.amountCents, createdById: a.userId,
+        },
+      });
+      await tx.leaseUnit.createMany({ data: v.unitIds.map((unitId) => ({ organizationId: a.orgId, leaseId: lease.id, unitId })) });
+      await tx.leaseTenant.createMany({ data: tenantIds.map((t) => ({ organizationId: a.orgId, leaseId: lease.id, tenantId: t.id, role: t.role })) });
+      if (v.portalInvite) await tx.tenant.updateMany({ where: { id: { in: tenantIds.map((t) => t.id) }, email: { not: null }, portalStatus: "NOT_INVITED" }, data: { portalStatus: "INVITED" } });
+      if (v.recurring.length) {
+        await tx.recurringCharge.createMany({
+          data: v.recurring.map((r) => ({
+            organizationId: a.orgId, leaseId: lease.id, kind: r.kind, accountId: r.accountId, description: r.description,
+            amountCents: r.amountCents, startDate: opts.billFrom ? maxDate(start, opts.billFrom) : start, nextRunDate: opts.billFrom ? maxDate(startOfMonth(start), opts.billFrom) : startOfMonth(start), createdById: a.userId,
+          })),
+        });
+      }
+      for (const [key, value] of Object.entries(v.overrides).filter(([k]) => isSettingKey(k))) {
+        await tx.setting.create({ data: { organizationId: a.orgId, scope: "LEASE", scopeId: lease.id, key, value: value as Prisma.InputJsonValue, createdById: a.userId } });
+      }
+      if (v.status === "ACTIVE") {
+        if (v.deposit.handling === "RECEIVED") await recordDeposit(tx, a, { leaseId: lease.id, amountCents: v.deposit.amountCents, date: opts.depositDate ?? start });
+        if (v.deposit.handling === "CHARGE") {
+          const held = await new AccountResolver(tx).id("DEPOSITS_HELD");
+          await postCharge(tx, a, { leaseId: lease.id, accountId: held, amountCents: v.deposit.amountCents, date: start, memo: "Security deposit", chargeKind: "DEPOSIT" });
+        }
+        await runRecurringForLease(tx, a, lease.id, today);
+      }
+      return lease.id;
 }
 
 // ─── Recurring charge engine ──────────────────────────────────────────────

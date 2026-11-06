@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { GettingStarted, type ChecklistItem } from "@/components/overview/getting-started";
 import { can } from "@/server/permissions";
 import { formatMoney } from "@/lib/money";
+import { balancesBy, occupiedUnitIds, orgToday } from "@/server/leasing/queries";
+import { startOfMonth } from "@/lib/dates";
 
 export const metadata = { title: "Overview" };
 
@@ -33,6 +35,13 @@ export default async function OverviewPage() {
     ctx.db.owner.count(),
   ]);
   const keys = new Set(settingRows.map((s) => s.key));
+  const today = await orgToday(ctx);
+  const [occupied, balances, collected] = await Promise.all([
+    occupiedUnitIds(ctx, today),
+    balancesBy(ctx, "leaseId"),
+    ctx.db.leaseTransaction.aggregate({ where: { type: "PAYMENT", voidedAt: null, date: { gte: startOfMonth(today), lte: today }, ...(scope.length ? { lease: { propertyId: { in: scope } } } : {}) }, _sum: { amountCents: true }, _count: true }),
+  ]);
+  const owed = [...balances.values()].filter((b) => b > 0);
   const has = (prefix: string) => [...keys].some((k) => k.startsWith(prefix));
 
   const checklist: ChecklistItem[] = [
@@ -66,8 +75,8 @@ export default async function OverviewPage() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard label="Properties" value={propertyCount} href="/app/rentals" hint={propertyCount ? `${ownerCount} owner${ownerCount === 1 ? "" : "s"}` : "Add your first property"} />
           <StatCard label="Units" value={unitAgg._count} href="/app/rentals/units" hint={unitAgg._count ? `${formatMoney(unitAgg._sum.marketRentCents ?? 0, { showCents: false })} / mo market rent` : "No units yet"} />
-          <StatCard label="Occupancy" value="—" hint="Calculated from leases (Phase 3)" />
-          <StatCard label="Team members" value={memberCount} href="/app/settings/users" hint="View team" />
+          <StatCard label="Occupancy" value={unitAgg._count ? `${Math.round((occupied.size / unitAgg._count) * 100)}%` : "—"} hint={`${occupied.size} of ${unitAgg._count} units occupied`} href="/app/rentals/units" />
+          <StatCard label="Collected this month" value={formatMoney(collected._sum.amountCents ?? 0, { showCents: false })} hint={`${collected._count} payments · ${formatMoney(owed.reduce((s, b) => s + b, 0), { showCents: false })} outstanding`} href="/app/leasing" />
         </div>
       </section>
 

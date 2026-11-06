@@ -10,6 +10,11 @@ import { OwnerForm } from "@/components/rentals/owner-form";
 import { wizardOptions } from "@/server/rentals/queries";
 import { propertyScopeWhere } from "@/server/rentals/service";
 import { PROPERTY_TYPE_META } from "@/lib/rentals";
+import { LeaseWizard } from "@/components/leasing/lease-wizard";
+import { TenantForm } from "@/components/leasing/tenant-form";
+import { MoneyForm } from "@/components/leasing/money-form";
+import { JournalEntryForm } from "@/components/accounting/journal-entry-form";
+import { leaseWizardOptions, moneyOptions } from "@/server/leasing/queries";
 
 /** Renders the right create form for a kind. Later phases add their forms/wizards here. */
 export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind: CreateKind; ctx: AppContext; mode: "modal" | "page"; query?: Record<string, string | undefined> }) {
@@ -34,6 +39,21 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
     }
     case "owner":
       return <OwnerForm />;
+    case "lease":
+      return <LeaseWizard options={await leaseWizardOptions(ctx)} preset={{ propertyId: query.propertyId, unitId: query.unitId, tenantId: query.tenantId }} />;
+    case "tenant":
+      return <TenantForm />;
+    case "charge":
+      return <MoneyForm kind="CHARGE" options={await moneyOptions(ctx, true)} />;
+    case "payment":
+      return <MoneyForm kind="PAYMENT" options={await moneyOptions(ctx, true)} />;
+    case "journal-entry": {
+      const [accounts, properties] = await Promise.all([
+        ctx.db.account.findMany({ where: { active: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true } }),
+        ctx.db.property.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+      ]);
+      return <JournalEntryForm accounts={accounts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} properties={properties} today={new Date().toISOString().slice(0, 10)} />;
+    }
     default:
       return (
         <div className="flex flex-col items-center py-6 text-center">
