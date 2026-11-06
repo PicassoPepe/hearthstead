@@ -55,3 +55,5 @@ export function createScopedClient(base: PrismaClient, ctx: OrgContext) {
 }
 
 export type ScopedDb = ReturnType<typeof createScopedClient>;
+/** The client handed to `db.tx(async (tx) => …)`: tenant-scoped, inside one transaction. */
+export type ScopedTx = Parameters<Parameters<ScopedDb["tx"]>[0]>[0];

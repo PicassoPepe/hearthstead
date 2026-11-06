@@ -277,6 +277,7 @@ model Property {
   defaultDeposit   Account?            @relation("PropertyDeposit", fields: [defaultDepositAccountId], references: [id])
   units            Unit[]
   ownerships       PropertyOwnership[]
+  leases           Lease[]
 
   @@index([organizationId, deletedAt])
   @@index([portfolioId])
@@ -301,7 +302,8 @@ model Unit {
   createdById     String?
   deletedAt       DateTime?
 
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  leases   LeaseUnit[]
 
   @@index([organizationId, propertyId])
 }
@@ -383,8 +385,10 @@ model Account {
   deletedAt      DateTime?
 
   bankAccount         BankAccount?
-  operatingProperties Property[]   @relation("PropertyOperating")
-  depositProperties   Property[]   @relation("PropertyDeposit")
+  journalLines        JournalLine[]
+  recurringCharges    RecurringCharge[]
+  operatingProperties Property[]        @relation("PropertyOperating")
+  depositProperties   Property[]        @relation("PropertyDeposit")
 
   @@unique([organizationId, code])
   @@unique([organizationId, systemKey])
@@ -444,4 +448,269 @@ model Attachment {
   deletedAt      DateTime?
 
   @@index([organizationId, entityType, entityId])
+}
+
+// ─── Phase 3: Leasing & ledger ─────────────────────────────────────────────
+
+model Tenant {
+  id             String    @id @default(cuid())
+  organizationId String
+  kind           String    @default("PERSON") // PERSON | COMPANY
+  firstName      String?
+  lastName       String?
+  companyName    String?
+  email          String?
+  phone          String?
+  dateOfBirth    DateTime? @db.Date
+  /// NOT_INVITED | INVITED | ACTIVE
+  portalStatus   String    @default("NOT_INVITED")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  leases LeaseTenant[]
+
+  @@index([organizationId, deletedAt])
+}
+
+enum LeaseStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+  EVICTION
+}
+
+enum TermType {
+  FIXED
+  MONTH_TO_MONTH
+}
+
+model Lease {
+  id             String      @id @default(cuid())
+  organizationId String
+  propertyId     String
+  status         LeaseStatus @default(DRAFT)
+  termType       TermType    @default(FIXED)
+  startDate      DateTime    @db.Date
+  endDate        DateTime?   @db.Date
+  moveInDate     DateTime?   @db.Date
+  moveOutDate    DateTime?   @db.Date
+  /// Rent due day of month (1-28).
+  rentDueDay     Int         @default(1)
+  /// Security deposit the lease requires (what's actually held comes from the ledger).
+  depositCents   Int         @default(0)
+  endedReason    String?
+  noticeGivenAt  DateTime?   @db.Date
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  property     Property           @relation(fields: [propertyId], references: [id])
+  units        LeaseUnit[]
+  tenants      LeaseTenant[]
+  recurring    RecurringCharge[]
+  transactions LeaseTransaction[]
+
+  @@index([organizationId, status])
+  @@index([propertyId])
+}
+
+model LeaseUnit {
+  id             String   @id @default(cuid())
+  organizationId String
+  leaseId        String
+  unitId         String
+  createdAt      DateTime @default(now())
+
+  lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  unit  Unit  @relation(fields: [unitId], references: [id])
+
+  @@unique([leaseId, unitId])
+  @@index([unitId])
+}
+
+enum LeaseTenantRole {
+  PRIMARY
+  COTENANT
+  COSIGNER
+}
+
+model LeaseTenant {
+  id             String          @id @default(cuid())
+  organizationId String
+  leaseId        String
+  tenantId       String
+  role           LeaseTenantRole @default(PRIMARY)
+  createdAt      DateTime        @default(now())
+
+  lease  Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([leaseId, tenantId])
+  @@index([tenantId])
+}
+
+enum ChargeKind {
+  RENT
+  OTHER
+}
+
+model RecurringCharge {
+  id             String     @id @default(cuid())
+  organizationId String
+  leaseId        String
+  kind           ChargeKind @default(RENT)
+  accountId      String
+  description    String
+  amountCents    Int
+  /// MONTHLY only for now (QUARTERLY/ANNUAL later).
+  frequency      String     @default("MONTHLY")
+  startDate      DateTime   @db.Date
+  endDate        DateTime?  @db.Date
+  nextRunDate    DateTime   @db.Date
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  lease   Lease                @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  account Account              @relation(fields: [accountId], references: [id])
+  runs    RecurringChargeRun[]
+
+  @@index([organizationId, nextRunDate])
+}
+
+/// Idempotency for the recurring engine: one row per charge per period ("2026-11").
+model RecurringChargeRun {
+  id                String   @id @default(cuid())
+  organizationId    String
+  recurringChargeId String
+  period            String
+  transactionId     String?
+  createdAt         DateTime @default(now())
+
+  recurringCharge RecurringCharge @relation(fields: [recurringChargeId], references: [id], onDelete: Cascade)
+
+  @@unique([recurringChargeId, period])
+}
+
+enum LeaseTxType {
+  CHARGE
+  PAYMENT
+  CREDIT
+  DEPOSIT
+  REFUND
+  RETURNED_PAYMENT
+}
+
+model LeaseTransaction {
+  id              String      @id @default(cuid())
+  organizationId  String
+  leaseId         String
+  type            LeaseTxType
+  /// Always positive; the type gives the direction.
+  amountCents     Int
+  date            DateTime    @db.Date
+  /// For charges: when it's due (defaults to date).
+  dueDate         DateTime?   @db.Date
+  memo            String?
+  accountId       String?
+  /// RENT charges are what late fees are assessed on.
+  chargeKind      String? // RENT | LATE_FEE | NSF_FEE | OTHER | OPENING_BALANCE
+  /// For payments: CASH | CHECK | ACH | CARD | OTHER; reference = check #.
+  method          String?
+  reference       String?
+  journalEntryId  String      @unique
+  paymentIntentId String?
+  /// RETURNED_PAYMENT → the payment it reverses.
+  relatedId       String?
+  voidedAt        DateTime?
+  voidReason      String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  createdById     String?
+  deletedAt       DateTime?
+
+  lease        Lease                @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  journalEntry JournalEntry         @relation(fields: [journalEntryId], references: [id])
+  appliedFrom  PaymentApplication[] @relation("ApplicationSource")
+  appliedTo    PaymentApplication[] @relation("ApplicationCharge")
+
+  @@index([organizationId, leaseId, date])
+  @@index([organizationId, type, date])
+}
+
+/// Which charges a payment/credit (or prepaid balance) paid off — drives aging and late fees.
+model PaymentApplication {
+  id             String   @id @default(cuid())
+  organizationId String
+  sourceId       String
+  chargeId       String
+  amountCents    Int
+  createdAt      DateTime @default(now())
+
+  source LeaseTransaction @relation("ApplicationSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  charge LeaseTransaction @relation("ApplicationCharge", fields: [chargeId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, chargeId])
+  @@index([sourceId])
+}
+
+/// Idempotency for late fees: one assessment per lease per key ("2026-11:initial" or "2026-11-08:daily").
+model LateFeeRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  leaseId        String
+  key            String
+  transactionId  String?
+  createdAt      DateTime @default(now())
+
+  @@unique([leaseId, key])
+}
+
+model JournalEntry {
+  id             String    @id @default(cuid())
+  organizationId String
+  date           DateTime  @db.Date
+  memo           String?
+  /// LEASE_CHARGE | LEASE_PAYMENT | ... | MANUAL | OPENING_BALANCE
+  source         String
+  sourceId       String?
+  /// Set on an entry that reverses another (voids).
+  reversesId     String?   @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  lines            JournalLine[]
+  leaseTransaction LeaseTransaction?
+  reverses         JournalEntry?     @relation("Reversal", fields: [reversesId], references: [id])
+  reversedBy       JournalEntry?     @relation("Reversal")
+
+  @@index([organizationId, date])
+  @@index([organizationId, source])
+}
+
+model JournalLine {
+  id             String   @id @default(cuid())
+  organizationId String
+  journalEntryId String
+  accountId      String
+  debitCents     Int      @default(0)
+  creditCents    Int      @default(0)
+  propertyId     String?
+  unitId         String?
+  leaseId        String?
+  memo           String?
+  createdAt      DateTime @default(now())
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id])
+
+  @@index([organizationId, accountId])
+  @@index([organizationId, leaseId])
+  @@index([organizationId, propertyId])
 }
