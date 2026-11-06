@@ -162,13 +162,20 @@ test.describe("as admin", () => {
     await page.waitForURL(/\/app\/people\/owners\//);
   });
 
-  test("archiving a property confirms and can be undone", async ({ page }) => {
+  test("archiving: blocked while leases are active; otherwise confirms and can be undone", async ({ page }) => {
     await page.getByRole("row", { name: /35 Aspen Court/ }).getByRole("button", { name: "Row actions" }).click();
     await page.getByRole("menuitem", { name: "Archive" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
-    await expect(page.getByRole("link", { name: "35 Aspen Court" })).toHaveCount(0);
-    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByText(/has active or draft leases/)).toBeVisible();
     await expect(page.getByRole("link", { name: "35 Aspen Court" })).toBeVisible();
+
+    // "Oak Street Flats" was created by the wizard test above and has no leases.
+    await page.getByRole("row", { name: /Oak Street Flats/ }).getByRole("button", { name: "Row actions" }).click();
+    await page.getByRole("menuitem", { name: "Archive" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Archive" }).click();
+    await expect(page.getByRole("link", { name: "Oak Street Flats" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByRole("link", { name: "Oak Street Flats" })).toBeVisible();
   });
 });
 

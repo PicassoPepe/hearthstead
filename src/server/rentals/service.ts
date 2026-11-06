@@ -129,6 +129,9 @@ export async function updateProperty(db: ScopedDb, id: string, raw: PropertyEdit
 }
 
 export async function archiveProperty(db: ScopedDb, id: string, archived: boolean): Promise<void> {
+  if (archived && (await db.lease.count({ where: { propertyId: id, status: { in: ["ACTIVE", "EVICTION", "DRAFT"] } } }))) {
+    throw new UserFacingError("This property has active or draft leases. End them before archiving the property.");
+  }
   const res = await db.property.updateMany({
     where: { id, deletedAt: archived ? null : { not: null } },
     data: { deletedAt: archived ? new Date() : null },
@@ -183,6 +186,9 @@ export async function archiveUnit(db: ScopedDb, id: string, archived: boolean): 
   const unit = await db.unit.findFirst({ where: { id, deletedAt: archived ? null : { not: null } } });
   if (!unit) throw new UserFacingError("Unit not found");
   if (archived) {
+    if (await db.leaseUnit.count({ where: { unitId: id, lease: { status: { in: ["ACTIVE", "EVICTION", "DRAFT"] } } } })) {
+      throw new UserFacingError("This unit has an active or draft lease. End it before archiving the unit.");
+    }
     const remaining = await db.unit.count({ where: { propertyId: unit.propertyId, id: { not: id } } });
     if (remaining === 0) throw new UserFacingError("A property needs at least one unit. Archive the property instead.");
   }

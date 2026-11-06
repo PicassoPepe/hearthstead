@@ -100,7 +100,8 @@ export async function seedLeasing(appUrl: string, orgId: string, userId: string,
           if (!payDay && feeDay <= today) counts.lateFees += await assessLateFees(tx, a, leaseId, policy, feeDay, order);
           if (payDay && payDay <= today && payDay <= stopAt) {
             const bal = await M.leaseBalance(tx, leaseId);
-            const amount = Math.round((bal.balanceCents > 0 ? bal.balanceCents : 0) * fraction / 100) * 100;
+            const owed = bal.balanceCents > 0 ? bal.balanceCents : 0;
+            const amount = fraction === 1 ? owed : Math.round((owed * fraction) / 100) * 100;
             if (amount > 0) {
               const method = commercial ? "ACH" : pick(["ACH", "ACH", "CHECK", "CARD"]);
               const p = await M.receivePayment(tx, a, { leaseId, amountCents: amount, date: payDay, method, reference: method === "CHECK" ? String(1000 + Math.floor(r() * 8999)) : null, order });

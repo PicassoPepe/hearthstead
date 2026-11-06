@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn } from "./fixtures";
 
-const PAGES = ["/app/overview", "/app/settings", "/app/settings/users", "/app/settings/late-fees", "/app/rentals", "/app/rentals/units", "/app/rentals/portfolios", "/app/people/owners", "/app/files?tab=import", "/app/notes"];
+const PAGES = ["/app/overview", "/app/settings", "/app/settings/users", "/app/settings/late-fees", "/app/rentals", "/app/rentals/units", "/app/rentals/portfolios", "/app/people/owners", "/app/files?tab=import", "/app/notes", "/app/leasing", "/app/leasing?tab=expiring", "/app/people/tenants", "/app/accounting", "/app/accounting/journal-entries"];
 
 test("login page has no WCAG A/AA violations", async ({ page }) => {
   await page.goto("/login");
@@ -37,6 +37,24 @@ test("property detail tabs and the New Property wizard have no WCAG A/AA violati
   await page.goto("/app/rentals");
   await page.getByRole("link", { name: "Add property" }).first().click();
   await page.getByRole("dialog", { name: "New property" }).waitFor();
+  const r = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+  expect(r.violations.map((v) => v.id)).toEqual([]);
+});
+
+test("lease detail tabs and the New Lease wizard have no WCAG A/AA violations", async ({ page }) => {
+  await signIn(page, "admin@example.com", "/app/leasing");
+  await page.getByRole("link", { name: /Maple Court · 104/ }).click();
+  await page.waitForURL(/\/app\/leasing\/c/);
+  const base = page.url().split("?")[0];
+  for (const tab of ["overview", "transactions", "rent", "tenants", "settings"]) {
+    await page.goto(`${base}?tab=${tab}`);
+    await page.waitForLoadState("networkidle");
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+    expect(r.violations.map((v) => `${tab} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  }
+  await page.goto("/app/leasing");
+  await page.getByRole("link", { name: "New lease" }).click();
+  await page.getByRole("dialog", { name: "New lease" }).waitFor();
   const r = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
   expect(r.violations.map((v) => v.id)).toEqual([]);
 });
