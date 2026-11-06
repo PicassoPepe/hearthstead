@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. All colors are validated for WCAG 2.2 AA (4.5:1 for text) against the
+ * surface they're used on — see tests/unit/contrast.test.ts.
+ */
+:root {
+  --primary: #0f766e;           /* brand: teal 700 — 5.47:1 on white */
+  --primary-hover: #115e59;
+  --primary-foreground: #ffffff;
+  --primary-soft: #ccfbf1;
+  --primary-soft-foreground: #134e4a;
+
+  --background: #f8fafc;        /* slate 50 */
+  --surface: #ffffff;
+  --surface-muted: #f1f5f9;     /* slate 100 */
+  --foreground: #0f172a;        /* slate 900 */
+  --muted-foreground: #475569;  /* slate 600 — 7.58:1 on white */
+  --border: #e2e8f0;            /* slate 200 */
+  --border-strong: #cbd5e1;
+  --input: #64748b;             /* slate 500 — 4.76:1 non-text contrast for input borders */
+  --ring: #0f766e;
+
+  --success: #15803d;  --success-soft: #dcfce7;  --success-soft-foreground: #14532d;
+  --warning: #b45309;  --warning-soft: #fef3c7;  --warning-soft-foreground: #78350f;
+  --danger:  #b91c1c;  --danger-soft:  #fee2e2;  --danger-soft-foreground:  #7f1d1d;
+  --info:    #1d4ed8;  --info-soft:    #dbeafe;  --info-soft-foreground:    #1e3a8a;
+
+  /* Categorical chart palette (light) */
+  --chart-1: #0f766e; --chart-2: #2563eb; --chart-3: #c2410c; --chart-4: #7c3aed;
+  --chart-5: #be185d; --chart-6: #4d7c0f;
+
+  --radius: 8px;
+  --radius-card: 12px;
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
+  --shadow-md: 0 4px 16px rgb(15 23 42 / 0.08);
+}
+
+.dark {
+  --primary: #2dd4bf;           /* teal 400 on dark surfaces */
+  --primary-hover: #5eead4;
+  --primary-foreground: #042f2e;
+  --primary-soft: #134e4a;
+  --primary-soft-foreground: #ccfbf1;
+
+  --background: #020617;
+  --surface: #0f172a;
+  --surface-muted: #1e293b;
+  --foreground: #f1f5f9;
+  --muted-foreground: #94a3b8;
+  --border: #1e293b;
+  --border-strong: #334155;
+  --input: #64748b;
+  --ring: #2dd4bf;
+
+  --success: #4ade80;  --success-soft: #14532d;  --success-soft-foreground: #dcfce7;
+  --warning: #fbbf24;  --warning-soft: #78350f;  --warning-soft-foreground: #fef3c7;
+  --danger:  #f87171;  --danger-soft:  #7f1d1d;  --danger-soft-foreground:  #fee2e2;
+  --info:    #60a5fa;  --info-soft:    #1e3a8a;  --info-soft-foreground:    #dbeafe;
+
+  --chart-1: #2dd4bf; --chart-2: #60a5fa; --chart-3: #fb923c; --chart-4: #a78bfa;
+  --chart-5: #f472b6; --chart-6: #a3e635;
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.4);
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-foreground: var(--success-soft-foreground);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-soft-foreground: var(--danger-soft-foreground);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-soft-foreground: var(--info-soft-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --radius-card: var(--radius-card);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --shadow-card: var(--shadow-sm);
+  --shadow-pop: var(--shadow-md);
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 14px base in the staff app, 16px in portals/public pages. */
+  .app-density { font-size: 14px; line-height: 1.45; }
+  .portal-density { font-size: 16px; line-height: 1.5; }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+@layer utilities {
+  .tabular { font-variant-numeric: tabular-nums; }
+}
+
+@keyframes skeleton-pulse { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
+.skeleton { animation: skeleton-pulse 1.6s ease-in-out infinite; background: var(--surface-muted); border-radius: 6px; }

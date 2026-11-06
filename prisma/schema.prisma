@@ -1,0 +1,220 @@
+// Hearthstead data model.
+// Conventions:
+//  * Every tenant-owned row carries `organizationId` and is protected by Postgres RLS
+//    (see prisma/rls.sql) *and* by the data-access layer (src/server/dal).
+//  * Every model has createdAt / updatedAt / createdById / deletedAt (soft delete).
+//  * Money is always integer cents (`Int` / `BigInt`), never floats.
+// Phase 1 models live here; later phases append to this file.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_ADMIN_URL")
+}
+
+// ─── Tenancy & identity ────────────────────────────────────────────────────
+
+model Organization {
+  id            String    @id @default(cuid())
+  name          String
+  slug          String    @unique
+  logoUrl       String?
+  brandColor    String    @default("#0F766E")
+  timezone      String    @default("America/New_York")
+  phone         String?
+  email         String?
+  addressLine1  String?
+  city          String?
+  state         String?
+  postalCode    String?
+  sandbox       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdById   String?
+  deletedAt     DateTime?
+
+  memberships Membership[]
+  roles       Role[]
+  settings    Setting[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  name             String?
+  emailVerified    DateTime?
+  image            String?
+  passwordHash     String?
+  twoFactorEnabled Boolean   @default(false)
+  /// Per-user UI preferences (sidebar collapsed, dismissed checklist, dashboard layout...)
+  preferences      Json      @default("{}")
+  lastOrgId        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  createdById      String?
+  deletedAt        DateTime?
+
+  accounts    AuthAccount[]
+  sessions    Session[]
+  memberships Membership[]
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+model Membership {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  roleId         String
+  status         MembershipStatus @default(ACTIVE)
+  /// Empty = all properties. Otherwise the member is limited to these property ids.
+  propertyScope  String[]         @default([])
+  invitedAt      DateTime?
+  acceptedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Role {
+  id             String    @id @default(cuid())
+  organizationId String
+  /// Stable key for built-in roles (ADMIN, PROPERTY_MANAGER, ...). Null for custom roles.
+  key            String?
+  name           String
+  description    String?
+  isSystem       Boolean   @default(false)
+  /// { [module]: "none" | "view" | "edit" | "delete" } — see src/server/permissions
+  permissions    Json
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// ─── Auth.js tables (global, not tenant-scoped) ───────────────────────────
+
+model AuthAccount {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Settings (inheritance: LEASE → PROPERTY → ORG → default) ─────────────
+
+enum SettingScope {
+  ORG
+  PROPERTY
+  LEASE
+}
+
+model Setting {
+  id             String       @id @default(cuid())
+  organizationId String
+  scope          SettingScope
+  /// orgId for ORG scope, propertyId for PROPERTY, leaseId for LEASE.
+  scopeId        String
+  key            String
+  value          Json
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, scope, scopeId, key])
+  @@index([organizationId, key])
+}
+
+// ─── Audit & outbound mail (mock adapter) ─────────────────────────────────
+
+model AuditLog {
+  id             String    @id @default(cuid())
+  organizationId String
+  actorId        String?
+  actorType      String    @default("USER") // USER | SYSTEM | AI | API
+  action         String
+  entityType     String
+  entityId       String?
+  before         Json?
+  after          Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, createdAt])
+}
+
+/// Every email the EmailProvider sends is recorded here (the mock provider only records).
+model EmailMessage {
+  id             String    @id @default(cuid())
+  organizationId String?
+  provider       String
+  to             String
+  subject        String
+  html           String
+  text           String?
+  status         String    @default("SENT")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@index([to, createdAt])
+}

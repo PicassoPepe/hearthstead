@@ -196,5 +196,3 @@ provider's credentials. To add an implementation, implement the interface in
 ## Assumptions
 
 See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md).
-#   h e a r t h s t e a d  
- 
