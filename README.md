@@ -7,12 +7,43 @@ double-entry ledger, tenant and owner portals, maintenance, accounting and repor
 
 ## Quick start
 
+### 1. Install the prerequisites (once)
+
+| Tool | Version | Get it |
+| --- | --- | --- |
+| Node.js | 22 or newer | https://nodejs.org |
+| pnpm | 10 | `npm install -g pnpm` |
+| Docker Desktop | any recent | https://www.docker.com/products/docker-desktop — **start it before running the app** |
+
+No Docker? A local PostgreSQL 16 on port 5432 (user `postgres`, password `postgres`) works too.
+
+### 2. Get the code and run it
+
+These commands work the same in **Windows PowerShell**, macOS and Linux. Run them one at a time:
+
+```bash
+git clone https://github.com/PicassoPepe/hearthstead.git
+```
+```bash
+cd hearthstead
+```
 ```bash
 pnpm install
-pnpm dev            # starts services, migrates, applies RLS, seeds on first run, runs Next.js
+```
+```bash
+pnpm dev
 ```
 
-Open http://localhost:3000 and sign in with any demo user (password `Demo1234!x`):
+`pnpm dev` creates `.env`, starts the database containers, migrates, applies row-level security,
+seeds demo data on the first run, and starts the app. When it prints `Ready`, open
+**http://localhost:3000**.
+
+> **Windows PowerShell 5:** don't chain commands with `&&` (it isn't supported) — run each
+> command on its own line as shown above.
+
+### 3. Sign in
+
+Every demo user's password is `Demo1234!x`:
 
 | Role | Email |
 | --- | --- |
@@ -26,14 +57,21 @@ Open http://localhost:3000 and sign in with any demo user (password `Demo1234!x`
 
 Magic-link emails are captured by the mock email provider — open **http://localhost:3000/dev/outbox**.
 
-`pnpm dev` uses Docker Compose (`postgres`, `redis`, `minio`, `mailpit`) when Docker is
-available, otherwise local Postgres 16 / Redis installs.
+### Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| `Postgres is not reachable on localhost:5432` | Start Docker Desktop and wait until it says it's running, then `pnpm dev` again. |
+| `port is already allocated` (5432 / 6379) | Another Postgres/Redis is running. Stop it, or stop the other container. |
+| `The token '&&' is not a valid statement separator` | Windows PowerShell 5 — run each command on its own line. |
+| Page says you have no organization | Reset the demo data: `pnpm db:seed`. |
+| Want a clean slate | `pnpm db:reset` (drops everything, migrates, reseeds). |
 
 ### Scripts
 
 | Command | What it does |
 | --- | --- |
-| `pnpm dev` | One-command dev environment |
+| `pnpm dev` | One-command dev environment (cross-platform, `scripts/dev.mjs`) |
 | `pnpm test` | Vitest: unit + integration (integration needs Postgres) |
 | `pnpm test:e2e` | Playwright end-to-end, incl. axe accessibility checks (reseeds first) |
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | ESLint, `tsc --noEmit`, Prettier |
@@ -111,7 +149,7 @@ do; `requirePermission()` re-checks on the server in every action.
 
 ```
 prisma/              schema.prisma, migrations/, rls.sql, apply-rls.ts, seed.ts
-scripts/dev.sh       one-command dev
+scripts/dev.mjs      one-command dev (Windows/macOS/Linux)
 src/
   app/
     (auth)/          login (password + magic link), signup, check-email
