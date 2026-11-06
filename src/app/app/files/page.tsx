@@ -17,7 +17,11 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
   const ctx = await requireContext();
   if (!can(ctx.permissions, "files", "view")) return <Forbidden what="files" />;
   const tab = sp.import ? "import" : (sp.tab ?? "library");
-  const canImport = { properties: can(ctx.permissions, "rentals", "edit") && ctx.membership.propertyScope.length === 0, owners: can(ctx.permissions, "people", "edit") };
+  const canImport = {
+    properties: can(ctx.permissions, "rentals", "edit") && ctx.membership.propertyScope.length === 0,
+    owners: can(ctx.permissions, "people", "edit"),
+    leases: can(ctx.permissions, "leasing", "edit") && ctx.membership.propertyScope.length === 0,
+  };
   return (
     <>
       <PageHeader title="Files" description="Every document across your properties, plus spreadsheet imports and templates." />
@@ -34,8 +38,8 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
       {tab === "library" ? (
         <FilesPanel files={await filesFor(ctx)} canEdit={can(ctx.permissions, "files", "edit")} />
       ) : tab === "import" ? (
-        canImport.properties || canImport.owners ? (
-          <Importer initialKind={(sp.import === "owners" ? "owners" : canImport.properties ? "properties" : "owners") as ImportKind} canImport={canImport} />
+        canImport.properties || canImport.owners || canImport.leases ? (
+          <Importer initialKind={(sp.import === "owners" || sp.import === "leases" ? sp.import : canImport.properties ? "properties" : "owners") as ImportKind} canImport={canImport} />
         ) : (
           <Forbidden what="importing data" />
         )

@@ -6,7 +6,7 @@ export type AccountRef = { key: SystemKey } | { id: string };
 export type SystemKey =
   | "OPERATING_CASH" | "DEPOSIT_CASH" | "ACCOUNTS_RECEIVABLE" | "UNDEPOSITED_FUNDS" | "ACCOUNTS_PAYABLE" | "DEPOSITS_HELD"
   | "PREPAID_RENT" | "OWNER_EQUITY" | "OWNER_CONTRIBUTIONS" | "OWNER_DISTRIBUTIONS" | "RENT_INCOME" | "LATE_FEE_INCOME"
-  | "OTHER_INCOME" | "MANAGEMENT_FEE_INCOME" | "NSF_FEE_INCOME" | "APPLICATION_FEE_INCOME";
+  | "OTHER_INCOME" | "MANAGEMENT_FEE_INCOME" | "NSF_FEE_INCOME" | "APPLICATION_FEE_INCOME" | "OPENING_BALANCE_EQUITY";
 
 export type Dims = { propertyId?: string | null; unitId?: string | null; leaseId?: string | null };
 export type Line = { account: AccountRef; debitCents: number; creditCents: number; memo?: string } & Dims;

@@ -23,6 +23,7 @@ export const DEFAULT_CHART: ChartAccount[] = [
   { code: "3100", name: "Owner Contributions", type: "EQUITY", systemKey: "OWNER_CONTRIBUTIONS" },
   { code: "3200", name: "Owner Distributions", type: "EQUITY", systemKey: "OWNER_DISTRIBUTIONS" },
   { code: "3900", name: "Retained Earnings", type: "EQUITY", systemKey: "RETAINED_EARNINGS" },
+  { code: "3950", name: "Opening Balance Equity", type: "EQUITY", systemKey: "OPENING_BALANCE_EQUITY" },
   // Income
   { code: "4000", name: "Rent Income", type: "INCOME", systemKey: "RENT_INCOME" },
   { code: "4100", name: "Late Fee Income", type: "INCOME", systemKey: "LATE_FEE_INCOME" },

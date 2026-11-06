@@ -121,7 +121,6 @@ export function Importer({ initialKind = "properties", canImport }: { initialKin
                   {(Object.keys(IMPORT_SPECS) as ImportKind[]).map((k) => (
                     <option key={k} value={k} disabled={!canImport[k]}>{IMPORT_SPECS[k].title}</option>
                   ))}
-                  <option disabled>Tenants, leases & opening balances (Phase 3)</option>
                 </NativeSelect>
               </label>
               <Button variant="secondary" onClick={downloadTemplate}><Download aria-hidden /> Download template</Button>
@@ -256,7 +255,7 @@ export function Importer({ initialKind = "properties", canImport }: { initialKin
               {Object.entries(result.created ?? {}).map(([k, n]) => <Badge key={k} tone="success">{n} {k}</Badge>)}
             </div>
             <div className="flex gap-2">
-              <Button asChild><Link href={kind === "owners" ? "/app/people/owners" : "/app/rentals"}>View {kind === "owners" ? "owners" : "properties"}</Link></Button>
+              <Button asChild><Link href={kind === "owners" ? "/app/people/owners" : kind === "leases" ? "/app/leasing" : "/app/rentals"}>View {kind === "owners" ? "owners" : kind === "leases" ? "leases" : "properties"}</Link></Button>
               <Button variant="secondary" onClick={reset}>Import another file</Button>
             </div>
           </div>

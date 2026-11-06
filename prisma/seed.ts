@@ -4,7 +4,7 @@
  *  - "Harbor Light Rentals", a second org (shows the org switcher + proves isolation)
  *  - a few company-level setting overrides and audit entries
  *  - Phase 2: 3 portfolios, 12 properties, 60 units, 9 owners (prisma/seed-rentals.ts)
- * Later phases extend this with leases, 18 months of ledger history and work orders.
+ *  - Phase 3: 50 leases with 18 months of ledger history (prisma/seed-leasing.ts)
  *
  * Every demo password is: Demo1234!x
  */
@@ -12,6 +12,8 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { provisionOrganization, purgeOrganizations } from "../src/server/orgs";
 import { seedRentals } from "./seed-rentals";
+import { seedLeasing } from "./seed-leasing";
+import { todayIn } from "../src/lib/dates";
 
 const db = new PrismaClient();
 export const DEMO_PASSWORD = "Demo1234!x";
@@ -86,6 +88,9 @@ async function main(): Promise<void> {
   // Maintenance is scoped to the North Side portfolio to demo per-member property access.
   await db.membership.updateMany({ where: { organizationId: orgId, userId: users["maint@example.com"] }, data: { propertyScope: rentals.northSidePropertyIds } });
 
+  // Phase 3: 50 leases with up to 18 months of ledger history.
+  const leasing = await seedLeasing(process.env.DATABASE_URL!, orgId, users["admin@example.com"]!, todayIn("America/Chicago"));
+
   // Admin lands in Maple & Main by default.
   await db.user.update({ where: { id: users["admin@example.com"] }, data: { lastOrgId: orgId } });
 
@@ -94,6 +99,7 @@ async function main(): Promise<void> {
   for (const p of PEOPLE) console.log(`  ${p.role.padEnd(17)} ${p.email}`);
   console.log(`  ${"(2nd org admin)".padEnd(17)} harbor@example.com`);
   console.log(`  Rentals: ${rentals.properties} properties, ${rentals.units} units, ${rentals.owners} owners in 3 portfolios.`);
+  console.log(`  Leasing: ${leasing.leases} leases, ${leasing.lateFees} late fees, ${leasing.returned} returned payment(s).`);
 }
 
 main()

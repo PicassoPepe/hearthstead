@@ -2,6 +2,7 @@ import type { ScopedDb } from "@/server/dal";
 import { audit } from "@/server/audit";
 import { parseMoney } from "@/lib/money";
 import { parseBaths, PROPERTY_TYPE_META, US_STATES, ownerSchema, type PropertyTypeKey } from "@/lib/rentals";
+import { importLeases } from "./leases";
 import { parsePropertyType, type ImportIssue, type ImportKind, type ImportResult } from "@/lib/importer";
 
 export const MAX_IMPORT_ROWS = 5000;
@@ -171,8 +172,9 @@ async function importOwners(db: ScopedDb, recs: Record<string, string>[], commit
 }
 
 /** Validate (commit=false) or validate-then-write atomically (commit=true). */
-export async function runImport(db: ScopedDb, kind: ImportKind, recs: Record<string, string>[], commit: boolean): Promise<ImportResult> {
+export async function runImport(db: ScopedDb, kind: ImportKind, recs: Record<string, string>[], commit: boolean, today: Date = new Date()): Promise<ImportResult> {
   if (recs.length === 0) return { ok: false, issues: [{ row: 0, message: "The file has no data rows" }], summary: "Nothing to import" };
   if (recs.length > MAX_IMPORT_ROWS) return { ok: false, issues: [{ row: 0, message: `Import up to ${MAX_IMPORT_ROWS} rows at a time` }], summary: "Too many rows" };
+  if (kind === "leases") return importLeases(db, recs, commit, today);
   return kind === "properties" ? importProperties(db, recs, commit) : importOwners(db, recs, commit);
 }

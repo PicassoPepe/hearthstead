@@ -97,7 +97,8 @@ export async function postCharge(
   const ctx = await leaseContext(tx, input.leaseId);
   const account = await tx.account.findFirst({ where: { id: input.accountId } });
   if (!account) throw new UserFacingError("Choose a valid account", { accountId: "Choose an account" });
-  if (!["INCOME", "LIABILITY"].includes(account.type)) throw new UserFacingError("Charges post to an income account (or Security Deposits Held)", { accountId: "Choose an income account" });
+  const opening = input.chargeKind === "OPENING_BALANCE" && account.systemKey === "OPENING_BALANCE_EQUITY";
+  if (!opening && !["INCOME", "LIABILITY"].includes(account.type)) throw new UserFacingError("Charges post to an income account (or Security Deposits Held)", { accountId: "Choose an income account" });
   const je = await postEntry(tx, a.orgId, a.userId, {
     date: input.date,
     memo: input.memo ?? account.name,
@@ -176,7 +177,7 @@ export async function postCredit(
   positive(input.amountCents, "Credit");
   const ctx = await leaseContext(tx, input.leaseId);
   const account = await tx.account.findFirst({ where: { id: input.accountId } });
-  if (!account || !["INCOME", "EXPENSE"].includes(account.type)) throw new UserFacingError("Credits post against an income or expense account", { accountId: "Choose an account" });
+  if (!account || !(["INCOME", "EXPENSE"].includes(account.type) || account.systemKey === "OPENING_BALANCE_EQUITY")) throw new UserFacingError("Credits post against an income or expense account", { accountId: "Choose an account" });
   const r = allocate(input.amountCents, await openCharges(tx, input.leaseId), input.order);
   const je = await postEntry(tx, a.orgId, a.userId, {
     date: input.date,

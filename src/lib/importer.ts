@@ -2,7 +2,7 @@
  * Spreadsheet importer: pure, client-safe helpers. Parsing happens in the browser
  * (papaparse / read-excel-file); validation and writes happen on the server.
  */
-export type ImportKind = "properties" | "owners";
+export type ImportKind = "properties" | "owners" | "leases";
 
 export type ImportField = { key: string; label: string; required?: boolean; synonyms: string[]; example: string; help?: string };
 
@@ -23,6 +23,23 @@ export const IMPORT_SPECS: Record<ImportKind, { title: string; description: stri
       { key: "baths", label: "Baths", synonyms: ["baths", "bathrooms", "ba", "bath"], example: "1.5" },
       { key: "sqft", label: "Square feet", synonyms: ["sqft", "sq ft", "square feet", "size", "area"], example: "850" },
       { key: "marketRent", label: "Market rent", synonyms: ["rent", "market rent", "asking rent", "monthly rent"], example: "$1,250.00" },
+    ],
+  },
+  leases: {
+    title: "Leases, tenants & opening balances",
+    description: "One row per lease. Units must already exist. Rent history isn't re-created: the opening balance is what the tenant owes today (negative for a credit), and rent starts posting next month.",
+    fields: [
+      { key: "propertyName", label: "Property name", required: true, synonyms: ["property", "building", "property name"], example: "Maple Court" },
+      { key: "unitName", label: "Unit name", required: true, synonyms: ["unit", "unit name", "unit #", "apt"], example: "101" },
+      { key: "firstName", label: "Tenant first name", required: true, synonyms: ["first name", "tenant first name", "first"], example: "Jordan" },
+      { key: "lastName", label: "Tenant last name", required: true, synonyms: ["last name", "tenant last name", "last", "surname"], example: "Lee" },
+      { key: "email", label: "Tenant email", synonyms: ["email", "tenant email", "e-mail"], example: "jordan@example.com" },
+      { key: "phone", label: "Tenant phone", synonyms: ["phone", "mobile", "cell"], example: "(312) 555-0199" },
+      { key: "startDate", label: "Lease start", required: true, synonyms: ["start", "start date", "lease start", "move in", "move-in"], example: "2026-03-01", help: "YYYY-MM-DD or MM/DD/YYYY" },
+      { key: "endDate", label: "Lease end", synonyms: ["end", "end date", "lease end", "expiration"], example: "2027-02-28", help: "Blank = month-to-month" },
+      { key: "rent", label: "Monthly rent", required: true, synonyms: ["rent", "monthly rent", "rent amount"], example: "$1,650.00" },
+      { key: "deposit", label: "Deposit held", synonyms: ["deposit", "security deposit", "deposit held"], example: "1650" },
+      { key: "openingBalance", label: "Opening balance", synonyms: ["balance", "opening balance", "balance due", "amount owed"], example: "125.00" },
     ],
   },
   owners: {
@@ -103,3 +120,17 @@ export function parsePropertyType(input: string): string | null {
 
 export type ImportIssue = { row: number; field?: string; message: string };
 export type ImportResult = { ok: boolean; issues: ImportIssue[]; summary: string; created?: Record<string, number> };
+
+/** "2026-03-01", "3/1/2026" or "03/01/26" → "2026-03-01" (null if invalid). */
+export function normalizeDate(input: string): string | null {
+  const s = input.trim();
+  let y: number, m: number, d: number;
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+  const us = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(s);
+  if (iso) [y, m, d] = [Number(iso[1]), Number(iso[2]), Number(iso[3])];
+  else if (us) [m, d, y] = [Number(us[1]), Number(us[2]), us[3]!.length === 2 ? 2000 + Number(us[3]) : Number(us[3])];
+  else return null;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+  return dt.toISOString().slice(0, 10);
+}

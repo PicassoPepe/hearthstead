@@ -23,7 +23,8 @@
     "db:reset": "prisma migrate reset --force --skip-seed && tsx prisma/apply-rls.ts && tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "worker": "tsx scripts/worker.ts",
-    "jobs:nightly": "tsx scripts/run-nightly.ts"
+    "jobs:nightly": "tsx scripts/run-nightly.ts",
+    "ledger:check": "tsx scripts/check-ledger.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
