@@ -59,7 +59,7 @@ export default async function LeasingPage({ searchParams }: { searchParams: Prom
           { id: "ended", label: "Ended" },
         ]}
       />
-      <LeasesTable rows={rows} tab={tab} canEdit={canEdit} />
+      <LeasesTable key={tab} rows={rows} tab={tab} canEdit={canEdit} />
     </>
   );
 }

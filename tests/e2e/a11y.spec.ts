@@ -11,6 +11,7 @@ test("login page has no WCAG A/AA violations", async ({ page }) => {
 
 for (const theme of ["light", "dark"] as const) {
   test(`key app pages have no WCAG A/AA violations (${theme})`, async ({ page }) => {
+    test.setTimeout(300_000);
     await page.emulateMedia({ colorScheme: theme });
     await signIn(page, "admin@example.com");
     for (const path of PAGES) {

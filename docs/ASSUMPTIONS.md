@@ -57,6 +57,26 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Occupancy and balances show "—" until leases and the ledger exist (Phase 3).
 - Members limited to specific properties can't create properties or run property imports.
 
+**Phase 3 (Leasing & ledger)**
+- A lease is ACTIVE from creation (unless saved as a draft). Leases with a future start date
+  hold the unit from that date; the overlap rule uses move-out date, else a fixed term's end
+  date, else open-ended (month-to-month).
+- Fixed-term leases keep billing after their end date (holdover / month-to-month) until a
+  move-out is recorded — that's how most landlords operate; Expiring/Renewals flags them.
+- Payments go to *Undeposited Funds* by default (bank deposits/reconciliation are Phase 6).
+- Payment application order is a setting (oldest-first default, or rent-first).
+- Security deposits can be billed (Dr A/R, Cr Deposits Held) or recorded as received. Deposits
+  are held separately and never change the tenant's rent balance.
+- Late fees are per rent period (the month a rent charge is due); the monthly max caps the
+  initial fee plus any daily fees for that period.
+- Voids post reversing entries dated today; nothing is ever deleted from the journal.
+- Imported leases don't back-bill rent: the opening balance (owed today; negative = credit)
+  posts against *Opening Balance Equity*, and rent starts on the 1st of next month.
+- Statements are a printable page (browser "Save as PDF"); emailing statements comes with the
+  communications center (Phase 8). Portal invites mark tenants as invited; emails start in Phase 4.
+- Charges/credits require Leasing → edit; payments, deposits, refunds and voids require
+  Accounting → edit.
+
 **Not yet done (by design)**
 - 2FA, session management and support-access toggle (Settings → Security) — Phase 10.
 - Per-member property scoping is stored and enforced by `canAccessProperty()` but has no UI

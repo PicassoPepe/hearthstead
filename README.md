@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 2 (Rentals) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: Phase 3 (Leasing & ledger) complete.** See [Roadmap](#roadmap) for what each phase adds.
 
 ## Quick start
 
@@ -77,6 +77,9 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | ESLint, `tsc --noEmit`, Prettier |
 | `pnpm db:migrate` | `prisma migrate deploy` + apply row-level security |
 | `pnpm db:seed` / `pnpm db:reset` | Reseed demo data / drop everything and reseed |
+| `pnpm worker` | BullMQ worker: runs the nightly rent + late-fee job at 02:15 (needs Redis) |
+| `pnpm jobs:nightly [YYYY-MM-DD]` | Run the nightly job once, without Redis (idempotent) |
+| `pnpm ledger:check` | Verify ledger invariants for every org |
 
 ## Environment variables
 
@@ -132,6 +135,31 @@ flowchart LR
 `tests/integration/tenancy.test.ts` proves each layer holds *on its own*: raw SQL with the DAL
 bypassed still cannot read or write another org's rows.
 
+### The ledger (double-entry, single source of truth)
+
+`src/server/ledger/postings.ts` holds the posting rules as pure functions; every one is unit-tested
+to balance. `src/server/ledger/journal.ts` is the **only** code that writes journal entries: it
+resolves system accounts, calls `assertBalanced`, and writes inside the caller's transaction, so
+a business action and its accounting commit together or not at all.
+
+| Action | Journal entry |
+| --- | --- |
+| Charge | Dr Accounts Receivable · Cr income (or Security Deposits Held) |
+| Payment | Dr Undeposited Funds/Bank · Cr A/R (oldest open charge first) · excess Cr Prepaid Rent |
+| Credit | Dr income/expense · Cr A/R (excess → Prepaid Rent) |
+| Deposit received / refunded | Dr Deposit Cash · Cr Deposits Held / the reverse |
+| Returned payment | Reverses the payment (charges reopen) + optional NSF fee charge |
+| Void | Reversing entry; payments on a voided charge move to Prepaid Rent |
+
+Balances are never stored. Lease balance = A/R − Prepaid Rent for that lease, computed from
+journal lines. Integration tests (and `pnpm ledger:check`) assert after every scenario that
+every entry balances, A/R equals the open charges, and Prepaid equals unapplied payments.
+
+**Nightly job** (`src/server/jobs/nightly.ts`): ends leases past move-out, posts recurring
+charges due through today (prorated: daily rate = monthly ÷ days in month), and assesses late
+fees from the settings resolver (grace, flat/percent, monthly max, optional daily accrual).
+Both are idempotent via unique keys (`recurringChargeId + period`, `leaseId + key`).
+
 ### Settings inheritance
 
 `src/server/settings/registry.ts` declares every setting once (Zod schema, default, allowed
@@ -175,6 +203,9 @@ src/
     rentals/         properties, units, owners, portfolios (service + queries)
     records/         polymorphic notes & files
     importer/        CSV/XLSX import: validate, then write atomically
+    ledger/          posting rules (pure), journal writer, proration/allocation/late-fee math
+    leasing/         leases, lease money ops, late fees, read models
+    jobs/            nightly job + all-org runner (BullMQ worker in scripts/worker.ts)
     accounting/      chart of accounts (ledger arrives in Phase 3)
     search/          global search provider registry
     actions/         server actions (uniform ActionResult)
@@ -212,7 +243,7 @@ provider's credentials. To add an implementation, implement the interface in
 | --- | --- | --- |
 | P1 | Foundation: repo, docker, auth, orgs, roles, app shell, design system, command palette, settings resolver | ✅ |
 | P2 | Rentals: properties, units, owners, property wizard, importer | ✅ |
-| P3 | Leasing & ledger: chart of accounts, ledger service, lease wizard, recurring/late-fee jobs | |
+| P3 | Leasing & ledger: chart of accounts, ledger service, lease wizard, recurring/late-fee jobs | ✅ |
 | P4 | Payments & tenant portal | |
 | P5 | Maintenance: tasks, requests, work orders, vendors, inspections | |
 | P6 | Accounting: bills, expenses, banking, reconciliation, distributions, management fees | |
@@ -220,6 +251,27 @@ provider's credentials. To add an implementation, implement the interface in
 | P8 | Owner portal, communications, announcements, SMS | |
 | P9 | Listings, showings, applications, screening, e-sign, renewals | |
 | P10 | Public API, webhooks, workflows, AI assistant and agents | |
+
+## Phase 3 demo script (Leasing & ledger)
+
+The seed simulates **50 leases with up to 18 months of history** through the real ledger:
+on-time payers, late payers (with late fees), partial payers, a bounced check, an eviction and
+three turnovers.
+
+1. **Overview**: occupancy, collected this month, outstanding balances.
+2. **Leasing**: 47 active leases, rent roll, tenants owing. Open **Expiring / renewals**.
+3. **New lease** → Harborview Condos · 101 (vacant). Try Maple Court · 101 instead to see the
+   overlap error with a link to the conflicting lease. Add a co-tenant, set rent, watch the
+   proration preview, override the grace period for this lease, *Create lease*.
+4. On the lease: **Receive payment** (pre-filled with the balance) → balance $0.00.
+   **Post charge** → **Transactions** → *Void…* with a reason. *Mark as returned (NSF)* on a
+   payment → charges reopen and a $35 NSF fee posts.
+5. **More → Move out**: credits the unused days of the final month. **Statement** prints.
+6. **Accounting → Chart of accounts**: balances computed from the journal. **Journal entries**:
+   a manual entry can't be posted until it balances; voiding posts a reversal.
+7. **Files → Import → Leases**: `tests/e2e/fixtures-data/leases.csv` brings in tenants, deposits
+   and opening balances (positive = owed, negative = credit).
+8. **Run rent & late fees** (Leasing page) — idempotent; run it twice.
 
 ## Phase 2 demo script (Rentals)
 

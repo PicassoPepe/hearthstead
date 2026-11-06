@@ -23,7 +23,7 @@ test.describe("as admin", () => {
     await dlg.getByRole("button", { name: "Next" }).click();
 
     await dlg.getByRole("button", { name: "Next" }).click();
-    await expect(dlg.getByText("Enter a first name")).toBeVisible();
+    await expect(dlg.getByText("Enter a first name").first()).toBeVisible();
     await dlg.getByRole("textbox", { name: "First name" }).fill("Selena");
     await dlg.getByRole("textbox", { name: "Last name" }).fill("Park");
     await dlg.getByRole("textbox", { name: "Email" }).fill("selena.park@example.com");
@@ -64,7 +64,7 @@ test.describe("as admin", () => {
     await dlg.getByRole("combobox", { name: "Property" }).selectOption({ label: "Maple Court" });
     await dlg.getByRole("checkbox", { name: /^101/ }).check();
     await dlg.getByRole("button", { name: "Next" }).click();
-    await expect(dlg.getByText("This unit already has an active lease for these dates.")).toBeVisible();
+    await expect(dlg.getByText("This unit already has an active lease for these dates.").first()).toBeVisible();
     await expect(dlg.getByRole("link", { name: /Open that lease/ })).toHaveAttribute("href", /\/app\/leasing\/c/);
   });
 
@@ -95,7 +95,7 @@ test.describe("as admin", () => {
     await page.getByRole("dialog", { name: "Mark payment as returned" }).getByRole("button", { name: "Mark as returned" }).click();
     await expect(page.getByText("Payment marked as returned")).toBeVisible();
     await expect(page.getByTestId("lease-balance")).toHaveText("$2,735.00");
-    await expect(page.getByRole("cell", { name: "NSF fee" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "NSF fee", exact: true })).toBeVisible();
   });
 
   test("statement page prints the ledger", async ({ page }) => {
@@ -107,6 +107,9 @@ test.describe("as admin", () => {
   });
 
   test("Run rent & late fees is idempotent", async ({ page }) => {
+    // The first run may post a late fee (an earlier test reopened November rent); the second posts nothing.
+    await page.getByRole("button", { name: "Run rent & late fees" }).click();
+    await expect(page.getByText(/Posted|Everything is up to date/)).toBeVisible();
     await page.getByRole("button", { name: "Run rent & late fees" }).click();
     await expect(page.getByText("Everything is up to date")).toBeVisible();
   });
