@@ -102,7 +102,7 @@ export const NAV_BOTTOM: NavSection[] = [
   { id: "help", label: "Help", href: "/app/help", icon: "help" },
 ];
 
-export const CURRENT_PHASE = 9;
+export const CURRENT_PHASE = 10;
 
 /** Find the section that owns a pathname (longest-prefix match across sections and children). */
 export function sectionForPath(pathname: string): NavSection | undefined {

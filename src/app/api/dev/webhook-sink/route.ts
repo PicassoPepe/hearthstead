@@ -1,0 +1,13 @@
+import { NextResponse } from "next/server";
+import { adminDb } from "@/server/db";
+import { verifySignature } from "@/server/platform/events";
+
+/** Development-only webhook receiver: verifies the signature like a real consumer would. */
+export async function POST(req: Request) {
+  if (process.env.NODE_ENV === "production") return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const body = await req.text();
+  const delivery = await adminDb.webhookDelivery.findUnique({ where: { id: req.headers.get("hearthstead-delivery") ?? "" }, include: { endpoint: true } });
+  const ok = Boolean(delivery && verifySignature(delivery.endpoint.secret, body, req.headers.get("hearthstead-signature") ?? ""));
+  console.log(`[webhook-sink] ${req.headers.get("hearthstead-event")} signature ${ok ? "valid" : "INVALID"}`);
+  return NextResponse.json({ received: true, signatureValid: ok }, { status: ok ? 200 : 400 });
+}

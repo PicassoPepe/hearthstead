@@ -54,8 +54,13 @@ export async function runAgents(db: ScopedDb, now = new Date()) {
         if (!last || last.direction !== "IN") continue;
         if (await db.agentAction.findFirst({ where: { agent, kind: "REPLY_MESSAGE", entityType: "Message", entityId: last.id } })) continue;
         const draft = await draftReply(db, c.id, "The team");
-        const routine = /rent|pay|balance|portal|autopay|thank/i.test(last.body) && !/legal|lawyer|evict|discriminat|injur/i.test(last.body);
-        if (await record(db, agent, cfg, { kind: "REPLY_MESSAGE", entityType: "Message", entityId: last.id, summary: `Reply to “${last.body.slice(0, 80)}”`, confidence: routine ? 90 : 65, payload: { conversationId: c.id, channel: last.channel === "SMS" ? "SMS" : "PORTAL", body: draft } })) proposed++;
+        const sensitive = /legal|lawyer|attorney|evict|discriminat|injur|police|harass/i.test(last.body);
+        const repair = /leak|broken|repair|fix|not working|flicker|no heat|mold|clog|noise|pest/i.test(last.body);
+        const billing = /rent|pay|balance|portal|autopay|late fee/i.test(last.body);
+        const thanksOnly = /^(thanks|thank you|ok|great|got it)\b/i.test(last.body.trim()) && last.body.length < 60;
+        // Sensitive or repair messages always need a person; routine billing questions and thank-yous are safe.
+        const confidence = sensitive ? 30 : repair ? 55 : billing ? 90 : thanksOnly ? 85 : 65;
+        if (await record(db, agent, cfg, { kind: "REPLY_MESSAGE", entityType: "Message", entityId: last.id, summary: `Reply to “${last.body.slice(0, 80)}”`, confidence, payload: { conversationId: c.id, channel: last.channel === "SMS" ? "SMS" : "PORTAL", body: draft } })) proposed++;
       }
     }
     if (agent === "MAINTENANCE") {
