@@ -1,29 +1,22 @@
 import Link from "next/link";
-import { Building2, CalendarClock, CircleDollarSign, Home, Inbox, LineChart, Receipt, Users, Wallet } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { PageHeader } from "@/components/patterns/page-header";
 import { StatCard } from "@/components/patterns/stat-card";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GettingStarted, type ChecklistItem } from "@/components/overview/getting-started";
 import { can } from "@/server/permissions";
 import { formatMoney } from "@/lib/money";
 import { balancesBy, occupiedUnitIds, orgToday } from "@/server/leasing/queries";
 import { startOfMonth } from "@/lib/dates";
+import { Dashboard } from "@/components/overview/dashboard";
+import { widgetData } from "@/server/overview/widgets";
+import { PRESETS, WIDGET_IDS, WIDGET_META, redactWidgetData, sanitizeLayout } from "@/lib/widgets";
 
 export const metadata = { title: "Overview" };
 
-const WIDGETS = [
-  { title: "Rent collected vs due", desc: "This month's collections progress.", icon: CircleDollarSign, phase: 7 },
-  { title: "Outstanding balances", desc: "Who owes what, aged by 30/60/90.", icon: Wallet, phase: 7 },
-  { title: "Occupancy & vacancies", desc: "Occupied, vacant and notice units.", icon: Home, phase: 7 },
-  { title: "Leases expiring", desc: "Renewals due in the next 30/60/90 days.", icon: CalendarClock, phase: 7 },
-  { title: "Open requests", desc: "Maintenance requests by status.", icon: Inbox, phase: 7 },
-  { title: "P&L", desc: "Income vs expenses, last 6 months.", icon: LineChart, phase: 7 },
-  { title: "Bills due", desc: "Payables due this week.", icon: Receipt, phase: 7 },
-] as const;
-
-export default async function OverviewPage() {
+export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ propertyId?: string; portfolioId?: string }> }) {
+  const sp = await searchParams;
   const ctx = await requireContext();
   const scope = ctx.membership.propertyScope;
   const [org, memberCount, settingRows, propertyCount, unitAgg, ownerCount] = await Promise.all([
@@ -41,6 +34,13 @@ export default async function OverviewPage() {
     balancesBy(ctx, "leaseId"),
     ctx.db.leaseTransaction.aggregate({ where: { type: "PAYMENT", voidedAt: null, date: { gte: startOfMonth(today), lte: today }, ...(scope.length ? { lease: { propertyId: { in: scope } } } : {}) }, _sum: { amountCents: true }, _count: true }),
   ]);
+  const filter = { propertyId: sp.propertyId ?? "", portfolioId: sp.portfolioId ?? "" };
+  const [widgets, dashProps, dashPortfolios] = await Promise.all([
+    widgetData(ctx, filter, today),
+    ctx.db.property.findMany({ where: scope.length ? { id: { in: scope } } : {}, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    ctx.db.portfolio.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  ]);
+  const allowedWidgets = WIDGET_IDS.filter((id) => can(ctx.permissions, WIDGET_META[id].module as Parameters<typeof can>[1], "view"));
   const owed = [...balances.values()].filter((b) => b > 0);
   const has = (prefix: string) => [...keys].some((k) => k.startsWith(prefix));
 
@@ -80,44 +80,14 @@ export default async function OverviewPage() {
         </div>
       </section>
 
-      <section aria-labelledby="widgets">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 id="widgets" className="text-[15px] font-semibold">Dashboard</h2>
-          <span className="text-xs text-muted-foreground">Drag-and-drop widgets arrive in Phase 7</span>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {WIDGETS.map((w) => (
-            <Card key={w.title}>
-              <CardHeader>
-                <div>
-                  <CardTitle as="h3">{w.title}</CardTitle>
-                  <CardDescription>{w.desc}</CardDescription>
-                </div>
-                <w.icon className="size-5 text-muted-foreground" aria-hidden />
-              </CardHeader>
-              <CardContent>
-                <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border-strong text-center text-[13px] text-muted-foreground">
-                  No data yet — this fills in once properties and leases exist.
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle as="h3">Your team</CardTitle>
-                <CardDescription>{memberCount} member{memberCount === 1 ? "" : "s"}</CardDescription>
-              </div>
-              <Users className="size-5 text-muted-foreground" aria-hidden />
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="secondary" size="sm">
-                <Link href="/app/new/user" scroll={false}>Invite a teammate</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      <Dashboard
+        data={redactWidgetData(widgets, allowedWidgets)}
+        layout={sanitizeLayout(ctx.user.preferences.dashboard, PRESETS[ctx.membership.roleKey ?? "default"]?.layout)}
+        allowed={allowedWidgets}
+        filter={filter}
+        properties={dashProps}
+        portfolios={scope.length ? [] : dashPortfolios}
+      />
     </>
   );
 }

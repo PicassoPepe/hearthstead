@@ -135,6 +135,24 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Voids always post reversing entries; a bill with payments or applied credits can't be voided
   until those are voided/unapplied.
 
+**Phase 7 (Reports & dashboard)**
+- Reports are computed live from journal lines and the lease subledger (no snapshots); very large
+  ledger listings are capped at 3,000 lines with a note to narrow the range.
+- Cash basis: income is recognized when a tenant payment is *applied* to an income charge (dated by
+  the payment); unapplied prepayments aren't income until applied. Expenses are recognized when a
+  bill is paid (spread across its lines) or when paid directly.
+- Aging buckets use each open charge's due date vs the "as of" date. Delinquency lists leases with a
+  positive net balance (charges − credits).
+- The balance sheet rolls all-time net income into equity ("Net income (to date)"); there is no
+  year-end close yet. A property-filtered balance sheet may not balance if company-level entries
+  have no property; the report says so.
+- PDF export is the browser's print-to-PDF of a print-styled page (no server-side PDF renderer).
+- AI summaries receive only the computed headline figures, are audit-logged, and are labeled.
+- Dashboard layout (order + hidden) is stored per user in `User.preferences.dashboard`; role
+  presets are suggestions. "View as" previews a preset — it does not impersonate a user.
+- Chart colors use the validated categorical palette (checked for color-vision deficiency and
+  contrast in both themes); every chart has a legend, direct labels or a table alternative.
+
 **Not yet done (by design)**
 - 2FA, session management and support-access toggle (Settings → Security) — Phase 10.
 - Per-member property scoping is stored and enforced by `canAccessProperty()` but has no UI

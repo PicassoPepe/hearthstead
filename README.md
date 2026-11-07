@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 6 (Accounting) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: Phase 7 (Reports & dashboard) complete.** See [Roadmap](#roadmap) for what each phase adds.
 
 ## Quick start
 
@@ -168,6 +168,10 @@ journal lines. Integration tests (and `pnpm ledger:check`) assert after every sc
 every entry balances, A/R equals the open charges, Prepaid equals unapplied payments, and A/P
 equals open bills minus unapplied vendor credits.
 
+**Reports** (`src/server/reports/engine.ts`) read the same journal. Cash-basis P&L = income and
+expense lines in entries that move cash, plus tenant payments applied to income charges (dated by
+the payment), plus bill payments spread over the bill's expense lines.
+
 **Owner cash** (`src/server/accounting/owners.ts`): available to distribute per property =
 operating bank + Undeposited Funds − Prepaid Rent − open payables − the property's reserve, all
 read from journal lines carrying the property dimension. Security-deposit cash is never available.
@@ -269,10 +273,26 @@ provider's credentials. To add an implementation, implement the interface in
 | P4 | Payments & tenant portal | ✅ |
 | P5 | Maintenance: tasks, requests, work orders, vendors, inspections | ✅ |
 | P6 | Accounting: bills, expenses, banking, reconciliation, distributions, management fees | ✅ |
-| P7 | Reports + overview widgets | |
+| P7 | Reports + overview widgets | ✅ |
 | P8 | Owner portal, communications, announcements, SMS | |
 | P9 | Listings, showings, applications, screening, e-sign, renewals | |
 | P10 | Public API, webhooks, workflows, AI assistant and agents | |
+
+## Phase 7 demo script (Reports & dashboard)
+
+1. **Overview**: eight live widgets (rent collected vs due, aging, occupancy, income vs expenses,
+   expiring leases, open requests, bills due, cash). Each has **Details** to drill into the report
+   or list behind it. **Showing** filters every widget to a property or portfolio.
+2. **Customize**: drag widgets by the grip (or use the arrow buttons — keyboard friendly), hide the
+   ones you don't need. The layout saves to your user. **View as** previews the Property manager,
+   Bookkeeper or Maintenance layout; **Use this layout** adopts it. Widgets you lack permission for
+   never render (and their data never reaches the browser).
+3. **Reports**: 12 reports — P&L, balance sheet, cash flow, general ledger, transactions, rent roll,
+   vacancy, lease expirations, delinquency & aging, deposits held, owner statement, 1099 summary.
+4. Open **Profit & loss**: switch **Basis** (accrual/cash), **Columns** (by property / by month),
+   **Compare to** previous period or last year. Click an account to drill into its general ledger.
+5. **CSV** downloads the table; **PDF** opens a print-ready page (Save as PDF); **AI summary** writes
+   2–3 sentences from the headline figures only (mock by default; `LLM_PROVIDER=anthropic` for Claude).
 
 ## Phase 6 demo script (Accounting)
 

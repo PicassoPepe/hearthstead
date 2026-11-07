@@ -29,8 +29,9 @@
   --info:    #1d4ed8;  --info-soft:    #dbeafe;  --info-soft-foreground:    #1e3a8a;
 
   /* Categorical chart palette (light) */
-  --chart-1: #0f766e; --chart-2: #2563eb; --chart-3: #c2410c; --chart-4: #7c3aed;
-  --chart-5: #be185d; --chart-6: #4d7c0f;
+  /* Validated with the dataviz palette checker (CVD/normal-vision/contrast) — keep the order. */
+  --chart-1: #2a78d6; --chart-2: #eb6834; --chart-3: #1baf7a; --chart-4: #eda100;
+  --chart-5: #e87ba4; --chart-6: #008300;
 
   --radius: 8px;
   --radius-card: 12px;
@@ -60,8 +61,8 @@
   --danger:  #f87171;  --danger-soft:  #7f1d1d;  --danger-soft-foreground:  #fee2e2;
   --info:    #60a5fa;  --info-soft:    #1e3a8a;  --info-soft-foreground:    #dbeafe;
 
-  --chart-1: #2dd4bf; --chart-2: #60a5fa; --chart-3: #fb923c; --chart-4: #a78bfa;
-  --chart-5: #f472b6; --chart-6: #a3e635;
+  --chart-1: #3987e5; --chart-2: #d95926; --chart-3: #199e70; --chart-4: #c98500;
+  --chart-5: #d55181; --chart-6: #008300;
   --shadow-md: 0 4px 16px rgb(0 0 0 / 0.4);
 }
 
