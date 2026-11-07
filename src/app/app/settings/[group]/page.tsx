@@ -23,7 +23,6 @@ const GROUPS: Record<string, { group: SettingGroup; description: string }> = {
 };
 
 const LATER: Record<string, { title: string; phase: number; description: string }> = {
-  listings: { title: "Listings", phase: 9, description: "Listing defaults and syndication targets." },
   integrations: { title: "Integrations", phase: 10, description: "API keys, webhooks, sandbox mode and QuickBooks export." },
   security: { title: "Security", phase: 10, description: "Two-factor authentication, active sessions, and a support-access toggle that expires in 30 days." },
   billing: { title: "Billing", phase: 10, description: "Your Hearthstead plan, invoices and SMS usage." },

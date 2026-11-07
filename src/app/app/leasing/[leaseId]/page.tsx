@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MessagesSquare } from "lucide-react";
 import { InsuranceList, AutopayStatus } from "@/components/payments/lease-payment-panels";
 import { requireContext } from "@/server/context";
 import { can, canAccessProperty } from "@/server/permissions";
@@ -9,13 +8,14 @@ import { filesFor, notesFor } from "@/server/records/queries";
 import * as M from "@/server/leasing/money";
 import { EntityHeader } from "@/components/patterns/entity-header";
 import { EntityTabs } from "@/components/patterns/entity-tabs";
-import { EmptyState } from "@/components/patterns/empty-state";
 import { EntityTasks } from "@/components/tasks/entity-tasks";
 import { StatusBadge } from "@/components/patterns/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NotesPanel } from "@/components/records/notes-panel";
 import { FilesPanel } from "@/components/records/files-panel";
+import { ESignPanel } from "@/components/funnel/esign-panel";
+import { CommLog } from "@/components/comms/comm-log";
 import { ScopedSettings } from "@/components/settings/scoped-settings";
 import { LeaseActions } from "@/components/leasing/lease-actions";
 import { LedgerTable } from "@/components/leasing/ledger-table";
@@ -227,7 +227,10 @@ export default async function LeasePage({ params, searchParams }: { params: Prom
       ) : tab === "notes" ? (
         <NotesPanel entityType="Lease" entityId={lease.id} notes={await notesFor(ctx, "Lease", lease.id)} canEdit={canEdit} />
       ) : tab === "files" ? (
-        <FilesPanel entityType="Lease" entityId={lease.id} files={await filesFor(ctx, "Lease", lease.id)} canEdit={canEdit} />
+        <>
+          <ESignPanel ctx={ctx} leaseId={lease.id} canEdit={canEdit} />
+          <FilesPanel entityType="Lease" entityId={lease.id} files={await filesFor(ctx, "Lease", lease.id)} canEdit={canEdit} />
+        </>
       ) : tab === "settings" ? (
         <ScopedSettings ctx={ctx} scope="LEASE" scopeId={lease.id} propertyId={lease.propertyId} canEdit={canEdit} />
       ) : tab === "insurance" ? (
@@ -235,7 +238,14 @@ export default async function LeasePage({ params, searchParams }: { params: Prom
       ) : tab === "tasks" ? (
         <EntityTasks ctx={ctx} where={{ OR: [{ leaseId: lease.id }, { unitId: { in: lease.units.map((u) => u.unitId) } }] }} newHref={`/app/new/task?leaseId=${lease.id}&propertyId=${lease.propertyId}`} tableId="lease-tasks" />
       ) : (
-        <EmptyState icon={<MessagesSquare />} title="Communications arrive in Phase 8" description="Every email, SMS and portal message with these tenants." />
+        <div className="grid gap-6">
+          {lease.tenants.map((t) => (
+            <section key={t.tenantId} aria-label={`Communications with ${t.tenant.firstName ?? t.tenant.companyName ?? "tenant"}`}>
+              <h2 className="mb-2 font-semibold">{[t.tenant.firstName, t.tenant.lastName].filter(Boolean).join(" ") || t.tenant.companyName}</h2>
+              <CommLog ctx={ctx} who={{ tenantId: t.tenantId }} email={t.tenant.email} />
+            </section>
+          ))}
+        </div>
       )}
       <p className="sr-only">Ledger dates as of {toISODate(today)}</p>
     </>

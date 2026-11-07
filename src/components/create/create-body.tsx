@@ -20,6 +20,8 @@ import { taskFormOptions } from "@/server/maintenance/queries";
 import { leaseWizardOptions, moneyOptions } from "@/server/leasing/queries";
 import { BillForm, ExpenseForm, TransferForm } from "@/components/books/books-forms";
 import { booksOptions } from "@/server/accounting/queries";
+import { leasePresetFromApplication } from "@/server/funnel/applications";
+import { ProspectForm } from "@/components/funnel/funnel-forms";
 
 /** Renders the right create form for a kind. Later phases add their forms/wizards here. */
 export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind: CreateKind; ctx: AppContext; mode: "modal" | "page"; query?: Record<string, string | undefined> }) {
@@ -45,7 +47,10 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
     case "owner":
       return <OwnerForm />;
     case "lease":
-      return <LeaseWizard options={await leaseWizardOptions(ctx)} preset={{ propertyId: query.propertyId, unitId: query.unitId, tenantId: query.tenantId }} />;
+      {
+        const fromApp = query.applicationId ? await leasePresetFromApplication(ctx.db, query.applicationId) : null;
+        return <LeaseWizard options={await leaseWizardOptions(ctx)} preset={fromApp ?? { propertyId: query.propertyId, unitId: query.unitId, tenantId: query.tenantId }} />;
+      }
     case "tenant":
       return <TenantForm />;
     case "task":
@@ -69,6 +74,24 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
       return <BillForm options={await booksOptions(ctx)} preset={{ vendorId: query.vendorId, propertyId: query.propertyId }} />;
     case "expense":
       return <ExpenseForm options={await booksOptions(ctx)} />;
+    case "prospect": {
+      const listings = await ctx.db.listing.findMany({ where: { status: "PUBLISHED" }, select: { id: true, title: true } });
+      return <ProspectForm listings={listings.map((l) => ({ id: l.id, label: l.title }))} />;
+    }
+    case "application": {
+      const [org, listings] = await Promise.all([ctx.db.organization.findFirstOrThrow({ where: { id: ctx.org.id } }), ctx.db.listing.findMany({ where: { status: "PUBLISHED" }, orderBy: { title: "asc" } })]);
+      const base = process.env.AUTH_URL ?? "http://localhost:3000";
+      return (
+        <div className="grid gap-3 text-sm">
+          <p>Applicants apply online — send them the link for the home they want. Their answers autosave, they pay the fee, and screening runs when they submit.</p>
+          {listings.length ? (
+            <ul className="divide-y divide-border rounded-lg border border-border">
+              {listings.map((l) => <li key={l.id} className="px-3 py-2"><div className="font-medium">{l.title}</div><code className="break-all text-xs">{base}/apply/{org.slug}/{l.slug}</code></li>)}
+            </ul>
+          ) : <p className="text-muted-foreground">Publish a listing first (Rentals → Listings).</p>}
+        </div>
+      );
+    }
     case "transfer":
       return <TransferForm options={await booksOptions(ctx)} />;
     default:

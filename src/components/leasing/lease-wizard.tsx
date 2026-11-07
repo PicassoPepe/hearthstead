@@ -29,7 +29,14 @@ type Overrides = { lateFeesEnabled?: boolean; graceDays?: number; lateFeeCents?:
 let seq = 0;
 const k = () => `r${seq++}`;
 
-export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; preset?: { propertyId?: string; unitId?: string; tenantId?: string } }) {
+export type LeasePreset = {
+  propertyId?: string; unitId?: string; tenantId?: string;
+  /** From an approved application. */
+  applicationId?: string; tenant?: { firstName: string; lastName: string; email: string; phone: string };
+  rentCents?: number | null; depositCents?: number | null; startDate?: string | null; termMonths?: number;
+};
+
+export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; preset?: LeasePreset }) {
   const router = useRouter();
   const modal = useCreateModal();
   const close = modal ? modal.close : () => router.push("/app/leasing");
@@ -39,15 +46,16 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
   const [propertyId, setPropertyId] = React.useState(presetProperty);
   const [unitIds, setUnitIds] = React.useState<string[]>(preset?.unitId ? [preset.unitId] : []);
   const [termType, setTermType] = React.useState<"FIXED" | "MONTH_TO_MONTH">("FIXED");
-  const [startDate, setStartDate] = React.useState(nextFirst);
-  const [endDate, setEndDate] = React.useState(toISODate(addDays(addMonths(parseISODate(nextFirst), 12), -1)));
+  const firstStart = preset?.startDate ?? nextFirst;
+  const [startDate, setStartDate] = React.useState(firstStart);
+  const [endDate, setEndDate] = React.useState(toISODate(addDays(addMonths(parseISODate(firstStart), preset?.termMonths ?? 12), -1)));
   const [rentDueDay, setRentDueDay] = React.useState(1);
   const [tenants, setTenants] = React.useState<TenantRow[]>([
-    { key: k(), mode: preset?.tenantId ? "existing" : "new", tenantId: preset?.tenantId ?? "", role: "PRIMARY", firstName: "", lastName: "", email: "", phone: "" },
+    { key: k(), mode: preset?.tenantId ? "existing" : "new", tenantId: preset?.tenantId ?? "", role: "PRIMARY", firstName: preset?.tenant?.firstName ?? "", lastName: preset?.tenant?.lastName ?? "", email: preset?.tenant?.email ?? "", phone: preset?.tenant?.phone ?? "" },
   ]);
-  const [rentCents, setRentCents] = React.useState<number | null>(null);
+  const [rentCents, setRentCents] = React.useState<number | null>(preset?.rentCents ?? null);
   const [others, setOthers] = React.useState<ChargeRow[]>([]);
-  const [depositCents, setDepositCents] = React.useState<number | null>(null);
+  const [depositCents, setDepositCents] = React.useState<number | null>(preset?.depositCents ?? null);
   const [depositHandling, setDepositHandling] = React.useState<"CHARGE" | "RECEIVED" | "NONE">("CHARGE");
   const [overrides, setOverrides] = React.useState<Overrides>({});
   const [documents, setDocuments] = React.useState<"NONE" | "OFFLINE">("OFFLINE");
@@ -416,7 +424,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
         finishLabel={status === "ACTIVE" ? "Create lease" : "Save draft"}
         onCancel={close}
         onFinish={async () => {
-          const r = await createLease(payload());
+          const r = await createLease(payload(), preset?.applicationId);
           if (!r.ok) {
             const overlap = r.fieldErrors?.unitIds?.startsWith("overlap:") ? r.fieldErrors.unitIds.slice(8) : null;
             if (overlap) setOverlapLeaseId(overlap);
