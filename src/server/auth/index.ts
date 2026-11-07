@@ -37,7 +37,7 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 /** TOTP code, or a one-time recovery code (consumed on use). */
 async function checkSecondFactor(user: { id: string; totpSecret: string | null; recoveryCodeHashes: string[] }, code: string | undefined) {
-  if (!code) throw new TwoFactorRequired();
+  if (!code || code === "undefined") throw new TwoFactorRequired();
   if (user.totpSecret && verifyTotp(user.totpSecret, code)) return;
   const h = sha(code.trim().toLowerCase());
   if (user.recoveryCodeHashes.includes(h)) {

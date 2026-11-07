@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 9 (Leasing funnel) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: all 10 phases complete.** See [Roadmap](#roadmap) and the per-phase demo scripts below.
 
 ## Quick start
 
@@ -98,6 +98,11 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 | `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | — | MinIO: `http://localhost:9000`, `minio` / `minio12345` |
 | `PAYMENTS_PROVIDER` | `mock` | `mock` (offline, Stripe-test-mode behavior) or `stripe` |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | Only for `PAYMENTS_PROVIDER=stripe` |
+| `SMS_PROVIDER` · `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | `mock` | Texting; `twilio` sends for real and verifies inbound webhooks |
+| `BANKFEED_PROVIDER` · `PLAID_CLIENT_ID` / `PLAID_SECRET` / `PLAID_ENV` | `mock` | Bank feeds |
+| `LLM_PROVIDER` · `ANTHROPIC_API_KEY` / `LLM_MODEL` | `mock` | AI features; `anthropic` uses Claude (default model `claude-sonnet-5-5`) |
+| `ACCOUNTING_EXPORT_PROVIDER` · `QUICKBOOKS_CLIENT_ID` | `csv` | Ledger export format |
+| `API_RATE_LIMIT` | `120` | Public API requests per minute per key |
 
 ## Architecture
 
@@ -119,10 +124,13 @@ flowchart LR
   AUTH[Auth.js + Prisma adapter] -->|owner role| PG
   ADP --> MOCK[Mock providers]
   ADP -.-> REAL[Stripe · Twilio · Plaid · SMTP · LLM ...]
-  JOBS[BullMQ workers*] --> DAL
+  JOBS[BullMQ worker: nightly + minutely] --> DAL
   JOBS --- R[(Redis)]
+  API[/api/v1 REST + API keys/] --> DAL
+  EV[Domain events] --> WH[Signed webhooks + retries]
+  EV --> WF[Workflows]
+  AI[Assistant & agents] --> SVC
 ```
-<sub>* arrives in a later phase.</sub>
 
 ### Tenant isolation — two independent layers
 
@@ -211,7 +219,7 @@ src/
       new/[kind]             full-page fallback for the same routes
       overview/ settings/ help/ [...section]/ (later-phase placeholders)
     portal/ apply/ l/        portals and public pages
-    api/                     auth, search (and /api/v1 in Phase 10)
+    api/                     auth, search, v1 (public REST API + OpenAPI), webhooks/sms, exports, listings feed
     dev/outbox               mock email viewer (dev only)
   components/
     ui/              shadcn-style primitives on Radix (button, dialog, field, money-input …)
@@ -233,6 +241,12 @@ src/
     portal/          tenant portal context (login → tenant), invites, read models
     maintenance/     tasks, auto-assign, vendors, inspections (+AI summary), bills from invoices
     accounting/      payables, banking, reconciliation, owners & fees
+    reports/         report engine (12 reports, cash/accrual)
+    comms/           inbox, SMS, portal messages, announcements
+    funnel/          listings, showings, applications, e-sign, renewals
+    platform/        events, webhooks, workflows, integrations, TOTP
+    api/             public API core (keys, rate limits, idempotency), schemas, OpenAPI
+    ai/              assistant (tool calling) and background agents
     search/          global search provider registry
     actions/         server actions (uniform ActionResult)
   adapters/          third-party adapters; each has a working mock
@@ -256,8 +270,8 @@ API keys. Select an implementation with its env var.
 | ScreeningProvider | `SCREENING_PROVIDER` | `mock` (deterministic: SSN last-4 `0000` → no credit file, `6666` → eviction, `1313` → criminal record) | 9 ✅ |
 | ESignProvider | `ESIGN_PROVIDER` | `builtin` (hashed one-time links, frozen + SHA-256-hashed document, audit certificate) | 9 ✅ |
 | ListingFeedProvider | `LISTINGFEED_PROVIDER` | `file` — `/api/listings/feed/<org-slug>` (XML, `?format=json`) | 9 ✅ |
-| AccountingExportProvider | `ACCOUNTING_EXPORT_PROVIDER` | `csv`, `quickbooks` | 10 |
-| LlmProvider | `LLM_PROVIDER` | `mock`, `anthropic` (`ANTHROPIC_API_KEY`, `LLM_MODEL`, default `claude-sonnet-5-5`) | 5 ✅ (more in 10) |
+| AccountingExportProvider | `ACCOUNTING_EXPORT_PROVIDER` | `csv` (QuickBooks journal-import CSV), `quickbooks` (QBO JournalEntry payload; mock without credentials) | 10 ✅ |
+| LlmProvider | `LLM_PROVIDER` | `mock` (deterministic, incl. tool routing for the assistant), `anthropic` (`ANTHROPIC_API_KEY`, `LLM_MODEL`, default `claude-sonnet-5-5`; tool use for the assistant) | 5 ✅ · 10 ✅ |
 
 **Swapping a mock for a real service:** set the env var (e.g. `EMAIL_PROVIDER=smtp`) and that
 provider's credentials. To add an implementation, implement the interface in
@@ -276,7 +290,34 @@ provider's credentials. To add an implementation, implement the interface in
 | P7 | Reports + overview widgets | ✅ |
 | P8 | Owner portal, communications, announcements, SMS | ✅ |
 | P9 | Listings, showings, applications, screening, e-sign, renewals | ✅ |
-| P10 | Public API, webhooks, workflows, AI assistant and agents | |
+| P10 | Public API, webhooks, workflows, AI assistant and agents | ✅ |
+
+## Phase 10 demo script (Platform: API, webhooks, workflows, AI)
+
+1. **API** — the seed prints a local-only demo key. Try it:
+   ```bash
+   curl -H "Authorization: Bearer hs_live_00dea100_localDemoKeyDoNotUseInProduction" "http://localhost:3000/api/v1/leases?limit=2"
+   ```
+   The OpenAPI 3.1 spec is at `/api/v1/openapi.json`. Lists use cursor pagination (`next_cursor`);
+   every key gets 120 requests/minute (`X-RateLimit-*` headers, `429` + `Retry-After` beyond);
+   send `Idempotency-Key` on POST/PATCH to retry safely (a replay returns the original response
+   with `Idempotent-Replayed: true`; reusing a key with a different body is a `409`).
+2. **Settings → Integrations**: create keys (shown once; only a hash is stored), **Create sandbox**
+   (a separate org with sample data that `hs_test_` keys act on), webhook endpoints with signing
+   secrets, **Test** sends, a delivery log with retries, and the QuickBooks ledger export.
+   The seeded endpoint points at `/api/dev/webhook-sink`, which verifies signatures (see the
+   server log). Events: `lease.created`, `lease.ended`, `payment.succeeded`, `payment.failed`,
+   `task.created`, `task.updated`, `application.submitted`.
+3. **Workflows**: two seeded examples. **New workflow** → trigger, conditions, actions (email,
+   text, create task, notify a teammate) with `{{field}}` placeholders. Recent runs show each step.
+4. **AI → Assistant**: “Who owes rent?”, “What's the balance for …?”, “Show vacancies”, “Create a
+   task to …”, “Text … that …”. Reads run immediately with your permissions; writes appear as a
+   card you must **Confirm**. Every turn and confirmed action is audit-logged.
+5. **AI → Agents**: Receptionist (drafts replies), Maintenance (triages requests) and Renewals
+   (proposes offers). Each runs in *Propose* or *Auto above a confidence threshold* mode; the
+   seed leaves proposals waiting for approval. Sensitive or repair messages always need a person.
+6. **Settings → Security**: two-factor (TOTP with recovery codes), active sessions with sign-out,
+   and a 30-day support-access toggle. **Settings → Billing** shows plan and usage (units, SMS).
 
 ## Phase 9 demo script (Leasing funnel)
 

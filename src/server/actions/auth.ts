@@ -17,7 +17,7 @@ export async function loginWithPassword(input: z.input<typeof loginSchema>, call
   const parsed = loginSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Please fix the highlighted fields." };
   try {
-    await signIn("password", { email: parsed.data.email, password: parsed.data.password, code: parsed.data.code, redirect: false });
+    await signIn("password", { email: parsed.data.email, password: parsed.data.password, ...(parsed.data.code?.trim() ? { code: parsed.data.code.trim() } : {}), redirect: false });
   } catch (e) {
     if (e instanceof AuthError && (e as { code?: string }).code === "2fa_required") return { ok: false, error: "Enter the 6-digit code from your authenticator app.", fieldErrors: { code: "required" } };
     if (e instanceof AuthError && (e as { code?: string }).code === "2fa_invalid") return { ok: false, error: "That code didn't work. Try the newest code, or a recovery code.", fieldErrors: { code: "invalid" } };

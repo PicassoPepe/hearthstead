@@ -191,8 +191,34 @@ Decisions made without asking, per the brief. Each can be changed later.
   starting the day after the current one ends (same tenants and charges, new rent) and sets the old
   lease's move-out to its end date. The security deposit stays on the original lease's ledger.
 
-**Not yet done (by design)**
-- 2FA, session management and support-access toggle (Settings → Security) — Phase 10.
-- Per-member property scoping is stored and enforced by `canAccessProperty()` but has no UI
-  until properties exist (Phase 2).
-- BullMQ is installed with Redis in compose; the first jobs (recurring charges, late fees) come in Phase 3.
+**Phase 10 (Platform)**
+- API keys look like `hs_live_<8 hex>_<secret>`; only the prefix and a SHA-256 of the whole key are
+  stored. Keys are read-only or read/write; `hs_test_` keys act on the organization's sandbox (a
+  separate, clearly-labeled org with sample data — the same tenancy and RLS rules apply).
+- Rate limiting is a fixed one-minute window per key in Redis (in-process fallback if Redis is
+  down). Idempotency records are kept 24 hours per (key, Idempotency-Key) with a request hash.
+- The public API covers properties, units, tenants, leases (+ balance, transactions, charges) and
+  tasks. Writes go through the same domain services as the app, so ledger rules always apply.
+- Webhooks are signed Stripe-style (`t=…,v1=HMAC-SHA256(secret, t.body)`), sent once inline and
+  retried by the minutely worker at 1m, 5m, 30m, 2h, 12h, then marked dead (manual retry available).
+  Production requires https endpoints.
+- Workflows trigger on the same events; conditions are ANDed; runs are idempotent per
+  (workflow, event); events caused by workflow actions don't trigger workflows (no loops).
+- The assistant never writes on its own: write tools return proposals; confirming executes with the
+  user's own permissions and is audited as AI-initiated. The mock model routes common questions to
+  tools deterministically; with `LLM_PROVIDER=anthropic` Claude chooses tools itself.
+- Agents act only on items they haven't handled (unique per agent/kind/item). In Auto mode they
+  act when confidence ≥ the threshold; legal/safety/repair messages get low confidence by design.
+- 2FA is TOTP (RFC 6238) with 8 single-use recovery codes (hashed). Email-link sign-in is refused
+  for 2FA accounts. Sessions are recorded per sign-in; revoking one takes effect within a minute.
+- Billing is illustrative (plan math and usage only); no charges are made.
+
+**Known limitations (deliberate scope cuts)**
+- Real-provider adapters (Stripe, Twilio, Plaid, QuickBooks OAuth, Anthropic) are implemented
+  against their documented REST APIs but exercised in tests only through the mocks.
+- PDFs are produced by the browser's print-to-PDF from print-styled pages; there is no server-side
+  PDF renderer. Signed e-sign copies are stored as self-contained HTML with the audit certificate.
+- Co-applicants apply separately; there is no joint application. Listing photos use the unit's
+  photo URLs (no upload pipeline for listings yet).
+- The balance sheet has no year-end close (net income rolls into equity continuously).
+- Billing shows plan math and usage only; it doesn't charge.
