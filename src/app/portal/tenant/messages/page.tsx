@@ -1,12 +1,19 @@
-import { Card } from "@/components/ui/card";
+import Link from "next/link";
+import { requirePortal } from "@/server/portal/context";
+import { portalThread } from "@/server/comms/portal-queries";
+import { PortalThread } from "@/components/portal/portal-thread";
+import { sendPortalMessage } from "@/server/actions/portal";
 
 export const metadata = { title: "Messages" };
 
-export default function Page() {
+export default async function TenantMessages() {
+  const ctx = await requirePortal();
+  const messages = await portalThread(ctx.db, { tenantId: ctx.tenant.id }, !ctx.preview);
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
-      <Card className="p-6 text-muted-foreground">Two-way messages with your property manager (also by text). <span className="block pt-2 text-sm">Arrives in Phase 8. Until then, contact your property manager directly.</span></Card>
+      <p className="text-muted-foreground">Questions for {ctx.org.name}? For repairs, use <Link className="text-primary underline" href="/portal/tenant/requests">Requests</Link> so we can track them.</p>
+      <PortalThread messages={messages} send={sendPortalMessage} readOnly={ctx.preview} orgName={ctx.org.name} />
     </div>
   );
 }

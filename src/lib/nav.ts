@@ -65,7 +65,13 @@ export const NAV_MAIN: NavSection[] = [
     ],
   },
   { id: "tasks", label: "Tasks", href: "/app/tasks", icon: "tasks", module: "tasks", phase: 5 },
-  { id: "communications", label: "Communications", href: "/app/communications", icon: "communications", module: "communications", phase: 8 },
+  {
+    id: "communications", label: "Communications", href: "/app/communications", icon: "communications", module: "communications", phase: 8,
+    children: [
+      { label: "Inbox", href: "/app/communications", phase: 8, keywords: ["messages", "sms", "texts"] },
+      { label: "Announcements", href: "/app/communications/announcements", phase: 8, keywords: ["broadcast", "notice"] },
+    ],
+  },
   { id: "reports", label: "Reports", href: "/app/reports", icon: "reports", module: "reports", phase: 7 },
   { id: "notes", label: "Notes", href: "/app/notes", icon: "notes", phase: 2 },
   { id: "files", label: "Files", href: "/app/files", icon: "files", module: "files", phase: 2 },

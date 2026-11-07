@@ -93,7 +93,9 @@ export async function sendMessage(db: ScopedDb, conversationId: string, input: {
   let msg;
   switch (input.channel) {
     case "SMS": {
-      const r = await sendSms(db, contact.phone ?? conv.phone, body);
+      const to = contact.phone ?? conv.phone;
+      const r = await sendSms(db, to, body);
+      if (to && conv.phone !== to) await db.conversation.update({ where: { id: conv.id }, data: { phone: to } });
       msg = await record(db, conv.id, { direction: "OUT", channel: "SMS", body, author: input.author, status: r.status, externalId: r.externalId, segments: r.segments, error: r.error, aiDrafted: input.aiDrafted });
       if (r.status === "FAILED") throw new UserFacingError(`Text failed: ${r.error ?? "carrier error"}`);
       break;

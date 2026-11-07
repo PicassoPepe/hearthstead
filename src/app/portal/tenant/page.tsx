@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/patterns/status-badge";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
+import { portalAnnouncements } from "@/server/comms/announcements";
+import { unreadPortalCount } from "@/server/comms/portal-queries";
 
 export const metadata = { title: "Home" };
 
 export default async function PortalHome() {
   const ctx = await requirePortal();
-  const h = await portalHome(ctx);
+  const [h, news, unread] = await Promise.all([portalHome(ctx), portalAnnouncements(ctx.db, { tenantId: ctx.tenant.id }, 3), unreadPortalCount(ctx.db, { tenantId: ctx.tenant.id })]);
   const first = ctx.tenant.name.split(" ")[0];
   if (!h) {
     return (
@@ -66,6 +68,13 @@ export default async function PortalHome() {
         </section>
       ) : null}
 
+      {unread ? (
+        <Card className="flex items-center justify-between gap-3 border-primary/40 p-4">
+          <span className="text-sm"><span className="font-semibold">{unread} new message{unread === 1 ? "" : "s"}</span> from {ctx.org.name}</span>
+          <Button asChild size="sm"><Link href="/portal/tenant/messages">Read</Link></Button>
+        </Card>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2">
         <Card className="p-4">
           <h2 className="flex items-center gap-2 font-semibold"><Wrench className="size-4" aria-hidden /> Maintenance</h2>
@@ -74,7 +83,11 @@ export default async function PortalHome() {
         </Card>
         <Card className="p-4">
           <h2 className="flex items-center gap-2 font-semibold"><Megaphone className="size-4" aria-hidden /> Announcements</h2>
-          <p className="mt-1 text-sm text-muted-foreground">No announcements right now.</p>
+          {news.length ? (
+            <ul className="mt-2 grid gap-2 text-sm">
+              {news.map((n) => <li key={n.id}><div className="font-medium">{n.title}</div><p className="text-muted-foreground">{n.body}</p><p className="text-xs text-muted-foreground">{formatDate(n.sentAt)}</p></li>)}
+            </ul>
+          ) : <p className="mt-1 text-sm text-muted-foreground">No announcements right now.</p>}
         </Card>
       </div>
     </div>

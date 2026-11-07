@@ -14,6 +14,7 @@ import { parseISODate } from "@/lib/dates";
 import { parseMoney } from "@/lib/money";
 import { createTask, commentOnTask } from "@/server/maintenance/tasks";
 import { portalSettings } from "@/server/payments/service";
+import { receivePortalMessage } from "@/server/comms/service";
 
 /** Every portal write: signed-in tenant, not a staff preview, and only their own lease. */
 async function writer(leaseId?: string): Promise<PortalContext & { leaseId: string }> {
@@ -195,5 +196,16 @@ export async function replyToRequest(taskId: string, body: string): Promise<Acti
     if (!t) throw new UserFacingError("Request not found");
     await commentOnTask(ctx.db, taskId, body, true, { userId: ctx.user.id, name: ctx.tenant.name, kind: "TENANT" });
     refresh();
+  }, "Message sent");
+}
+
+/** Tenant → manager message from the portal. */
+export async function sendPortalMessage(body: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await getPortalContext();
+    if (!ctx) throw new UserFacingError("Please sign in again.");
+    if (ctx.preview) throw new UserFacingError("This is a read-only preview of the tenant portal.");
+    await receivePortalMessage(ctx.db, { tenantId: ctx.tenant.id }, z.string().max(2000, "Keep it under 2,000 characters").parse(body), { userId: ctx.user.id, name: ctx.tenant.name });
+    revalidatePath("/portal/tenant/messages");
   }, "Message sent");
 }

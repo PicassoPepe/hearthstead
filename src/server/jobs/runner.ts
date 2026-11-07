@@ -16,3 +16,12 @@ export async function runNightlyForAllOrgs(opts: { admin: PrismaClient; app: Pri
   }
   return out;
 }
+
+/** Every minute: send scheduled announcements that are due, for every organization. */
+export async function runMinutelyForAllOrgs(opts: { admin: PrismaClient; app: PrismaClient }): Promise<number> {
+  const { sendDueAnnouncements } = await import("@/server/comms/announcements");
+  const due = await opts.admin.announcement.findMany({ where: { status: "SCHEDULED", scheduledFor: { lte: new Date() }, deletedAt: null }, select: { organizationId: true }, distinct: ["organizationId"] });
+  let sent = 0;
+  for (const d of due) sent += await sendDueAnnouncements(createScopedClient(opts.app, { orgId: d.organizationId, userId: null }));
+  return sent;
+}

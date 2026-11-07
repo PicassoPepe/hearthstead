@@ -22,8 +22,8 @@
     "db:seed": "tsx --conditions=react-server prisma/seed.ts",
     "db:reset": "prisma migrate reset --force --skip-seed && tsx prisma/apply-rls.ts && tsx --conditions=react-server prisma/seed.ts",
     "postinstall": "prisma generate",
-    "worker": "tsx scripts/worker.ts",
-    "jobs:nightly": "tsx scripts/run-nightly.ts",
+    "worker": "tsx --conditions=react-server scripts/worker.ts",
+    "jobs:nightly": "tsx --conditions=react-server scripts/run-nightly.ts",
     "ledger:check": "tsx --conditions=react-server scripts/check-ledger.ts"
   },
   "prisma": {

@@ -9,7 +9,7 @@ import { INSPECTION_TEMPLATE, PUBLIC_STATUS_TEXT, STATUS_LABEL, TASK_TYPE_LABEL,
 import { tenantDisplayName } from "@/lib/leasing";
 
 /** Who's acting: staff user, tenant (portal), or the system. Used for activity + permissions. */
-export type TaskActor = { userId: string | null; name: string; kind: "STAFF" | "TENANT" | "VENDOR" | "SYSTEM" };
+export type TaskActor = { userId: string | null; name: string; kind: "STAFF" | "TENANT" | "OWNER" | "VENDOR" | "SYSTEM" };
 
 /**
  * Which tasks a member may see. Vendors only see tasks assigned to their vendor record (work
@@ -99,7 +99,7 @@ export async function createTask(db: ScopedDb, raw: TaskInput, actor: TaskActor)
             dueDate: v.dueDate ? parseISODate(v.dueDate) : null, propertyId, unitId: v.unitId || null, leaseId: v.leaseId || null, tenantId: v.tenantId || null,
             vendorId, parentTaskId: v.parentTaskId || null, estimateCents: v.estimateCents ?? null, permissionToEnter: v.permissionToEnter ?? null,
             preferredTimes: v.preferredTimes || null, inspectionKind: v.type === "INSPECTION" ? (v.inspectionKind ?? "PERIODIC") : null,
-            source: actor.kind === "TENANT" ? "PORTAL" : actor.kind === "SYSTEM" ? "WORKFLOW" : "STAFF", createdById: actor.userId,
+            source: actor.kind === "TENANT" || actor.kind === "OWNER" ? "PORTAL" : actor.kind === "SYSTEM" ? "WORKFLOW" : "STAFF", createdById: actor.userId,
           },
         });
         if (assigneeIds.length) await tx.taskAssignee.createMany({ data: assigneeIds.map((userId) => ({ organizationId: db.ctx.orgId, taskId: t.id, userId })) });
@@ -109,7 +109,7 @@ export async function createTask(db: ScopedDb, raw: TaskInput, actor: TaskActor)
         }
         return t;
       });
-      await addActivity(db, task.id, actor, "CREATED", `${TASK_TYPE_LABEL[v.type]} created${actor.kind === "TENANT" ? " from the tenant portal" : ""}${rule ? " · auto-assigned by rule" : ""}`, v.type === "TENANT_REQUEST");
+      await addActivity(db, task.id, actor, "CREATED", `${TASK_TYPE_LABEL[v.type]} created${actor.kind === "TENANT" ? " from the tenant portal" : actor.kind === "OWNER" ? " from the owner portal" : ""}${rule ? " · auto-assigned by rule" : ""}`, v.type === "TENANT_REQUEST");
       if (vendorId) {
         const vendor = await db.vendor.findFirstOrThrow({ where: { id: vendorId } });
         await addActivity(db, task.id, actor, "VENDOR", `Assigned to ${vendor.name}`);
