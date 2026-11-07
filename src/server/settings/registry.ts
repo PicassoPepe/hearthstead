@@ -13,7 +13,8 @@ export type SettingInput =
   | { kind: "percent" }
   | { kind: "select"; options: { value: string; label: string }[] }
   | { kind: "text" }
-  | { kind: "color" };
+  | { kind: "color" }
+  | { kind: "custom" };
 
 export type SettingGroup =
   | "lateFees"
@@ -22,7 +23,8 @@ export type SettingGroup =
   | "applications"
   | "notifications"
   | "ownerPortal"
-  | "branding";
+  | "branding"
+  | "maintenance";
 
 type Def<S extends z.ZodType> = {
   key: string;
@@ -162,6 +164,18 @@ export const SETTINGS = {
     schema: z.boolean(), default: true, scopes: ORG_PROP, input: { kind: "boolean" },
   }),
 
+  // ── Maintenance ──
+  "maintenance.autoAssignRules": def({
+    key: "maintenance.autoAssignRules", group: "maintenance", label: "Auto-assign rules",
+    help: "When a request arrives in a category, assign it to this person and/or vendor.",
+    schema: z.array(z.object({ category: z.string(), userId: z.string().nullable(), vendorId: z.string().nullable() })).max(50),
+    default: [] as { category: string; userId: string | null; vendorId: string | null }[], scopes: ORG_PROP, input: { kind: "custom" },
+  }),
+  "maintenance.notifyTenantOnUpdate": def({
+    key: "maintenance.notifyTenantOnUpdate", group: "maintenance", label: "Email tenants when their request is updated",
+    schema: z.boolean(), default: true, scopes: ORG_PROP, input: { kind: "boolean" },
+  }),
+
   // ── Branding (portal theming) ──
   "branding.portalAccent": def({
     key: "branding.portalAccent", group: "branding", label: "Portal accent color",
@@ -181,6 +195,7 @@ export const SETTING_GROUP_LABELS: Record<SettingGroup, string> = {
   notifications: "Notifications",
   ownerPortal: "Owner portal",
   branding: "Branding",
+  maintenance: "Maintenance",
 };
 
 export function isSettingKey(k: string): k is SettingKey {

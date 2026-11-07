@@ -897,3 +897,209 @@ model InsurancePolicy {
 
   @@index([organizationId, leaseId])
 }
+
+// ─── Phase 5: Maintenance ─────────────────────────────────────────────────
+
+model Vendor {
+  id                      String    @id @default(cuid())
+  organizationId          String
+  name                    String
+  contactName             String?
+  email                   String?
+  phone                   String?
+  /// Trades: PLUMBING, ELECTRICAL, HVAC, APPLIANCE, GENERAL, LANDSCAPING, CLEANING, PEST, ROOFING, LOCKSMITH
+  trades                  String[]  @default([])
+  addressLine1            String?
+  city                    String?
+  state                   String?
+  postalCode              String?
+  /// Only the last 4 digits are stored.
+  taxIdLast4              String?
+  send1099                Boolean   @default(true)
+  w9OnFile                Boolean   @default(false)
+  insuranceExpires        DateTime? @db.Date
+  /// Login (Vendor role) that may see this vendor's work orders.
+  userId                  String?
+  defaultExpenseAccountId String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  createdById             String?
+  deletedAt               DateTime?
+
+  tasks Task[]
+  bills Bill[]
+
+  @@index([organizationId, deletedAt])
+  @@index([userId])
+}
+
+enum TaskType {
+  TASK
+  TENANT_REQUEST
+  OWNER_REQUEST
+  WORK_ORDER
+  INSPECTION
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  WAITING
+  COMPLETED
+  ARCHIVED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Task {
+  id                String       @id @default(cuid())
+  organizationId    String
+  /// Human-friendly number per org (#1042).
+  number            Int
+  type              TaskType     @default(TASK)
+  status            TaskStatus   @default(NOT_STARTED)
+  priority          TaskPriority @default(NORMAL)
+  title             String
+  description       String?
+  category          String?
+  dueDate           DateTime?    @db.Date
+  propertyId        String?
+  unitId            String?
+  leaseId           String?
+  tenantId          String?
+  ownerId           String?
+  /// Generic link to any record (polymorphic), in addition to the typed links above.
+  linkedEntityType  String?
+  linkedEntityId    String?
+  vendorId          String?
+  parentTaskId      String?
+  permissionToEnter Boolean?
+  preferredTimes    String?
+  estimateCents     Int?
+  /// STAFF | PORTAL | WORKFLOW | AI
+  source            String       @default("STAFF")
+  /// MOVE_IN | MOVE_OUT | PERIODIC (inspections)
+  inspectionKind    String?
+  aiSummary         String?
+  billId            String?
+  completedAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdById       String?
+  deletedAt         DateTime?
+
+  vendor     Vendor?          @relation(fields: [vendorId], references: [id])
+  parent     Task?            @relation("Subtasks", fields: [parentTaskId], references: [id])
+  subtasks   Task[]           @relation("Subtasks")
+  assignees  TaskAssignee[]
+  activities TaskActivity[]
+  items      InspectionItem[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+  @@index([organizationId, type])
+  @@index([propertyId])
+  @@index([vendorId])
+}
+
+model TaskAssignee {
+  id             String   @id @default(cuid())
+  organizationId String
+  taskId         String
+  userId         String
+  createdAt      DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+model TaskActivity {
+  id             String   @id @default(cuid())
+  organizationId String
+  taskId         String
+  /// COMMENT | STATUS | ASSIGNED | VENDOR | CREATED | BILL | PHOTO
+  kind           String
+  body           String
+  /// Visible to the tenant in the portal timeline.
+  public         Boolean  @default(false)
+  actorId        String?
+  actorName      String?
+  createdAt      DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+}
+
+model InspectionItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  taskId         String
+  room           String
+  item           String
+  /// GOOD | FAIR | POOR | DAMAGED | NA
+  condition      String?
+  note           String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+enum BillStatus {
+  DRAFT
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+/// Accounts payable. Created from vendor invoices (Phase 5); paying bills comes in Phase 6.
+model Bill {
+  id             String     @id @default(cuid())
+  organizationId String
+  vendorId       String
+  billNumber     String?
+  billDate       DateTime   @db.Date
+  dueDate        DateTime   @db.Date
+  memo           String?
+  status         BillStatus @default(OPEN)
+  totalCents     Int
+  journalEntryId String?    @unique
+  taskId         String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  vendor Vendor     @relation(fields: [vendorId], references: [id])
+  lines  BillLine[]
+
+  @@index([organizationId, status])
+  @@index([vendorId])
+}
+
+model BillLine {
+  id             String  @id @default(cuid())
+  organizationId String
+  billId         String
+  accountId      String
+  amountCents    Int
+  description    String?
+  propertyId     String?
+  unitId         String?
+
+  bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([billId])
+}

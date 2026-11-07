@@ -22,6 +22,7 @@ const GROUP_HREF: Record<string, string> = {
   notifications: "/app/settings/notifications",
   ownerPortal: "/app/settings/owner-portal",
   branding: "/app/settings",
+  maintenance: "/app/settings/maintenance",
 };
 
 const providers: Provider[] = [

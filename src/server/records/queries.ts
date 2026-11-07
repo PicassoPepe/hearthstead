@@ -45,6 +45,8 @@ export function entityHref(type: string, id: string): string {
     case "Portfolio": return `/app/rentals/portfolios`;
     case "Lease": return `/app/leasing/${id}`;
     case "Tenant": return `/app/people/tenants/${id}`;
+    case "Task": return `/app/tasks/${id}`;
+    case "Vendor": return `/app/people/vendors/${id}`;
     default: return "/app/files";
   }
 }
