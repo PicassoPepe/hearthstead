@@ -629,6 +629,8 @@ model LeaseTransaction {
   paymentIntentId String?
   /// RETURNED_PAYMENT → the payment it reverses.
   relatedId       String?
+  /// Bank deposit this payment was banked in (Phase 6).
+  depositId       String?
   voidedAt        DateTime?
   voidReason      String?
   createdAt       DateTime    @default(now())

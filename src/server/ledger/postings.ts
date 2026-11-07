@@ -6,7 +6,8 @@ export type AccountRef = { key: SystemKey } | { id: string };
 export type SystemKey =
   | "OPERATING_CASH" | "DEPOSIT_CASH" | "ACCOUNTS_RECEIVABLE" | "UNDEPOSITED_FUNDS" | "ACCOUNTS_PAYABLE" | "DEPOSITS_HELD"
   | "PREPAID_RENT" | "OWNER_EQUITY" | "OWNER_CONTRIBUTIONS" | "OWNER_DISTRIBUTIONS" | "RENT_INCOME" | "LATE_FEE_INCOME"
-  | "OTHER_INCOME" | "MANAGEMENT_FEE_INCOME" | "NSF_FEE_INCOME" | "APPLICATION_FEE_INCOME" | "OPENING_BALANCE_EQUITY";
+  | "OTHER_INCOME" | "MANAGEMENT_FEE_INCOME" | "NSF_FEE_INCOME" | "APPLICATION_FEE_INCOME" | "OPENING_BALANCE_EQUITY"
+  | "REPAIRS" | "UTILITIES" | "INSURANCE" | "TAXES" | "MANAGEMENT_FEES" | "RETAINED_EARNINGS";
 
 export type Dims = { propertyId?: string | null; unitId?: string | null; leaseId?: string | null };
 export type Line = { account: AccountRef; debitCents: number; creditCents: number; memo?: string } & Dims;
@@ -116,17 +117,65 @@ export function returnedPaymentLines(amountCents: number, appliedCents: number, 
   ]);
 }
 
-/** Bill: Dr expense lines, Cr A/P. */
-export function billLines(lines: { account: AccountRef; amountCents: number; dims: Dims }[]): Line[] {
-  const total = lines.reduce((s, l) => s + l.amountCents, 0);
-  positive(total, "Bill");
-  return [...lines.map((l) => dr(l.account, l.amountCents, l.dims)), cr({ key: "ACCOUNTS_PAYABLE" }, total, {})];
+type Split = { account: AccountRef; amountCents: number; dims: Dims };
+
+/** Group amounts by property so the balancing side carries the same property dimension. */
+function byProperty(lines: { amountCents: number; dims: Dims }[]): { propertyId: string | null; amountCents: number }[] {
+  const m = new Map<string | null, number>();
+  for (const l of lines) m.set(l.dims.propertyId ?? null, (m.get(l.dims.propertyId ?? null) ?? 0) + l.amountCents);
+  return [...m].map(([propertyId, amountCents]) => ({ propertyId, amountCents }));
 }
 
-/** Pay bill: Dr A/P, Cr Bank. */
-export function billPaymentLines(amountCents: number, bank: AccountRef, dims: Dims = {}): Line[] {
+function assertSplits(lines: Split[], what: string) {
+  if (!lines.length) throw new RangeError(`${what} needs at least one line`);
+  for (const l of lines) positive(l.amountCents, `${what} line`);
+}
+
+/** Bill: Dr expense lines, Cr A/P (per property, so payables can be tracked by property). */
+export function billLines(lines: Split[]): Line[] {
+  assertSplits(lines, "Bill");
+  return [...lines.map((l) => dr(l.account, l.amountCents, l.dims)), ...byProperty(lines).map((g) => cr({ key: "ACCOUNTS_PAYABLE" }, g.amountCents, { propertyId: g.propertyId }))];
+}
+
+/** Pay bill: Dr A/P, Cr Bank — split across the bill's properties. */
+export function billPaymentLines(amountCents: number, bank: AccountRef, dims: Dims = {}, split?: { propertyId: string | null; amountCents: number }[]): Line[] {
   positive(amountCents, "Bill payment");
-  return [dr({ key: "ACCOUNTS_PAYABLE" }, amountCents, dims), cr(bank, amountCents, dims)];
+  const parts = split?.length ? split : [{ propertyId: dims.propertyId ?? null, amountCents }];
+  if (parts.reduce((s, p) => s + p.amountCents, 0) !== amountCents) throw new RangeError("Payment split must add up to the payment");
+  return nonZero(parts.flatMap((p) => [dr({ key: "ACCOUNTS_PAYABLE" }, p.amountCents, { propertyId: p.propertyId }), cr(bank, p.amountCents, { propertyId: p.propertyId })]));
+}
+
+/** Expense paid directly from a bank account / card: Dr expense lines, Cr bank (per property). */
+export function expenseLines(lines: Split[], bank: AccountRef): Line[] {
+  assertSplits(lines, "Expense");
+  return [...lines.map((l) => dr(l.account, l.amountCents, l.dims)), ...byProperty(lines).map((g) => cr(bank, g.amountCents, { propertyId: g.propertyId }))];
+}
+
+/** Vendor credit: Dr A/P, Cr the expense it refunds. */
+export function vendorCreditLines(amountCents: number, expense: AccountRef, dims: Dims): Line[] {
+  positive(amountCents, "Vendor credit");
+  return [dr({ key: "ACCOUNTS_PAYABLE" }, amountCents, { propertyId: dims.propertyId ?? null }), cr(expense, amountCents, dims)];
+}
+
+/** Bank deposit: Dr bank, Cr Undeposited Funds — one pair per property so cash stays attributed. */
+export function bankDepositLines(items: { amountCents: number; propertyId: string | null }[], bank: AccountRef): Line[] {
+  const groups = byProperty(items.map((i) => ({ amountCents: i.amountCents, dims: { propertyId: i.propertyId } })));
+  if (!groups.length) throw new RangeError("Choose at least one payment to deposit");
+  groups.forEach((g) => positive(g.amountCents, "Deposit"));
+  return groups.flatMap((g) => [dr(bank, g.amountCents, { propertyId: g.propertyId }), cr({ key: "UNDEPOSITED_FUNDS" }, g.amountCents, { propertyId: g.propertyId })]);
+}
+
+/** Transfer between bank accounts: Dr destination, Cr source. */
+export function transferLines(amountCents: number, from: AccountRef, to: AccountRef, dims: Dims): Line[] {
+  positive(amountCents, "Transfer");
+  return [dr(to, amountCents, dims), cr(from, amountCents, dims)];
+}
+
+/** Categorize an imported bank line: money in → Dr bank, Cr category; money out → Dr category, Cr bank. */
+export function bankCategorizeLines(signedCents: number, bank: AccountRef, category: AccountRef, dims: Dims): Line[] {
+  if (!Number.isSafeInteger(signedCents) || signedCents === 0) throw new RangeError("Amount must be non-zero cents");
+  const a = Math.abs(signedCents);
+  return signedCents > 0 ? [dr(bank, a, dims), cr(category, a, dims)] : [dr(category, a, dims), cr(bank, a, dims)];
 }
 
 /** Owner distribution: Dr Owner Distributions, Cr Bank. */

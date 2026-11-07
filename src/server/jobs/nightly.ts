@@ -4,11 +4,15 @@ import { runRecurringForLease } from "@/server/leasing/leases";
 import { assessLateFees, lateFeePolicy } from "@/server/leasing/late-fees";
 import { audit } from "@/server/audit";
 import { advanceMockPayments, runAutopay } from "@/server/payments/service";
+import { runRecurringBills } from "@/server/accounting/payables";
+import { previousPeriod, runManagementFees } from "@/server/accounting/owners";
 
 export type NightlyResult = {
   leases: number; charges: number; lateFees: number; ended: number;
   autopay?: { attempted: number; skipped: number; failed: number };
   payments?: { settled: number; failed: number; paidOut: number };
+  bills?: number;
+  managementFees?: { created: number; totalCents: number };
   errors: { leaseId: string; message: string }[];
 };
 
@@ -18,7 +22,8 @@ export type NightlyResult = {
  *   2. post recurring charges due through today (prorated, idempotent),
  *   3. assess late fees per the settings resolver (idempotent),
  *   4. settle pending mock payments (real processors report by webhook),
- *   5. run autopay for the month (idempotent per autopay + period).
+ *   5. run autopay for the month (idempotent per autopay + period),
+ *   6. create recurring bills that are due, and charge last month's management fees.
  * Each lease runs in its own transaction so one bad lease can't block the rest.
  */
 export async function runNightly(db: ScopedDb, opts: { today?: Date; timezone?: string } = {}): Promise<NightlyResult> {
@@ -51,6 +56,13 @@ export async function runNightly(db: ScopedDb, opts: { today?: Date; timezone?: 
     result.autopay = await runAutopay(db, today);
   } catch (e) {
     result.errors.push({ leaseId: "payments", message: e instanceof Error ? e.message : String(e) });
+  }
+  try {
+    result.bills = await runRecurringBills(db, today);
+    const fees = await runManagementFees(db, previousPeriod(today));
+    result.managementFees = { created: fees.created, totalCents: fees.totalCents };
+  } catch (e) {
+    result.errors.push({ leaseId: "accounting", message: e instanceof Error ? e.message : String(e) });
   }
   if (result.charges || result.lateFees || result.ended || result.errors.length) {
     await audit(db, { action: "job.nightly", entityType: "Job", actorType: "SYSTEM", after: { today: today.toISOString().slice(0, 10), ...result } });

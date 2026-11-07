@@ -265,9 +265,12 @@ async function unpostSource(tx: ScopedTx, a: Actor, sourceTxId: string, date: Da
   const debitLine = s.journalEntry.lines.find((l) => l.debitCents > 0);
   if (!debitLine) throw new Error("Malformed source entry");
   const ctx = await leaseContext(tx, s.leaseId);
+  // Once a payment has been banked (Phase 6 deposits), money leaves the bank, not Undeposited Funds.
+  const deposit = s.depositId ? await tx.deposit.findFirst({ where: { id: s.depositId } }) : null;
+  const creditAccount = deposit ? deposit.bankAccountId : debitLine.accountId;
   const je = await postEntry(tx, a.orgId, a.userId, {
     date, memo, source, sourceId: s.id,
-    lines: P.returnedPaymentLines(s.amountCents, applied, { id: debitLine.accountId }, dimsOf(ctx)),
+    lines: P.returnedPaymentLines(s.amountCents, applied, { id: creditAccount }, dimsOf(ctx)),
   });
   await tx.paymentApplication.deleteMany({ where: { sourceId: s.id } });
   return { source: s, entry: je };
