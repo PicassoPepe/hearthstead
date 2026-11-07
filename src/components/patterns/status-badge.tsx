@@ -26,6 +26,15 @@ const MAP: Record<string, { tone: Tone; label: string; Icon: typeof Circle }> = 
   OCCUPIED: { tone: "success", label: "Occupied", Icon: CheckCircle2 },
   NOT_INVITED: { tone: "neutral", label: "Not invited", Icon: Circle },
   ARCHIVED: { tone: "neutral", label: "Archived", Icon: Circle },
+  OPEN: { tone: "warning", label: "Open", Icon: Clock },
+  PARTIALLY_PAID: { tone: "info", label: "Partially paid", Icon: Clock },
+  PAID: { tone: "success", label: "Paid", Icon: CheckCircle2 },
+  VOID: { tone: "neutral", label: "Void", Icon: XCircle },
+  OVERDUE: { tone: "danger", label: "Overdue", Icon: AlertTriangle },
+  UNMATCHED: { tone: "warning", label: "For review", Icon: CircleDashed },
+  MATCHED: { tone: "success", label: "Matched", Icon: CheckCircle2 },
+  CATEGORIZED: { tone: "success", label: "Categorized", Icon: CheckCircle2 },
+  IGNORED: { tone: "neutral", label: "Excluded", Icon: Circle },
 };
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {

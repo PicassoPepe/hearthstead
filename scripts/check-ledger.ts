@@ -4,6 +4,7 @@ import { loadEnvFile } from "node:process";
 import { existsSync } from "node:fs";
 import { createScopedClient } from "../src/server/dal";
 import * as M from "../src/server/leasing/money";
+import { billOpenCents } from "../src/server/accounting/payables";
 
 if (existsSync(".env")) loadEnvFile(".env");
 const admin = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
@@ -35,6 +36,19 @@ async function main() {
         }
         if (b.balanceCents > 0) owed += b.balanceCents;
       });
+    }
+    // Payables: A/P == open bills − unapplied vendor credits; Undeposited Funds == payments not yet banked.
+    const ap = await db.account.findFirst({ where: { systemKey: "ACCOUNTS_PAYABLE" } });
+    if (ap) {
+      const s = await db.journalLine.aggregate({ where: { accountId: ap.id }, _sum: { debitCents: true, creditCents: true } });
+      const apBal = (s._sum.creditCents ?? 0) - (s._sum.debitCents ?? 0);
+      let open = 0;
+      for (const b of await db.bill.findMany({ where: { status: { not: "VOID" } }, select: { id: true } })) open += await billOpenCents(db, b.id);
+      const unapplied = (await db.vendorCredit.aggregate({ where: { appliedToBillId: null }, _sum: { amountCents: true } }))._sum.amountCents ?? 0;
+      if (apBal !== open - unapplied) {
+        problems++;
+        console.log(`A/P MISMATCH ${o.name}: ledger ${apBal} vs bills ${open} − credits ${unapplied}`);
+      }
     }
     const status = leases.reduce<Record<string, number>>((m, l) => ({ ...m, [l.status]: (m[l.status] ?? 0) + 1 }), {});
     if (leases.length) console.log(`${o.name}: ${entries.length} entries, leases ${JSON.stringify(status)}, owed $${(owed / 100).toFixed(2)}`);

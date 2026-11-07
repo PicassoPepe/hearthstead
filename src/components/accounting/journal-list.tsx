@@ -21,6 +21,8 @@ export type EntryView = {
 const SOURCE: Record<string, string> = {
   MANUAL: "Manual", LEASE_CHARGE: "Charge", LEASE_PAYMENT: "Payment", LEASE_CREDIT: "Credit", LEASE_DEPOSIT: "Deposit", LEASE_REFUND: "Refund",
   LEASE_RETURNED_PAYMENT: "Returned payment", LEASE_VOID: "Void", REVERSAL: "Reversal", PREPAID_APPLIED: "Prepaid applied", PREPAID_UNAPPLIED: "Prepaid unapplied",
+  BILL: "Bill", BILL_PAYMENT: "Bill payment", EXPENSE: "Expense", VENDOR_CREDIT: "Vendor credit", BANK_DEPOSIT: "Bank deposit", TRANSFER: "Transfer",
+  BANK_FEED: "Bank feed", OWNER_DISTRIBUTION: "Owner distribution", OWNER_CONTRIBUTION: "Owner contribution", OPENING_BALANCE: "Opening balance",
 };
 
 export function JournalList({ entries, canVoid }: { entries: EntryView[]; canVoid: boolean }) {

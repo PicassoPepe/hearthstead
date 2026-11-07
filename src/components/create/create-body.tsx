@@ -18,6 +18,8 @@ import { TaskForm } from "@/components/tasks/task-form";
 import { VendorForm } from "@/components/tasks/vendor-form";
 import { taskFormOptions } from "@/server/maintenance/queries";
 import { leaseWizardOptions, moneyOptions } from "@/server/leasing/queries";
+import { BillForm, ExpenseForm, TransferForm } from "@/components/books/books-forms";
+import { booksOptions } from "@/server/accounting/queries";
 
 /** Renders the right create form for a kind. Later phases add their forms/wizards here. */
 export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind: CreateKind; ctx: AppContext; mode: "modal" | "page"; query?: Record<string, string | undefined> }) {
@@ -63,6 +65,12 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
       ]);
       return <JournalEntryForm accounts={accounts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} properties={properties} today={new Date().toISOString().slice(0, 10)} />;
     }
+    case "bill":
+      return <BillForm options={await booksOptions(ctx)} preset={{ vendorId: query.vendorId, propertyId: query.propertyId }} />;
+    case "expense":
+      return <ExpenseForm options={await booksOptions(ctx)} />;
+    case "transfer":
+      return <TransferForm options={await booksOptions(ctx)} />;
     default:
       return (
         <div className="flex flex-col items-center py-6 text-center">

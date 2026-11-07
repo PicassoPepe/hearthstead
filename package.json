@@ -24,7 +24,7 @@
     "postinstall": "prisma generate",
     "worker": "tsx scripts/worker.ts",
     "jobs:nightly": "tsx scripts/run-nightly.ts",
-    "ledger:check": "tsx scripts/check-ledger.ts"
+    "ledger:check": "tsx --conditions=react-server scripts/check-ledger.ts"
   },
   "prisma": {
     "seed": "tsx --conditions=react-server prisma/seed.ts"

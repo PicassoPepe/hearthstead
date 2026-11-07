@@ -107,8 +107,33 @@ Decisions made without asking, per the brief. Each can be changed later.
   comment and change status, but never create or archive tasks, and their comments are internal.
 - Inspections use a default room-by-room template; the report is a printable page. The AI
   summary goes through `LlmProvider` (deterministic mock by default) and is audit-logged.
-- Bills are created now (vendor invoice → bill posts Dr expense / Cr A/P); paying bills, the bills
-  list and recurring bills come in Phase 6.
+- Bills are created from work orders (vendor invoice → bill posts Dr expense / Cr A/P).
+
+**Phase 6 (Accounting)**
+- Trust-style accounting: every cash line carries a property dimension, so per-property cash,
+  payables and owner balances come straight from the journal. A/P is credited per property; a
+  partial bill payment is split across the bill's properties in proportion to its lines.
+- Payments land in Undeposited Funds; a bank deposit moves selected payments (grouped by property)
+  to a bank account. Processor payouts (mock: two days after success) deposit automatically. A
+  payment returned after it was deposited comes out of the bank it was deposited to.
+- Bank feed: the mock mirrors the books at the *journal-entry* level (one bank line per entry, so a
+  six-property bill payment is one debit) with a 0–2 day lag, plus a monthly $15 service fee and
+  interest. Matching = same signed amount within ±5 days; it auto-matches only when exactly one
+  candidate exists and no other feed line competes for it. CSV import dedupes on date/amount/row.
+- Reconciliation ticks register items (journal entries on that bank); opening balance = everything
+  cleared in completed reconciliations. Finishing requires a $0.00 difference; only the latest
+  reconciliation can be undone.
+- Available to distribute = operating bank + Undeposited Funds − Prepaid Rent − open payables −
+  reserve (never negative). Security-deposit bank accounts are excluded.
+- Management fees: one company default rule plus optional per-property overrides; percent of
+  collected rent (payments applied to RENT charges in the month) or of all collected income, with
+  a minimum, or a flat amount. Each run creates a bill from "<company> — management" and pays it
+  from the property's default operating account. The nightly job runs last month (idempotent per
+  property + month); it can also be run manually for any month.
+- Recurring bills are created by the nightly job (idempotent per bill + month); a bill can be set
+  to repeat when it's created.
+- Voids always post reversing entries; a bill with payments or applied credits can't be voided
+  until those are voided/unapplied.
 
 **Not yet done (by design)**
 - 2FA, session management and support-access toggle (Settings → Security) — Phase 10.

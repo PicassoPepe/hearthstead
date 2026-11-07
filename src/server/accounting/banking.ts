@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import type { ScopedDb } from "@/server/dal";
 import { UserFacingError } from "@/server/action-result";
 import { audit } from "@/server/audit";
@@ -100,10 +101,10 @@ async function insertFeed(db: ScopedDb, bankAccountId: string, rows: FeedTransac
 export async function syncBankFeed(db: ScopedDb, bankAccountId: string, today: Date = new Date()) {
   const a = await bank(db, bankAccountId);
   const since = addDays(today, -60);
-  const lines = await db.journalLine.findMany({ where: { accountId: a.id, journalEntry: { date: { gte: since } } }, include: { journalEntry: { select: { date: true, memo: true } } } });
+  const items = await registerItems(db, a.id, { journalEntry: { date: { gte: since } } });
   const feed = await getBankFeedProvider().sync({
     bankAccountId: a.id, externalRef: a.bankAccount?.externalRef ?? null, since: toISODate(since), until: toISODate(today),
-    ledger: lines.map((l) => ({ id: l.id, date: toISODate(l.journalEntry.date), amountCents: l.debitCents - l.creditCents, memo: l.journalEntry.memo ?? "" })),
+    ledger: items.filter((i) => i.amountCents !== 0).map((i) => ({ id: i.id, date: toISODate(i.date), amountCents: i.amountCents, memo: i.memo })),
   });
   const added = await insertFeed(db, a.id, feed);
   await audit(db, { action: "bank_feed.synced", entityType: "Account", entityId: a.id, after: { fetched: feed.length, added } });
@@ -117,11 +118,33 @@ export async function importBankCsv(db: ScopedDb, bankAccountId: string, rows: F
   return { added, skipped: rows.length - added };
 }
 
-/** Ledger lines on this bank account not yet matched to an imported bank transaction. */
+/**
+ * Register items: one per journal entry on this bank account (a bill payment split across six
+ * properties is one bank movement). The item's id is its first line's id; `lineIds` are all of them.
+ */
+export async function registerItems(db: ScopedDb, bankAccountId: string, where: Prisma.JournalLineWhereInput = {}) {
+  const lines = await db.journalLine.findMany({ where: { accountId: bankAccountId, ...where }, include: { journalEntry: { select: { date: true, memo: true, source: true } } }, orderBy: [{ journalEntry: { date: "asc" } }, { createdAt: "asc" }, { id: "asc" }] });
+  const byEntry = new Map<string, { id: string; lineIds: string[]; date: Date; amountCents: number; memo: string; reconciliationId: string | null }>();
+  for (const l of lines) {
+    const e = byEntry.get(l.journalEntryId);
+    if (e) {
+      e.lineIds.push(l.id);
+      e.amountCents += l.debitCents - l.creditCents;
+    } else {
+      byEntry.set(l.journalEntryId, { id: l.id, lineIds: [l.id], date: l.journalEntry.date, amountCents: l.debitCents - l.creditCents, memo: l.journalEntry.memo ?? l.journalEntry.source, reconciliationId: l.reconciliationId });
+    }
+  }
+  return [...byEntry.values()];
+}
+
+async function matchedLineIds(db: ScopedDb, bankAccountId: string) {
+  return new Set((await db.bankTransaction.findMany({ where: { bankAccountId, matchedLineId: { not: null } }, select: { matchedLineId: true } })).map((t) => t.matchedLineId!));
+}
+
+/** Register items on this bank account not yet matched to an imported bank transaction. */
 async function unmatchedLines(db: ScopedDb, bankAccountId: string) {
-  const taken = new Set((await db.bankTransaction.findMany({ where: { bankAccountId, matchedLineId: { not: null } }, select: { matchedLineId: true } })).map((t) => t.matchedLineId!));
-  const lines = await db.journalLine.findMany({ where: { accountId: bankAccountId }, include: { journalEntry: { select: { date: true, memo: true, source: true } } }, orderBy: { createdAt: "asc" } });
-  return lines.filter((l) => !taken.has(l.id)).map((l) => ({ id: l.id, date: l.journalEntry.date, amountCents: l.debitCents - l.creditCents, memo: l.journalEntry.memo ?? l.journalEntry.source }));
+  const taken = await matchedLineIds(db, bankAccountId);
+  return (await registerItems(db, bankAccountId)).filter((i) => i.amountCents !== 0 && !i.lineIds.some((id) => taken.has(id)));
 }
 
 export type MatchSuggestion = { lineId: string; date: string; amountCents: number; memo: string; daysApart: number };
@@ -154,10 +177,10 @@ export async function matchBankTransaction(db: ScopedDb, txId: string, lineId: s
   const t = await db.bankTransaction.findFirst({ where: { id: txId } });
   if (!t) throw new UserFacingError("Bank transaction not found");
   if (t.status !== "UNMATCHED") throw new UserFacingError("This transaction is already handled");
-  const line = await db.journalLine.findFirst({ where: { id: lineId, accountId: t.bankAccountId } });
-  if (!line) throw new UserFacingError("Choose a transaction from this account's register");
-  if (line.debitCents - line.creditCents !== t.amountCents) throw new UserFacingError("Amounts don't match");
-  if (await db.bankTransaction.findFirst({ where: { matchedLineId: lineId } })) throw new UserFacingError("That register line is already matched");
+  const item = (await unmatchedLines(db, t.bankAccountId)).find((i) => i.lineIds.includes(lineId));
+  if (!item) throw new UserFacingError("Choose an unmatched transaction from this account's register");
+  if (item.amountCents !== t.amountCents) throw new UserFacingError("Amounts don't match");
+  lineId = item.id;
   await db.bankTransaction.update({ where: { id: txId }, data: { status: "MATCHED", matchedLineId: lineId } });
   await audit(db, { action: "bank_txn.matched", entityType: "BankTransaction", entityId: txId, after: { lineId } });
 }
@@ -221,27 +244,24 @@ export async function reconciliationWorkspace(db: ScopedDb, recId: string) {
   const rec = await db.reconciliation.findFirst({ where: { id: recId } });
   if (!rec) throw new UserFacingError("Reconciliation not found");
   const done = (await db.reconciliation.findMany({ where: { bankAccountId: rec.bankAccountId, status: "COMPLETED" }, select: { id: true } })).map((d) => d.id);
-  const lines = await db.journalLine.findMany({
-    where: { accountId: rec.bankAccountId, journalEntry: { date: { lte: rec.statementDate } }, OR: [{ reconciliationId: null }, { reconciliationId: { notIn: done.length ? done : ["-"] } }] },
-    include: { journalEntry: { select: { date: true, memo: true, source: true } } },
-    orderBy: [{ journalEntry: { date: "asc" } }, { createdAt: "asc" }],
-  });
-  const matched = new Set((await db.bankTransaction.findMany({ where: { bankAccountId: rec.bankAccountId, matchedLineId: { in: lines.map((l) => l.id) }, date: { lte: rec.statementDate } }, select: { matchedLineId: true } })).map((t) => t.matchedLineId!));
+  const items = await registerItems(db, rec.bankAccountId, { journalEntry: { date: { lte: rec.statementDate } }, OR: [{ reconciliationId: null }, { reconciliationId: { notIn: done.length ? done : ["-"] } }] });
+  const matched = new Set((await db.bankTransaction.findMany({ where: { bankAccountId: rec.bankAccountId, matchedLineId: { not: null }, date: { lte: rec.statementDate } }, select: { matchedLineId: true } })).map((t) => t.matchedLineId!));
   return {
     rec,
-    lines: lines.map((l) => ({ id: l.id, date: toISODate(l.journalEntry.date), memo: l.journalEntry.memo ?? l.journalEntry.source, amountCents: l.debitCents - l.creditCents, cleared: l.reconciliationId === rec.id, inFeed: matched.has(l.id) })),
+    lines: items.map((i) => ({ id: i.id, lineIds: i.lineIds, date: toISODate(i.date), memo: i.memo, amountCents: i.amountCents, cleared: i.reconciliationId === rec.id, inFeed: i.lineIds.some((id) => matched.has(id)) })),
   };
 }
 
-/** Finish: ticked lines must bring opening + cleared to exactly the statement balance. */
-export async function completeReconciliation(db: ScopedDb, recId: string, lineIds: string[]) {
+/** Finish: ticked items must bring opening + cleared to exactly the statement balance. */
+export async function completeReconciliation(db: ScopedDb, recId: string, itemIds: string[]) {
   const { rec, lines } = await reconciliationWorkspace(db, recId);
   if (rec.status === "COMPLETED") throw new UserFacingError("Already completed");
-  const picked = lines.filter((l) => lineIds.includes(l.id));
-  if (picked.length !== new Set(lineIds).size) throw new UserFacingError("Some lines aren't part of this reconciliation — refresh and try again");
+  const picked = lines.filter((l) => itemIds.includes(l.id));
+  if (picked.length !== new Set(itemIds).size) throw new UserFacingError("Some lines aren't part of this reconciliation — refresh and try again");
   const cleared = rec.openingBalanceCents + picked.reduce((s, l) => s + l.amountCents, 0);
   const diff = rec.statementBalanceCents - cleared;
   if (diff !== 0) throw new UserFacingError(`The difference must be $0.00 before you finish (it's ${(diff / 100).toFixed(2)}).`);
+  const lineIds = picked.flatMap((p) => p.lineIds);
   await db.tx(async (tx) => {
     await tx.journalLine.updateMany({ where: { reconciliationId: rec.id }, data: { reconciliationId: null } });
     if (lineIds.length) await tx.journalLine.updateMany({ where: { id: { in: lineIds } }, data: { reconciliationId: rec.id } });

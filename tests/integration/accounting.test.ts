@@ -169,7 +169,7 @@ describe("banking", () => {
     const all = ws.lines.map((l) => l.id);
     await expect(BK.completeReconciliation(db, rec.id, all.slice(1))).rejects.toThrow(/difference must be \$0.00/);
     await BK.completeReconciliation(db, rec.id, all);
-    expect(await db.journalLine.count({ where: { reconciliationId: rec.id } })).toBe(all.length);
+    expect(await db.journalLine.count({ where: { reconciliationId: rec.id } })).toBe(ws.lines.flatMap((l) => l.lineIds).length);
     const next = await BK.startReconciliation(db, { bankAccountId: cash, statementDate: "2026-11-30", statementBalanceCents: ledger });
     expect(next.openingBalanceCents).toBe(ledger);
     await expect(BK.undoReconciliation(db, rec.id)).resolves.toBeUndefined();

@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 5 (Maintenance) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: Phase 6 (Accounting) complete.** See [Roadmap](#roadmap) for what each phase adds.
 
 ## Quick start
 
@@ -153,14 +153,30 @@ a business action and its accounting commit together or not at all.
 | Deposit received / refunded | Dr Deposit Cash · Cr Deposits Held / the reverse |
 | Returned payment | Reverses the payment (charges reopen) + optional NSF fee charge |
 | Void | Reversing entry; payments on a voided charge move to Prepaid Rent |
+| Bill | Dr expense line(s) (property/unit) · Cr A/P per property |
+| Bill payment | Dr A/P · Cr bank, split across the bill's properties |
+| Expense | Dr expense line(s) · Cr bank |
+| Vendor credit | Dr A/P · Cr the expense it refunds |
+| Bank deposit | Dr bank · Cr Undeposited Funds (one pair per property) |
+| Transfer | Dr destination bank · Cr source bank |
+| Categorized bank-feed line | Dr/Cr bank against the chosen category |
+| Owner distribution / contribution | Dr Owner Distributions · Cr bank / Dr bank · Cr Owner Contributions |
+| Management fee | A bill from the management company (Dr Management Fees · Cr A/P), paid from the property's bank |
 
 Balances are never stored. Lease balance = A/R − Prepaid Rent for that lease, computed from
 journal lines. Integration tests (and `pnpm ledger:check`) assert after every scenario that
-every entry balances, A/R equals the open charges, and Prepaid equals unapplied payments.
+every entry balances, A/R equals the open charges, Prepaid equals unapplied payments, and A/P
+equals open bills minus unapplied vendor credits.
+
+**Owner cash** (`src/server/accounting/owners.ts`): available to distribute per property =
+operating bank + Undeposited Funds − Prepaid Rent − open payables − the property's reserve, all
+read from journal lines carrying the property dimension. Security-deposit cash is never available.
+Each owner's share follows ownership % with largest-remainder rounding.
 
 **Nightly job** (`src/server/jobs/nightly.ts`): ends leases past move-out, posts recurring
 charges due through today (prorated: daily rate = monthly ÷ days in month), and assesses late
-fees from the settings resolver (grace, flat/percent, monthly max, optional daily accrual).
+fees from the settings resolver (grace, flat/percent, monthly max, optional daily accrual),
+creates due recurring bills, and charges last month's management fees.
 Both are idempotent via unique keys (`recurringChargeId + period`, `leaseId + key`).
 
 ### Settings inheritance
@@ -212,7 +228,7 @@ src/
     payments/        online payments, status machine, autopay, mock settlement
     portal/          tenant portal context (login → tenant), invites, read models
     maintenance/     tasks, auto-assign, vendors, inspections (+AI summary), bills from invoices
-    accounting/      chart of accounts (ledger arrives in Phase 3)
+    accounting/      payables, banking, reconciliation, owners & fees
     search/          global search provider registry
     actions/         server actions (uniform ActionResult)
   adapters/          third-party adapters; each has a working mock
@@ -231,7 +247,7 @@ API keys. Select an implementation with its env var.
 | AddressProvider | `ADDRESS_PROVIDER` | `mock` (offline autocomplete) | 2 ✅ |
 | PaymentsProvider | `PAYMENTS_PROVIDER` | `mock`, `stripe` (Connect Express + Financial Connections) | 4 ✅ |
 | InsuranceProvider | `INSURANCE_PROVIDER` | `mock` | 4 ✅ |
-| BankFeedProvider | `BANKFEED_PROVIDER` | `mock`, `plaid` | 6 |
+| BankFeedProvider | `BANKFEED_PROVIDER` | `mock` (mirrors the books with a 0–2 day lag + fees/interest), `plaid` (`PLAID_CLIENT_ID`, `PLAID_SECRET`); plus CSV import | 6 ✅ |
 | SmsProvider | `SMS_PROVIDER` | `mock`, `twilio` | 8 |
 | ScreeningProvider | `SCREENING_PROVIDER` | `mock` | 9 |
 | ESignProvider | `ESIGN_PROVIDER` | `builtin` | 9 |
@@ -252,11 +268,30 @@ provider's credentials. To add an implementation, implement the interface in
 | P3 | Leasing & ledger: chart of accounts, ledger service, lease wizard, recurring/late-fee jobs | ✅ |
 | P4 | Payments & tenant portal | ✅ |
 | P5 | Maintenance: tasks, requests, work orders, vendors, inspections | ✅ |
-| P6 | Accounting: bills, expenses, banking, reconciliation, distributions, management fees | |
+| P6 | Accounting: bills, expenses, banking, reconciliation, distributions, management fees | ✅ |
 | P7 | Reports + overview widgets | |
 | P8 | Owner portal, communications, announcements, SMS | |
 | P9 | Listings, showings, applications, screening, e-sign, renewals | |
 | P10 | Public API, webhooks, workflows, AI assistant and agents | |
+
+## Phase 6 demo script (Accounting)
+
+1. Sign in as `admin@example.com` (or `books@example.com`) → **Accounting → Bills**. Stat cards show
+   open, overdue and due-soon payables. Select a few open bills → **Pay selected** → one payment per bill.
+2. **Create new → Bill**: pick a vendor, then **Split across properties** (equal, by units, by sq ft
+   or custom %). Rounding always adds up. Toggle **Repeat monthly** to make it a recurring bill.
+3. **Banking**: balances come from the ledger. Undeposited funds lists payments not yet banked —
+   tick some and **Deposit**. Processor payouts deposit themselves.
+4. Open **Operating Cash → Sync bank feed**. Exact hits auto-match; ambiguous ones offer suggestions
+   (same amount, ±5 days). **Categorize** the monthly service fee to Bank Fees; **Import CSV** takes
+   any bank export (Date, Description, Amount or Debit/Credit).
+5. **Reconcile**: enter the statement date and ending balance, tick cleared items (those in the feed
+   are pre-ticked) — **Finish** unlocks at a $0.00 difference. Last month is already reconciled.
+6. **Owner distributions**: available cash per property and each owner's share; distribute selected
+   properties in one click, or a custom split; record contributions.
+7. **Settings → Management fees**: 8% of collected rent (min $50) with a flat override; **Accounting →
+   Management fees** shows monthly runs, each a bill auto-paid from the property's bank.
+8. `pnpm ledger:check` verifies every invariant, including A/P.
 
 ## Phase 5 demo script (Maintenance)
 

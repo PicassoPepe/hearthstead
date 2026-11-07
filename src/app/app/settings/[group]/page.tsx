@@ -22,7 +22,6 @@ const GROUPS: Record<string, { group: SettingGroup; description: string }> = {
 };
 
 const LATER: Record<string, { title: string; phase: number; description: string }> = {
-  "management-fees": { title: "Management fees", phase: 6, description: "Fee rules (percent or flat) per property, computed from collected income and posted as bills." },
   listings: { title: "Listings", phase: 9, description: "Listing defaults and syndication targets." },
   integrations: { title: "Integrations", phase: 10, description: "API keys, webhooks, sandbox mode and QuickBooks export." },
   security: { title: "Security", phase: 10, description: "Two-factor authentication, active sessions, and a support-access toggle that expires in 30 days." },

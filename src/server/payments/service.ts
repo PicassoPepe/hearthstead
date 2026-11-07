@@ -1,3 +1,4 @@
+import { createDeposit } from "@/server/accounting/banking";
 import { randomUUID } from "node:crypto";
 import type { PaymentStatus } from "@prisma/client";
 import type { ScopedDb } from "@/server/dal";
@@ -5,7 +6,7 @@ import { UserFacingError } from "@/server/action-result";
 import { audit } from "@/server/audit";
 import { getPaymentsProvider, PaymentDeclinedError } from "@/adapters/payments";
 import { getSettings } from "@/server/settings/service";
-import { addDays, diffDays, periodOf } from "@/lib/dates";
+import { addDays, diffDays, periodOf, toISODate } from "@/lib/dates";
 import { convenienceFee, TRANSITIONS, type MethodType } from "@/lib/payments";
 import { applicationOrder } from "@/server/leasing/leases";
 import * as M from "@/server/leasing/money";
@@ -125,6 +126,15 @@ export async function transition(db: ScopedDb, intentId: string, to: PaymentStat
     });
   }, { timeout: 30_000 });
   await addEvent(db, intent.id, to, note);
+  // A processor payout lands in the bank: move the payment out of Undeposited Funds automatically.
+  if (to === "PAID_OUT" && updated.leaseTransactionId) {
+    const t = await db.leaseTransaction.findFirst({ where: { id: updated.leaseTransactionId } });
+    if (t && !t.depositId && !t.voidedAt) {
+      const bankId = lease.propertyId ? (await db.property.findFirst({ where: { id: lease.propertyId } }))?.defaultOperatingAccountId : null;
+      const bank = bankId ?? (await db.account.findFirstOrThrow({ where: { systemKey: "OPERATING_CASH" } })).id;
+      await createDeposit(db, { bankAccountId: bank, date: toISODate(today), paymentIds: [t.id], memo: `Processor payout — ${intent.providerRef.slice(-8)}` }).catch(() => undefined);
+    }
+  }
   // A card payment that succeeds immediately also passes through PROCESSING in the timeline.
   return updated;
 }
