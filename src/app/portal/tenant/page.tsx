@@ -9,12 +9,16 @@ import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
 import { portalAnnouncements } from "@/server/comms/announcements";
 import { unreadPortalCount } from "@/server/comms/portal-queries";
+import { openSignatureFromPortal } from "@/server/actions/portal";
 
 export const metadata = { title: "Home" };
 
 export default async function PortalHome() {
   const ctx = await requirePortal();
-  const [h, news, unread] = await Promise.all([portalHome(ctx), portalAnnouncements(ctx.db, { tenantId: ctx.tenant.id }, 3), unreadPortalCount(ctx.db, { tenantId: ctx.tenant.id })]);
+  const [h, news, unread, toSign] = await Promise.all([
+    portalHome(ctx), portalAnnouncements(ctx.db, { tenantId: ctx.tenant.id }, 3), unreadPortalCount(ctx.db, { tenantId: ctx.tenant.id }),
+    ctx.tenant.email ? ctx.db.signatureRequest.findMany({ where: { status: "SENT", leaseId: { in: ctx.leases.map((l) => l.id) }, signers: { some: { email: ctx.tenant.email.toLowerCase(), status: { in: ["PENDING", "VIEWED"] } } } }, select: { id: true, title: true } }) : Promise.resolve([]),
+  ]);
   const first = ctx.tenant.name.split(" ")[0];
   if (!h) {
     return (
@@ -67,6 +71,13 @@ export default async function PortalHome() {
           </Card>
         </section>
       ) : null}
+
+      {toSign.map((r) => (
+        <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 border-primary/40 p-4">
+          <span className="text-sm"><span className="font-semibold">Ready to sign:</span> {r.title}</span>
+          <form action={openSignatureFromPortal.bind(null, r.id)}><Button size="sm" type="submit" disabled={ctx.preview}>Review &amp; sign</Button></form>
+        </Card>
+      ))}
 
       {unread ? (
         <Card className="flex items-center justify-between gap-3 border-primary/40 p-4">

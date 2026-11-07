@@ -209,3 +209,15 @@ export async function sendPortalMessage(body: string): Promise<ActionResult> {
     revalidatePath("/portal/tenant/messages");
   }, "Message sent");
 }
+
+/** Open a pending signature for the signed-in tenant: issue a fresh one-time link and go there. */
+export async function openSignatureFromPortal(requestId: string): Promise<void> {
+  const ctx = await getPortalContext();
+  if (!ctx || ctx.preview || !ctx.tenant.email) redirect("/portal/tenant");
+  const signer = await ctx.db.signer.findFirst({ where: { requestId, email: ctx.tenant.email.toLowerCase(), status: { in: ["PENDING", "VIEWED"] }, request: { status: "SENT", leaseId: { in: ctx.leases.map((l) => l.id) } } } });
+  if (!signer) redirect("/portal/tenant");
+  const { getESignProvider } = await import("@/adapters/esign");
+  const t = getESignProvider().issueToken();
+  await ctx.db.signer.update({ where: { id: signer.id }, data: { tokenHash: t.hash } });
+  redirect(`/sign/${t.token}`);
+}

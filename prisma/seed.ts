@@ -7,6 +7,7 @@
  *  - Phase 3: 50 leases with 18 months of ledger history (prisma/seed-leasing.ts)
  *  - Phase 4: mock processor, tenant portal login, autopay, online payments (prisma/seed-payments.ts)
  *  - Phase 5: vendors, tasks, work orders, inspection, bill (prisma/seed-maintenance.ts)
+ *  - Phase 9: listings, prospects, showings, applications, renewal (prisma/seed-funnel.ts)
  *  - Phase 8: owner portal login, conversations, announcements (prisma/seed-comms.ts)
  *  - Phase 6: deposits, bills, expenses, fees, distributions, bank feed, reconciliation (prisma/seed-accounting.ts)
  *
@@ -21,6 +22,7 @@ import { seedPayments } from "./seed-payments";
 import { seedMaintenance } from "./seed-maintenance";
 import { seedAccounting } from "./seed-accounting";
 import { seedComms } from "./seed-comms";
+import { seedFunnel } from "./seed-funnel";
 import { todayIn } from "../src/lib/dates";
 
 const db = new PrismaClient();
@@ -113,6 +115,9 @@ async function main(): Promise<void> {
   // Phase 8: owner portal login, conversations, announcements.
   const comms = await seedComms(process.env.DATABASE_ADMIN_URL!, process.env.DATABASE_URL!, orgId, users);
 
+  // Phase 9: listings, prospects, showings, applications, a renewal out for signature.
+  const funnel = await seedFunnel(process.env.DATABASE_URL!, orgId, users, todayIn("America/Chicago"));
+
   // Admin lands in Maple & Main by default.
   await db.user.update({ where: { id: users["admin@example.com"] }, data: { lastOrgId: orgId } });
 
@@ -125,6 +130,7 @@ async function main(): Promise<void> {
   console.log(`  Maintenance: ${maintenance.vendors} vendors, ${maintenance.tasks} tasks (vendor login: vendor@example.com → Ace Plumbing).`);
   console.log(`  Accounting: ${books.deposits} deposits, ${books.bills} bills, ${books.expenses} expenses, ${books.feeRuns} fee runs, ${books.distributions} distributions, ${books.feed} bank-feed lines.`);
   console.log(`  Communications: ${comms.conversations} conversations, ${comms.announcements} announcements. Owner portal: owner@example.com (Grace Harmon).`);
+  console.log(`  Leasing funnel: ${funnel.published} published listings (${funnel.listings} total), ${funnel.prospects} prospects, ${funnel.applications} applications. Public page: /l/maple-main`);
   console.log(`  Payments: ${payments.payments} online payments, ${payments.autopays} autopays. Tenant portal: tenant@example.com (${payments.demoTenant}).`);
 }
 
