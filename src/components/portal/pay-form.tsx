@@ -44,11 +44,7 @@ export function PayForm({ balanceCents, methods, allowPartial, passThroughCard, 
     );
   }
 
-  return (
-    <form
-      className="grid gap-4"
-      onSubmit={async (e) => {
-        e.preventDefault();
+  const submit = async () => {
         if (!method) return void toast.error("Choose how you'd like to pay");
         if (amount <= 0) return void toast.error("Enter an amount");
         setBusy(true);
@@ -60,8 +56,11 @@ export function PayForm({ balanceCents, methods, allowPartial, passThroughCard, 
         }
         setDone({ status: r.data.status, amount });
         router.refresh();
-      }}
-    >
+  };
+
+  // Not a <form>: the inline "add a method" form below can't be nested inside another form.
+  return (
+    <div className="grid gap-4">
       <fieldset className="grid gap-2">
         <legend className="mb-1 font-semibold">Amount</legend>
         {balanceCents > 0 ? (
@@ -107,9 +106,9 @@ export function PayForm({ balanceCents, methods, allowPartial, passThroughCard, 
         </Card>
       ) : null}
 
-      <Button type="submit" size="lg" loading={busy} disabled={readOnly || !method || amount <= 0 || (tooLittle && mode === "OTHER")}>
+      <Button type="button" size="lg" loading={busy} onClick={submit} disabled={readOnly || !method || amount <= 0 || (tooLittle && mode === "OTHER")}>
         {readOnly ? "Preview only" : `Pay ${formatMoney(amount + fee)}`}
       </Button>
-    </form>
+    </div>
   );
 }

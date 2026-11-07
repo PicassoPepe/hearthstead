@@ -93,7 +93,7 @@ test.describe("tenant portal (mobile)", () => {
     await signIn(staff, "admin@example.com", "/app/people/tenants");
     await staff.getByRole("textbox", { name: "Search Tenants" }).fill("tenant@example.com");
     await staff.getByRole("row").nth(1).getByRole("link").first().click();
-    await staff.getByRole("link", { name: /Oak Terrace|Maple|Willow|Harborview|Cedar|Lakeshore|Birch|Elm|Aspen/ }).first().waitFor();
+    await staff.waitForURL(/\/app\/people\/tenants\/c/);
     await staff.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: /Leases/ }).click();
     await staff.getByRole("table").getByRole("link").first().click();
     await staff.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Insurance" }).click();
@@ -135,7 +135,9 @@ test("staff: create a lease with a portal invite → tenant signs in by email li
   const tenant = await browser.newPage();
   await tenant.goto("/dev/outbox");
   await tenant.getByTestId("outbox-message").filter({ hasText: email }).filter({ hasText: "resident portal" }).first().getByTestId("outbox-link").first().click();
+  await tenant.waitForLoadState("networkidle"); // let the login form hydrate before submitting
   await tenant.getByRole("button", { name: "Email me a link" }).click();
+  await expect(tenant.getByRole("heading", { name: "Check your email" })).toBeVisible({ timeout: 30_000 });
   await tenant.goto("/dev/outbox");
   await tenant.getByTestId("outbox-message").filter({ hasText: email }).filter({ hasText: "sign-in link" }).first().getByTestId("outbox-link").first().click();
   await tenant.waitForURL("**/portal/tenant");
@@ -158,6 +160,7 @@ test("staff: create a lease with a portal invite → tenant signs in by email li
 
 test("staff preview portal as a tenant is read-only", async ({ page }) => {
   await signIn(page, "admin@example.com", "/app/people/tenants");
+  await page.getByRole("textbox", { name: "Search Tenants" }).fill("Elena Kim");
   await page.getByRole("link", { name: "Elena Kim" }).click();
   await page.getByRole("button", { name: "Preview portal as" }).click();
   await page.waitForURL("**/portal/tenant");
@@ -171,6 +174,7 @@ test("staff preview portal as a tenant is read-only", async ({ page }) => {
 test("bulk invite tenants to the portal from the tenants list", async ({ page }) => {
   await signIn(page, "admin@example.com", "/app/people/tenants");
   await page.getByRole("combobox", { name: "Filter by Portal statuses" }).selectOption("NOT_INVITED");
+  await page.getByRole("textbox", { name: "Search Tenants" }).fill("@example.com"); // tenants with an email address
   await page.getByRole("checkbox", { name: "Select row" }).nth(0).check();
   await page.getByRole("checkbox", { name: "Select row" }).nth(1).check();
   await page.getByRole("region", { name: "Bulk actions" }).getByRole("button", { name: "Invite to portal" }).click();

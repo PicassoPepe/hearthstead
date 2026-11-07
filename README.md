@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 3 (Leasing & ledger) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: Phase 4 (Payments & tenant portal) complete.** See [Roadmap](#roadmap) for what each phase adds.
 
 ## Quick start
 
@@ -54,6 +54,7 @@ Every demo user's password is `Demo1234!x`:
 | Vendor | `vendor@example.com` |
 | Read-only Owner | `owner@example.com` |
 | Admin of "Harbor Light Rentals" | `harbor@example.com` |
+| **Tenant (resident portal)** | `tenant@example.com` → http://localhost:3000/portal/tenant |
 
 Magic-link emails are captured by the mock email provider — open **http://localhost:3000/dev/outbox**.
 
@@ -95,6 +96,8 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 | `EMAIL_FROM` | `Hearthstead <no-reply@…>` | Sender |
 | `STORAGE_PROVIDER` | `local` | `local` writes to `./storage`; `s3` uses the vars below |
 | `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | — | MinIO: `http://localhost:9000`, `minio` / `minio12345` |
+| `PAYMENTS_PROVIDER` | `mock` | `mock` (offline, Stripe-test-mode behavior) or `stripe` |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | Only for `PAYMENTS_PROVIDER=stripe` |
 
 ## Architecture
 
@@ -206,6 +209,8 @@ src/
     ledger/          posting rules (pure), journal writer, proration/allocation/late-fee math
     leasing/         leases, lease money ops, late fees, read models
     jobs/            nightly job + all-org runner (BullMQ worker in scripts/worker.ts)
+    payments/        online payments, status machine, autopay, mock settlement
+    portal/          tenant portal context (login → tenant), invites, read models
     accounting/      chart of accounts (ledger arrives in Phase 3)
     search/          global search provider registry
     actions/         server actions (uniform ActionResult)
@@ -223,8 +228,8 @@ API keys. Select an implementation with its env var.
 | EmailProvider | `EMAIL_PROVIDER` | `mock`, `smtp` | 1 ✅ |
 | StorageProvider | `STORAGE_PROVIDER` | `local` (./storage), `s3` (MinIO / AWS) | 2 ✅ |
 | AddressProvider | `ADDRESS_PROVIDER` | `mock` (offline autocomplete) | 2 ✅ |
-| PaymentsProvider | `PAYMENTS_PROVIDER` | `mock`, `stripe` (Connect Express + Financial Connections) | 4 |
-| InsuranceProvider | `INSURANCE_PROVIDER` | `mock` | 4 |
+| PaymentsProvider | `PAYMENTS_PROVIDER` | `mock`, `stripe` (Connect Express + Financial Connections) | 4 ✅ |
+| InsuranceProvider | `INSURANCE_PROVIDER` | `mock` | 4 ✅ |
 | BankFeedProvider | `BANKFEED_PROVIDER` | `mock`, `plaid` | 6 |
 | SmsProvider | `SMS_PROVIDER` | `mock`, `twilio` | 8 |
 | ScreeningProvider | `SCREENING_PROVIDER` | `mock` | 9 |
@@ -244,13 +249,43 @@ provider's credentials. To add an implementation, implement the interface in
 | P1 | Foundation: repo, docker, auth, orgs, roles, app shell, design system, command palette, settings resolver | ✅ |
 | P2 | Rentals: properties, units, owners, property wizard, importer | ✅ |
 | P3 | Leasing & ledger: chart of accounts, ledger service, lease wizard, recurring/late-fee jobs | ✅ |
-| P4 | Payments & tenant portal | |
+| P4 | Payments & tenant portal | ✅ |
 | P5 | Maintenance: tasks, requests, work orders, vendors, inspections | |
 | P6 | Accounting: bills, expenses, banking, reconciliation, distributions, management fees | |
 | P7 | Reports + overview widgets | |
 | P8 | Owner portal, communications, announcements, SMS | |
 | P9 | Listings, showings, applications, screening, e-sign, renewals | |
 | P10 | Public API, webhooks, workflows, AI assistant and agents | |
+
+## Phase 4 demo script (Payments & tenant portal)
+
+Payments are connected on the **mock processor** (no keys), which behaves like Stripe test mode:
+
+| Method | Test values | Behavior |
+| --- | --- | --- |
+| Card | `4242 4242 4242 4242`, any future expiry, any CVC | Succeeds instantly |
+| Card | `4000 0000 0000 0002` | Declined |
+| Bank (ACH) | routing `110000000`, any account number | Processing → succeeds after 2 days → paid out 2 days later |
+| Bank (ACH) | account number ending `0002` | Fails at settlement (NSF) — the ledger payment is reversed |
+
+1. Open http://localhost:3000/login?portal=1 on a phone-sized window; sign in as `tenant@example.com`
+   (password tab, `Demo1234!x`) or use the email link. Home shows the balance and **Pay now**.
+2. **Pay** the full balance by bank → "Payment submitted"; home now shows $0.00. Add a card, pay
+   $100 and see the 2.9% + 30¢ card fee (pass-through is a setting; ACH is free by default).
+3. **Autopay**: pick a day; the schedule is spelled out. **Insurance**: upload a declarations page.
+4. As `admin@example.com`: **Accounting → Incoming payments** shows the timeline
+   (initiated → processing → succeeded → paid out); expand a row and use *Simulate: clears* or
+   *Simulate: ACH return* (the return reverses the ledger payment). *Run mock settlement* does
+   what the nightly job does.
+5. **People → Tenants**: select rows → *Invite to portal* (emails in `/dev/outbox`).
+   Open a tenant → **Preview portal as** (read-only, with a banner).
+6. **Settings → Payments**: processor status, fee pass-through, payment application order.
+
+**Going live with Stripe:** set `PAYMENTS_PROVIDER=stripe`, `STRIPE_SECRET_KEY` and
+`STRIPE_WEBHOOK_SECRET`, then *Settings → Payments → Connect payments* sends you through Stripe
+Express onboarding. In Stripe mode card and bank details must be tokenized in the browser with
+Stripe Elements / Financial Connections (the adapter only accepts `pm_…`/`fca_…` ids); the
+mock-mode forms post raw test numbers to the server and keep only the last 4 digits.
 
 ## Phase 3 demo script (Leasing & ledger)
 

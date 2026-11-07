@@ -77,6 +77,24 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Charges/credits require Leasing → edit; payments, deposits, refunds and voids require
   Accounting → edit.
 
+**Phase 4 (Payments & tenant portal)**
+- Online payments post to the ledger as soon as money is in flight (card: succeeded; ACH:
+  processing), so the tenant's balance updates immediately. A later ACH failure is posted as a
+  returned payment (no NSF fee by default) — the same path as a bounced check.
+- The convenience fee (pass-through, per setting) is collected by the processor and never posted
+  to the tenant's ledger; rent income is never reduced by processing costs.
+- Processor pricing for pass-through: card 2.9% + 30¢, ACH 0.8% capped at $5.
+- One processor account per organization (Stripe Connect Express); payouts go to the account's
+  bank. Per-property payout routing can be added with separate connected accounts later.
+- Tenant logins are ordinary Users linked to Tenant records (TenantUser), so the same Auth.js
+  sign-in works; a login with no staff membership is routed to the portal. Portal queries are
+  always filtered to the signed-in tenant's leases, on top of org-level RLS.
+- Staff "Preview portal as" is read-only (every portal write is refused) and audit-logged.
+- Autopay runs in the nightly job on/after the chosen day, at most once per month, for the
+  full balance (or a fixed amount); nothing is charged when nothing is due.
+- Maintenance requests (Phase 5) and messages/announcements (Phase 8) appear in the portal as
+  placeholders until those phases.
+
 **Not yet done (by design)**
 - 2FA, session management and support-access toggle (Settings → Security) — Phase 10.
 - Per-member property scoping is stored and enforced by `canAccessProperty()` but has no UI

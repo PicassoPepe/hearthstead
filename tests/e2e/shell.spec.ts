@@ -43,8 +43,8 @@ test("command palette jumps to a settings page by keyword", async ({ page }) => 
 test("Create new → User opens a modal route over the current page and invites", async ({ page }) => {
   await page.goto("/app/settings/users");
   await page.getByRole("button", { name: "Create new" }).click();
-  await page.getByRole("menuitem", { name: "User" }).click();
-  await expect(page).toHaveURL(/\/app\/new\/user$/);
+  await page.getByRole("menuitem", { name: "User", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/new\/user$/, { timeout: 30_000 });
   const dialog = page.getByRole("dialog", { name: "New user" });
   await expect(dialog).toBeVisible();
   // The page underneath is still rendered (and correctly hidden from assistive tech while the modal is open).
