@@ -78,9 +78,9 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | ESLint, `tsc --noEmit`, Prettier |
 | `pnpm db:migrate` | `prisma migrate deploy` + apply row-level security |
 | `pnpm db:seed` / `pnpm db:reset` | Reseed demo data / drop everything and reseed |
-| `pnpm worker` | BullMQ worker: runs the nightly rent + late-fee job at 02:15 (needs Redis) |
+| `pnpm worker` | BullMQ worker (needs Redis): nightly job at 02:15 (end leases, rent, late fees, payments, autopay, recurring bills, management fees, auto-delist, renewal expiry) and a minutely job (scheduled announcements, webhook retries, AI agents). Without it, those catch up when you open the relevant page or use the "run now" buttons. |
 | `pnpm jobs:nightly [YYYY-MM-DD]` | Run the nightly job once, without Redis (idempotent) |
-| `pnpm ledger:check` | Verify ledger invariants for every org |
+| `pnpm ledger:check` | Verify ledger invariants for every org (A/R, prepaid, A/P, balanced entries) |
 
 ## Environment variables
 
