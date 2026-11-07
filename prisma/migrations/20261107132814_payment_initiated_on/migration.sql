@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "PaymentIntent" ADD COLUMN     "initiatedOn" DATE NOT NULL DEFAULT CURRENT_TIMESTAMP;

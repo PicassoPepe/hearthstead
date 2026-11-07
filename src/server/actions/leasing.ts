@@ -33,6 +33,11 @@ export async function createLease(input: LeaseWizardInput): Promise<ActionResult
     const ctx = await requirePermission("leasing", "edit");
     if (!canAccessProperty(ctx.membership.propertyScope, input.propertyId)) throw new UserFacingError("You don't have access to that property.");
     const r = await L.createLease(ctx.db, input, await orgToday(ctx));
+    if (input.portalInvite && (input.status ?? "ACTIVE") === "ACTIVE") {
+      const { inviteTenantToPortal } = await import("@/server/portal/invite");
+      const tenants = await ctx.db.leaseTenant.findMany({ where: { leaseId: r.id }, include: { tenant: true } });
+      for (const t of tenants) if (t.tenant.email && t.role !== "COSIGNER") await inviteTenantToPortal(ctx.db, t.tenantId, ctx.org.name).catch(() => undefined);
+    }
     refresh();
     return r;
   }, "Lease created");

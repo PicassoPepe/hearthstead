@@ -61,6 +61,7 @@ model User {
   accounts    AuthAccount[]
   sessions    Session[]
   memberships Membership[]
+  tenantLinks TenantUser[]
 }
 
 enum MembershipStatus {
@@ -469,7 +470,9 @@ model Tenant {
   createdById    String?
   deletedAt      DateTime?
 
-  leases LeaseTenant[]
+  leases         LeaseTenant[]
+  users          TenantUser[]
+  paymentMethods PaymentMethod[]
 
   @@index([organizationId, deletedAt])
 }
@@ -713,4 +716,184 @@ model JournalLine {
   @@index([organizationId, accountId])
   @@index([organizationId, leaseId])
   @@index([organizationId, propertyId])
+}
+
+// ─── Phase 4: Payments & tenant portal ─────────────────────────────────────
+
+/**
+ * Links a login (User) to a Tenant record for the tenant portal.
+ */
+model TenantUser {
+  id             String    @id @default(cuid())
+  organizationId String
+  tenantId       String
+  userId         String
+  invitedAt      DateTime  @default(now())
+  acceptedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+}
+
+/**
+ * The organization's account with the payments processor (Stripe Connect Express / mock).
+ */
+model ProcessorAccount {
+  id             String    @id @default(cuid())
+  organizationId String    @unique
+  provider       String // mock | stripe
+  externalId     String
+  /// PENDING | ACTIVE | RESTRICTED
+  status         String    @default("PENDING")
+  chargesEnabled Boolean   @default(false)
+  payoutsEnabled Boolean   @default(false)
+  payoutBankMask String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+}
+
+model PaymentMethod {
+  id             String    @id @default(cuid())
+  organizationId String
+  tenantId       String
+  /// CARD | ACH
+  type           String
+  brand          String?
+  bankName       String?
+  last4          String
+  expMonth       Int?
+  expYear        Int?
+  /// ACH accounts must be verified (Financial Connections / mock) before use.
+  verified       Boolean   @default(false)
+  isDefault      Boolean   @default(false)
+  providerRef    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, tenantId])
+}
+
+enum PaymentStatus {
+  INITIATED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  PAID_OUT
+  CANCELED
+}
+
+model PaymentIntent {
+  id                 String        @id @default(cuid())
+  organizationId     String
+  leaseId            String
+  tenantId           String?
+  paymentMethodId    String?
+  /// CARD | ACH
+  methodType         String
+  /// Applied to the tenant's balance.
+  amountCents        Int
+  /// Convenience fee charged on top (pass-through), never posted to the tenant ledger.
+  feeCents           Int           @default(0)
+  status             PaymentStatus @default(INITIATED)
+  provider           String
+  providerRef        String        @unique
+  leaseTransactionId String?       @unique
+  failureReason      String?
+  /// AUTOPAY | PORTAL | STAFF
+  origin             String        @default("PORTAL")
+  expectedPayoutDate DateTime?     @db.Date
+  /// Business date the payment was made (org timezone) — drives settlement timing.
+  initiatedOn        DateTime      @default(now()) @db.Date
+  idempotencyKey     String?       @unique
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  createdById        String?
+  deletedAt          DateTime?
+
+  events PaymentEvent[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, leaseId])
+}
+
+model PaymentEvent {
+  id              String        @id @default(cuid())
+  organizationId  String
+  paymentIntentId String
+  status          PaymentStatus
+  note            String?
+  createdAt       DateTime      @default(now())
+
+  paymentIntent PaymentIntent @relation(fields: [paymentIntentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentIntentId])
+}
+
+model Autopay {
+  id              String    @id @default(cuid())
+  organizationId  String
+  leaseId         String
+  tenantId        String
+  paymentMethodId String
+  /// Day of the month the payment runs (1-28).
+  dayOfMonth      Int
+  /// FULL_BALANCE | FIXED
+  amountMode      String    @default("FULL_BALANCE")
+  fixedCents      Int?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     String?
+  deletedAt       DateTime?
+
+  @@unique([leaseId, tenantId])
+}
+
+/// Idempotency for autopay: one run per autopay per period.
+model AutopayRun {
+  id              String   @id @default(cuid())
+  organizationId  String
+  autopayId       String
+  period          String
+  paymentIntentId String?
+  note            String?
+  createdAt       DateTime @default(now())
+
+  @@unique([autopayId, period])
+}
+
+model InsurancePolicy {
+  id             String    @id @default(cuid())
+  organizationId String
+  leaseId        String
+  tenantId       String?
+  carrier        String
+  policyNumber   String
+  liabilityCents Int?
+  effectiveDate  DateTime  @db.Date
+  expiresOn      DateTime  @db.Date
+  /// UPLOADED | PARTNER
+  source         String    @default("UPLOADED")
+  attachmentId   String?
+  /// PENDING_REVIEW | VERIFIED | EXPIRED
+  status         String    @default("PENDING_REVIEW")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@index([organizationId, leaseId])
 }
