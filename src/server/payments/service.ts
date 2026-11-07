@@ -1,3 +1,4 @@
+import { emit } from "@/server/platform/events";
 import { createDeposit } from "@/server/accounting/banking";
 import { randomUUID } from "node:crypto";
 import type { PaymentStatus } from "@prisma/client";
@@ -126,6 +127,10 @@ export async function transition(db: ScopedDb, intentId: string, to: PaymentStat
     });
   }, { timeout: 30_000 });
   await addEvent(db, intent.id, to, note);
+  if (to === "SUCCEEDED" || to === "FAILED") {
+    const primary = await db.leaseTenant.findFirst({ where: { leaseId: intent.leaseId, role: "PRIMARY" } });
+    await emit(db, to === "SUCCEEDED" ? "payment.succeeded" : "payment.failed", { paymentIntentId: intent.id, leaseId: intent.leaseId, tenantId: primary?.tenantId ?? null, propertyId: lease.propertyId, amountCents: intent.amountCents, method: intent.methodType, origin: intent.origin, failureReason: to === "FAILED" ? (note ?? "Payment failed") : null });
+  }
   // A processor payout lands in the bank: move the payment out of Undeposited Funds automatically.
   if (to === "PAID_OUT" && updated.leaseTransactionId) {
     const t = await db.leaseTransaction.findFirst({ where: { id: updated.leaseTransactionId } });

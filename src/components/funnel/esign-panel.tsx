@@ -9,7 +9,7 @@ export async function ESignPanel({ ctx, leaseId, canEdit }: { ctx: AppContext; l
   if (canEdit) await ensureDefaultTemplates(ctx.db);
   const [requests, templates] = await Promise.all([
     ctx.db.signatureRequest.findMany({ where: { leaseId }, orderBy: { createdAt: "desc" }, include: { signers: { orderBy: { order: "asc" } } } }),
-    ctx.db.documentTemplate.findMany({ where: { deletedAt: null, kind: { in: ["LEASE", "NOTICE", "OTHER"] } }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    ctx.db.documentTemplate.findMany({ where: { deletedAt: null, kind: { in: ["LEASE", "NOTICE", "OTHER"] } }, orderBy: [{ kind: "asc" }, { name: "asc" }], select: { id: true, name: true } }), // LEASE templates first
   ]);
   return (
     <section aria-labelledby="esign-h" className="mb-4 rounded-card border border-border bg-surface p-4 shadow-card">

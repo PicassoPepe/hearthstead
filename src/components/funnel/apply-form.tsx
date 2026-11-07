@@ -18,7 +18,7 @@ export function ApplyForm({ orgSlug, slug, initial, initialStep, fee, feePaid }:
   const [data, setData] = React.useState<ApplicationData>(initial);
   const [step, setStep] = React.useState(Math.min(initialStep, 4));
   const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [saved, setSaved] = React.useState<"idle" | "saving" | "saved">("idle");
+  const [saved, setSaved] = React.useState<"idle" | "pending" | "saving" | "saved">("idle");
   const [paid, setPaid] = React.useState(feePaid);
   const [card, setCard] = React.useState({ number: "", exp: "", cvc: "" });
   const [consent, setConsent] = React.useState(false);
@@ -35,6 +35,7 @@ export function ApplyForm({ orgSlug, slug, initial, initialStep, fee, feePaid }:
   const set = (section: Section, key: string, value: string) => {
     const next = { ...data, [section]: { ...data[section], [key]: value } } as ApplicationData;
     setData(next);
+    setSaved("pending");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void persist(next, step), 800);
   };
@@ -66,7 +67,7 @@ export function ApplyForm({ orgSlug, slug, initial, initialStep, fee, feePaid }:
       <div className="rounded-card border border-border bg-surface p-5 shadow-card">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h2 ref={heading} tabIndex={-1} className="text-lg font-semibold outline-none">Step {step + 1} of {STEPS.length}: {STEPS[step]}</h2>
-          <span role="status" className="text-xs text-muted-foreground">{saved === "saving" ? "Saving…" : saved === "saved" ? "Saved" : ""}</span>
+          <span role="status" className="text-xs text-muted-foreground">{saved === "pending" ? "Unsaved changes" : saved === "saving" ? "Saving…" : saved === "saved" ? "Saved" : ""}</span>
         </div>
         {step === 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">

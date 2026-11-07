@@ -5,15 +5,52 @@
 export type LlmMessage = { role: "user" | "assistant"; content: string };
 export type LlmRequest = { system?: string; messages: LlmMessage[]; maxTokens?: number; purpose: string };
 
+export type LlmTool = { name: string; description: string; input_schema: Record<string, unknown> };
+export type ChatTurn =
+  | { role: "user"; content: string }
+  | { role: "assistant"; content: string; toolCalls?: { id: string; name: string; input: Record<string, unknown> }[] }
+  | { role: "tool"; toolCallId: string; name: string; content: string };
+export type ChatResult = { text: string; toolCalls: { id: string; name: string; input: Record<string, unknown> }[] };
+
 export interface LlmProvider {
   readonly name: string;
   readonly model: string;
   complete(req: LlmRequest): Promise<string>;
+  /** Tool-using chat turn (the assistant). */
+  chat(req: { system: string; turns: ChatTurn[]; tools: LlmTool[]; maxTokens?: number }): Promise<ChatResult>;
 }
 
 class MockLlmProvider implements LlmProvider {
   readonly name = "mock";
   readonly model = "mock";
+  /** Deterministic tool routing so the assistant is demoable offline. */
+  async chat(req: { system: string; turns: ChatTurn[]; tools: LlmTool[] }): Promise<ChatResult> {
+    const last = req.turns.at(-1)!;
+    if (last.role === "tool") {
+      // Summarize the most recent tool results for the user.
+      const results = [];
+      for (let i = req.turns.length - 1; i >= 0 && req.turns[i]!.role === "tool"; i--) results.unshift(req.turns[i] as Extract<ChatTurn, { role: "tool" }>);
+      return { text: results.map((r) => r.content).join("\n\n"), toolCalls: [] };
+    }
+    const q = last.content.trim();
+    const lower = q.toLowerCase();
+    const call = (name: string, input: Record<string, unknown>) => ({ text: "", toolCalls: [{ id: `call_${name}_${Date.now().toString(36)}`, name, input }] });
+    const nameAfter = (re: RegExp) => q.match(re)?.[1]?.replace(/[?.!,]+$/, "").trim();
+    if (/\b(who owes|delinquen|behind on rent|late on rent|past due)\b/.test(lower)) return call("list_delinquent", {});
+    if (/\bvacan/.test(lower)) return call("list_vacancies", {});
+    if (/\b(open|pending) (tasks|work orders|requests)|maintenance backlog/.test(lower)) return call("list_open_tasks", {});
+    if (/\b(p&l|profit|net income|income this|how much did we (make|collect))/.test(lower)) return call("report_summary", { report: "profit-loss" });
+    if (/\b(rent roll|occupancy)\b/.test(lower)) return call("report_summary", { report: "rent-roll" });
+    const bal = nameAfter(/balance (?:for|of) (.+)$/i) ?? nameAfter(/(?:how much does|what does) (.+?) owe/i);
+    if (bal) return call("get_tenant_balance", { name: bal });
+    const task = q.match(/(?:create|add|make) (?:a )?(?:task|work order)(?: to| for)? (.+)$/i)?.[1];
+    if (task) return call("create_task", { title: task.replace(/^to /i, "").replace(/^./, (c) => c.toUpperCase()), priority: /urgent|asap|emergency/i.test(task) ? "URGENT" : "NORMAL" });
+    const msg = q.match(/(?:text|message|send (?:a )?(?:text|message) to) ([A-Z][\w'-]+(?: [A-Z][\w'-]+)?)[,:]? (?:saying |that )?(.+)$/);
+    if (msg) return call("send_message", { name: msg[1], body: msg[2], channel: /\btext\b/i.test(q) ? "SMS" : "PORTAL" });
+    const find = nameAfter(/(?:find|look up|search for|show me) (.+)$/i);
+    if (find) return call("search", { query: find });
+    return { text: "I can look things up and take actions for you. Try: “Who owes rent?”, “What's the balance for Riley Garcia?”, “Show vacancies”, “Create a task to replace the hallway bulb at Maple Court”, or “Text Riley Garcia that the plumber is on the way”.", toolCalls: [] };
+  }
   /** Purpose-specific canned behavior so features are demoable offline. */
   async complete(req: LlmRequest): Promise<string> {
     const input = req.messages.at(-1)?.content ?? "";
@@ -71,7 +108,7 @@ class MockLlmProvider implements LlmProvider {
 
 class AnthropicProvider implements LlmProvider {
   readonly name = "anthropic";
-  constructor(private readonly apiKey: string, readonly model: string) {}
+  constructor(readonly apiKey: string, readonly model: string) {}
   async complete(req: LlmRequest): Promise<string> {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -82,6 +119,31 @@ class AnthropicProvider implements LlmProvider {
     const json = (await res.json()) as { content: { type: string; text?: string }[] };
     return json.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("").trim();
   }
+  async chat(req: { system: string; turns: ChatTurn[]; tools: LlmTool[]; maxTokens?: number }): Promise<ChatResult> {
+    const messages: { role: "user" | "assistant"; content: unknown }[] = [];
+    for (const t of req.turns) {
+      if (t.role === "user") messages.push({ role: "user", content: t.content });
+      else if (t.role === "assistant") messages.push({ role: "assistant", content: [...(t.content ? [{ type: "text", text: t.content }] : []), ...(t.toolCalls ?? []).map((c) => ({ type: "tool_use", id: c.id, name: c.name, input: c.input }))] });
+      else {
+        const prev = messages.at(-1);
+        const block = { type: "tool_result", tool_use_id: t.toolCallId, content: t.content };
+        if (prev?.role === "user" && Array.isArray(prev.content)) (prev.content as unknown[]).push(block);
+        else messages.push({ role: "user", content: [block] });
+      }
+    }
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": this.apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: this.model, max_tokens: req.maxTokens ?? 1024, system: req.system, tools: req.tools, messages }),
+    });
+    if (!res.ok) throw new Error(`LLM request failed (${res.status})`);
+    const json = (await res.json()) as { content: ({ type: "text"; text: string } | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> })[] };
+    return {
+      text: json.content.filter((c): c is { type: "text"; text: string } => c.type === "text").map((c) => c.text).join("").trim(),
+      toolCalls: json.content.filter((c): c is { type: "tool_use"; id: string; name: string; input: Record<string, unknown> } => c.type === "tool_use").map((c) => ({ id: c.id, name: c.name, input: c.input })),
+    };
+  }
+
 }
 
 let provider: LlmProvider | undefined;

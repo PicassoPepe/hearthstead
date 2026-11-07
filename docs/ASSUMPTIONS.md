@@ -171,6 +171,26 @@ Decisions made without asking, per the brief. Each can be changed later.
 - AI drafts and rewrites go through `LlmProvider`, are labeled in the UI and audit-logged, and are
   never sent without a person pressing Send.
 
+**Phase 9 (Leasing funnel)**
+- One active listing per unit; publishing requires a description and a unit without an active
+  lease. Public pages live at `/l/<org-slug>` (no login); the org is resolved by slug and every
+  query then runs through the org-scoped client.
+- Self-scheduled showings: hourly slots 10am–6pm (org timezone) over the next 7 days, minus booked
+  ones. Staff can schedule any time; overlapping showings for the same listing are refused.
+- Applicants don't create accounts: a random resume token lives in an httpOnly cookie and only its
+  SHA-256 is stored; starting again with the same email resumes the draft. One applicant per
+  application (co-applicants apply separately and are linked by staff when creating the lease).
+- The application fee is charged through PaymentsProvider and posted Dr Undeposited Funds /
+  Cr Application Fee Income with the property dimension. Fees are non-refundable.
+- Screening runs on submit with recorded consent (time + IP). Recommendations are advisory; staff
+  decide. Declines always send an adverse action notice with the reasons and FCRA rights.
+- E-signature (built-in): the rendered document is frozen and hashed when sent; signers type their
+  exact name and tick consent; tenants sign first and the sender countersigns (fresh link emailed
+  when it's their turn). Completion stores an HTML copy plus certificate on the lease.
+- Renewals: suggested rent = max(current + 3%, market) rounded to $5. Accepting creates a new lease
+  starting the day after the current one ends (same tenants and charges, new rent) and sets the old
+  lease's move-out to its end date. The security deposit stays on the original lease's ledger.
+
 **Not yet done (by design)**
 - 2FA, session management and support-access toggle (Settings → Security) — Phase 10.
 - Per-member property scoping is stored and enforced by `canAccessProperty()` but has no UI

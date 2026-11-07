@@ -13,11 +13,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loginWithPassword, requestMagicLink } from "@/server/actions/auth";
 
-const pwSchema = z.object({ email: z.email("Enter a valid email"), password: z.string().min(1, "Enter your password") });
+const pwSchema = z.object({ email: z.email("Enter a valid email"), password: z.string().min(1, "Enter your password"), code: z.string().optional() });
 const linkSchema = z.object({ email: z.email("Enter a valid email") });
 
 export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, error }: { defaultEmail: string; invited: boolean; portal?: boolean; callbackUrl: string; error?: string }) {
   const [serverError, setServerError] = React.useState<string | undefined>(error);
+  const [needCode, setNeedCode] = React.useState(false);
   const pw = useForm<z.infer<typeof pwSchema>>({ resolver: zodResolver(pwSchema), defaultValues: { email: defaultEmail, password: "" } });
   const link = useForm<z.infer<typeof linkSchema>>({ resolver: zodResolver(linkSchema), defaultValues: { email: defaultEmail } });
 
@@ -49,7 +50,10 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
                 onSubmit={pw.handleSubmit(async (v) => {
                   setServerError(undefined);
                   const r = await loginWithPassword(v, callbackUrl);
-                  if (r && !r.ok) setServerError(r.error);
+                  if (r && !r.ok) {
+                    setServerError(r.error);
+                    if (r.fieldErrors?.code) setNeedCode(true);
+                  }
                 })}
               >
                 <Field label="Email" error={pw.formState.errors.email?.message} required>
@@ -58,7 +62,12 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
                 <Field label="Password" error={pw.formState.errors.password?.message} required>
                   {(a) => <Input type="password" autoComplete="current-password" {...a} {...pw.register("password")} />}
                 </Field>
-                <Button type="submit" size="lg" loading={pw.formState.isSubmitting}>Sign in</Button>
+                {needCode ? (
+                  <Field label="Authentication code" description="6 digits from your authenticator app, or a recovery code." required>
+                    {(a) => <Input autoComplete="one-time-code" inputMode="numeric" autoFocus {...a} {...pw.register("code")} />}
+                  </Field>
+                ) : null}
+                <Button type="submit" size="lg" loading={pw.formState.isSubmitting}>{needCode ? "Verify and sign in" : "Sign in"}</Button>
               </form>
             </TabsContent>
 

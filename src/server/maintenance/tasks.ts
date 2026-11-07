@@ -1,3 +1,4 @@
+import { emit } from "@/server/platform/events";
 import type { Prisma, TaskStatus } from "@prisma/client";
 import type { ScopedDb } from "@/server/dal";
 import { UserFacingError } from "@/server/action-result";
@@ -116,6 +117,7 @@ export async function createTask(db: ScopedDb, raw: TaskInput, actor: TaskActor)
         if (v.notifyVendor && (await notifyVendor(db, task.id))) await addActivity(db, task.id, actor, "VENDOR", `Work order emailed to ${vendor.email}`);
       }
       await audit(db, { action: "task.created", entityType: "Task", entityId: task.id, actorType: actor.kind === "SYSTEM" ? "SYSTEM" : "USER", after: { number, type: v.type, title: v.title } });
+      await emit(db, "task.created", { taskId: task.id, number, type: v.type, title: v.title, status: task.status, priority: v.priority, category: v.category ?? null, propertyId, tenantId: v.tenantId || null, source: task.source });
       return { id: task.id, number };
     } catch (e) {
       if (attempt < 3 && typeof e === "object" && e && "code" in e && (e as { code: string }).code === "P2002") continue; // number race
@@ -136,6 +138,7 @@ export async function setTaskStatus(db: ScopedDb, taskId: string, status: TaskSt
   await db.task.update({ where: { id: taskId }, data: { status, completedAt: status === "COMPLETED" ? new Date() : null } });
   await addActivity(db, taskId, actor, "STATUS", `Status: ${STATUS_LABEL[t.status]} → ${STATUS_LABEL[status]}`, t.type === "TENANT_REQUEST");
   await audit(db, { action: "task.status_changed", entityType: "Task", entityId: taskId, before: { status: t.status }, after: { status } });
+  await emit(db, "task.updated", { taskId, number: t.number, type: t.type, title: t.title, status, previousStatus: t.status, priority: t.priority, propertyId: t.propertyId, tenantId: t.tenantId, source: actor.kind === "SYSTEM" && actor.name === "Automation" ? "WORKFLOW" : t.source });
   if (t.tenantId && t.type === "TENANT_REQUEST") await notifyTenant(db, t.id, `Update on your request: ${PUBLIC_STATUS_TEXT[status]}`);
 }
 
@@ -191,6 +194,7 @@ export async function updateTask(db: ScopedDb, taskId: string, patch: { priority
     await addActivity(db, taskId, actor, "ASSIGNED", ids.length ? `Assigned to ${assigned.map((m) => m.user.name ?? m.user.email).join(", ")}` : "Unassigned");
   }
   await audit(db, { action: "task.updated", entityType: "Task", entityId: taskId, after: patch });
+  await emit(db, "task.updated", { taskId, number: t.number, type: t.type, title: patch.title ?? t.title, status: t.status, priority: patch.priority ?? t.priority, propertyId: t.propertyId, tenantId: t.tenantId, changes: Object.keys(patch) });
 }
 
 export async function commentOnTask(db: ScopedDb, taskId: string, body: string, isPublic: boolean, actor: TaskActor) {

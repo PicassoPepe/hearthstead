@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
+import { emit } from "@/server/platform/events";
 import type { ScopedDb } from "@/server/dal";
 import { UserFacingError } from "@/server/action-result";
 import { audit } from "@/server/audit";
@@ -69,7 +70,8 @@ export async function saveApplicationStep(db: ScopedDb, id: string, step: number
   await db.application.update({
     where: { id },
     data: {
-      data: merged, step: Math.max(a.step, Math.min(step, APPLICATION_STEPS.length - 1)), lastSavedAt: new Date(),
+      // Only move forward once the previous step is complete, so a resume never skips required fields.
+      data: merged, step: step > a.step && Object.keys(stepErrors(step - 1, merged)).length === 0 ? Math.min(step, APPLICATION_STEPS.length - 1) : a.step, lastSavedAt: new Date(),
       firstName: merged.about.firstName ?? a.firstName, lastName: merged.about.lastName ?? a.lastName, phone: merged.about.phone ?? a.phone,
       desiredMoveIn: merged.about.desiredMoveIn && /^\d{4}-\d{2}-\d{2}$/.test(merged.about.desiredMoveIn) ? parseISODate(merged.about.desiredMoveIn) : a.desiredMoveIn,
     },
@@ -157,6 +159,7 @@ export async function submitApplication(db: ScopedDb, id: string, consent: { ip:
   const org = await db.organization.findFirst({ where: { id: db.ctx.orgId } });
   await getEmailProvider().send({ to: a.email, organizationId: db.ctx.orgId, subject: `We received your application #${a.number}`, text: `Thanks for applying${listing ? ` for ${listing.title}` : ""}. ${org?.name ?? "We"} will review it and get back to you soon.`, html: `<p style="font-family:system-ui,sans-serif">Thanks for applying${listing ? ` for <strong>${listing.title}</strong>` : ""}. ${org?.name ?? "We"} will review it and get back to you soon.</p>` });
   await audit(db, { action: "application.submitted", entityType: "Application", entityId: id, actorType: "SYSTEM", after: { recommendation: result.recommendation } });
+  await emit(db, "application.submitted", { applicationId: id, number: a.number, email: a.email, firstName: d.about.firstName ?? "", lastName: d.about.lastName ?? "", propertyId: a.propertyId, unitId: a.unitId, listingId: a.listingId, recommendation: result.recommendation });
   return result;
 }
 

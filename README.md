@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 8 (Owner portal & communications) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: Phase 9 (Leasing funnel) complete.** See [Roadmap](#roadmap) for what each phase adds.
 
 ## Quick start
 
@@ -253,9 +253,9 @@ API keys. Select an implementation with its env var.
 | InsuranceProvider | `INSURANCE_PROVIDER` | `mock` | 4 ✅ |
 | BankFeedProvider | `BANKFEED_PROVIDER` | `mock` (mirrors the books with a 0–2 day lag + fees/interest), `plaid` (`PLAID_CLIENT_ID`, `PLAID_SECRET`); plus CSV import | 6 ✅ |
 | SmsProvider | `SMS_PROVIDER` | `mock` (inspect at `/dev/sms`, simulate replies), `twilio` (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`; inbound webhook `/api/webhooks/sms`, signature-checked) | 8 ✅ |
-| ScreeningProvider | `SCREENING_PROVIDER` | `mock` | 9 |
-| ESignProvider | `ESIGN_PROVIDER` | `builtin` | 9 |
-| ListingFeedProvider | `LISTINGFEED_PROVIDER` | `file` (XML/JSON feed) | 9 |
+| ScreeningProvider | `SCREENING_PROVIDER` | `mock` (deterministic: SSN last-4 `0000` → no credit file, `6666` → eviction, `1313` → criminal record) | 9 ✅ |
+| ESignProvider | `ESIGN_PROVIDER` | `builtin` (hashed one-time links, frozen + SHA-256-hashed document, audit certificate) | 9 ✅ |
+| ListingFeedProvider | `LISTINGFEED_PROVIDER` | `file` — `/api/listings/feed/<org-slug>` (XML, `?format=json`) | 9 ✅ |
 | AccountingExportProvider | `ACCOUNTING_EXPORT_PROVIDER` | `csv`, `quickbooks` | 10 |
 | LlmProvider | `LLM_PROVIDER` | `mock`, `anthropic` (`ANTHROPIC_API_KEY`, `LLM_MODEL`, default `claude-sonnet-5-5`) | 5 ✅ (more in 10) |
 
@@ -275,8 +275,31 @@ provider's credentials. To add an implementation, implement the interface in
 | P6 | Accounting: bills, expenses, banking, reconciliation, distributions, management fees | ✅ |
 | P7 | Reports + overview widgets | ✅ |
 | P8 | Owner portal, communications, announcements, SMS | ✅ |
-| P9 | Listings, showings, applications, screening, e-sign, renewals | |
+| P9 | Listings, showings, applications, screening, e-sign, renewals | ✅ |
 | P10 | Public API, webhooks, workflows, AI assistant and agents | |
+
+## Phase 9 demo script (Leasing funnel)
+
+1. **Rentals → Listings**: vacant units ready to list. **New listing** → pick a unit → **Write with AI**
+   (drafts a fair-housing-safe description from the unit's facts) → **Save & publish**. Listings come
+   down automatically when the unit is leased (on lease creation and nightly).
+2. Open the **Public page** (`/l/maple-main`) in a private window: browse homes, **Book a showing**
+   (open slots in the next week; double-booking is blocked) — it shows up in **Leasing → Showings**
+   and creates a **Prospect**. The **Feed** link is the syndication feed listing sites poll.
+3. **Apply now** → enter an email (use the same one later to resume) → five steps with autosave and
+   per-step validation → pay the fee by card (`4242 4242 4242 4242`, any future expiry) → authorize
+   screening → submit. Screening runs immediately (mock; try SSN last-4 `6666` for an eviction hit).
+4. **Leasing → Applications**: screening summary, income-to-rent, full answers and the consent
+   record. **Approve** → **Create lease from application** opens the lease wizard prefilled.
+   **Decline** emails an FCRA-style adverse action notice built from the template.
+5. On any lease → **Files** → **Send for e-signature**: tenants get a one-time link (see
+   `/dev/outbox`), type their name to sign; you countersign; the signed copy with an audit
+   certificate (IPs, devices, timestamps, document hash) is saved on the lease.
+6. **Leasing → Renewals**: leases ending in 120 days with suggested rent. **Offer renewal** sends a
+   renewal addendum for signature; when everyone signs, the renewal lease is created automatically.
+   Tenants also see "Ready to sign" on their portal home.
+7. **Settings → Document templates**: edit leases, renewals, notices and adverse action letters with
+   `{{merge.fields}}` and a live preview.
 
 ## Phase 8 demo script (Owner portal & communications)
 

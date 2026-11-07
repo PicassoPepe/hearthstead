@@ -1,3 +1,4 @@
+import { emit } from "@/server/platform/events";
 import type { ScopedDb } from "@/server/dal";
 import { todayIn } from "@/lib/dates";
 import { runRecurringForLease } from "@/server/leasing/leases";
@@ -35,8 +36,10 @@ export async function runNightly(db: ScopedDb, opts: { today?: Date; timezone?: 
   const a = { orgId: db.ctx.orgId, userId: null };
   const result: NightlyResult = { leases: 0, charges: 0, lateFees: 0, ended: 0, errors: [] };
 
-  const ended = await db.lease.updateMany({ where: { status: { in: ["ACTIVE", "EVICTION"] }, moveOutDate: { lt: today } }, data: { status: "ENDED" } });
-  result.ended = ended.count;
+  const ending = await db.lease.findMany({ where: { status: { in: ["ACTIVE", "EVICTION"] }, moveOutDate: { lt: today } }, select: { id: true, propertyId: true, moveOutDate: true } });
+  if (ending.length) await db.lease.updateMany({ where: { id: { in: ending.map((l) => l.id) } }, data: { status: "ENDED" } });
+  for (const l of ending) await emit(db, "lease.ended", { leaseId: l.id, propertyId: l.propertyId, endedOn: l.moveOutDate?.toISOString().slice(0, 10) ?? null });
+  result.ended = ending.length;
 
   const leases = await db.lease.findMany({ where: { status: { in: ["ACTIVE", "EVICTION"] } }, select: { id: true, propertyId: true } });
   for (const l of leases) {

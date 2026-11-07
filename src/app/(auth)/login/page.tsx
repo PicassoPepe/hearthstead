@@ -5,6 +5,7 @@ export const metadata: Metadata = { title: "Sign in" };
 
 const ERRORS: Record<string, string> = {
   Verification: "That sign-in link has expired or was already used. Request a new one.",
+  "2fa_password": "This account uses two-factor authentication. Sign in with your password and authenticator code.",
   AccessDenied: "We couldn't find an account for that email.",
   Configuration: "Sign-in is temporarily unavailable.",
 };

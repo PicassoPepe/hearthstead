@@ -40,6 +40,11 @@ model Organization {
   roles       Role[]
   settings    Setting[]
   auditLogs   AuditLog[]
+  /// Phase 10: the sandbox organization that `hs_test_` API keys act on.
+  sandboxOrgId       String?
+  isSandbox          Boolean   @default(false)
+  /// Support staff may access the workspace until this time (toggle in Settings → Security).
+  supportAccessUntil DateTime?
 }
 
 model User {
@@ -62,6 +67,10 @@ model User {
   sessions    Session[]
   memberships Membership[]
   tenantLinks TenantUser[]
+  /// Base32 TOTP secret (2FA). Set when 2FA is enabled.
+  totpSecret         String?
+  /// SHA-256 hashes of unused recovery codes.
+  recoveryCodeHashes String[]  @default([])
 }
 
 enum MembershipStatus {
@@ -1675,4 +1684,173 @@ model RenewalOffer {
 
   @@index([organizationId, status])
   @@index([leaseId])
+}
+
+// ───────────────────────────── Phase 10: platform ─────────────────────────────
+
+/// Bearer API key. Only a SHA-256 of the secret is stored; `prefix` is shown to identify it.
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  prefix         String    @unique
+  secretHash     String    @unique
+  /// read | write
+  scope          String    @default("read")
+  /// live | test (test keys act on the organization's sandbox)
+  environment    String    @default("live")
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  createdById    String?
+
+  @@index([organizationId])
+}
+
+/// Stored responses for POST requests with an Idempotency-Key header (24h).
+model IdempotencyRecord {
+  id             String   @id @default(cuid())
+  organizationId String
+  apiKeyId       String
+  key            String
+  requestHash    String
+  statusCode     Int
+  response       Json
+  createdAt      DateTime @default(now())
+
+  @@unique([apiKeyId, key])
+}
+
+model WebhookEndpoint {
+  id             String    @id @default(cuid())
+  organizationId String
+  url            String
+  description    String?
+  /// whsec_… shared secret for HMAC signatures (shown to the user once and on request).
+  secret         String
+  events         String[]
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  deliveries WebhookDelivery[]
+
+  @@index([organizationId])
+}
+
+model WebhookDelivery {
+  id             String    @id @default(cuid())
+  organizationId String
+  endpointId     String
+  eventId        String
+  event          String
+  payload        Json
+  /// PENDING | SUCCEEDED | FAILED (will retry) | DEAD (gave up)
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime  @default(now())
+  responseStatus Int?
+  lastError      String?
+  deliveredAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([status, nextAttemptAt])
+}
+
+model Workflow {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  /// Event type, e.g. "task.created" or "lease.expiring"
+  trigger        String
+  /// [{ field, op: eq|neq|gt|lt|contains, value }]
+  conditions     Json      @default("[]")
+  /// [{ type: SEND_EMAIL|SEND_SMS|CREATE_TASK|NOTIFY_STAFF|ADD_NOTE, params }]
+  actions        Json      @default("[]")
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  runs WorkflowRun[]
+
+  @@index([organizationId, trigger])
+}
+
+model WorkflowRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  workflowId     String
+  event          String
+  eventId        String
+  /// SKIPPED (conditions false) | SUCCEEDED | FAILED
+  status         String
+  /// [{ action, status, detail }]
+  log            Json     @default("[]")
+  error          String?
+  createdAt      DateTime @default(now())
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, eventId])
+  @@index([organizationId, createdAt])
+}
+
+model AgentConfig {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// RECEPTIONIST | MAINTENANCE | RENEWALS
+  agent          String
+  enabled        Boolean  @default(false)
+  /// Actions above this impact need a human: e.g. renewal rent increase % or message length.
+  /// AUTO: act when confidence ≥ threshold; APPROVAL: always propose.
+  mode           String   @default("APPROVAL")
+  threshold      Int      @default(80)
+  settings       Json     @default("{}")
+  lastRunAt      DateTime?
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, agent])
+}
+
+model AgentAction {
+  id             String    @id @default(cuid())
+  organizationId String
+  agent          String
+  /// e.g. REPLY_MESSAGE | TRIAGE_REQUEST | RENEWAL_OFFER
+  kind           String
+  /// Thing it's about (conversation, task, lease…)
+  entityType     String
+  entityId       String
+  summary        String
+  confidence     Int
+  payload        Json
+  /// PROPOSED | APPROVED | REJECTED | EXECUTED | FAILED
+  status         String    @default("PROPOSED")
+  result         String?
+  decidedById    String?
+  decidedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@unique([agent, kind, entityType, entityId])
+  @@index([organizationId, status, createdAt])
+}
+
+/// Login sessions (one per sign-in) so users can see and revoke them.
+model UserSession {
+  id         String    @id @default(cuid())
+  userId     String
+  userAgent  String?
+  ip         String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([userId])
 }

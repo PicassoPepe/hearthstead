@@ -11,14 +11,16 @@ import { provisionOrganization } from "@/server/orgs";
 import { ORG_COOKIE } from "@/server/context";
 import type { ActionResult } from "@/server/action-result";
 
-const loginSchema = z.object({ email: z.email("Enter a valid email"), password: z.string().min(1, "Enter your password") });
+const loginSchema = z.object({ email: z.email("Enter a valid email"), password: z.string().min(1, "Enter your password"), code: z.string().max(20).optional() });
 
 export async function loginWithPassword(input: z.input<typeof loginSchema>, callbackUrl = "/app/overview"): Promise<ActionResult> {
   const parsed = loginSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Please fix the highlighted fields." };
   try {
-    await signIn("password", { email: parsed.data.email, password: parsed.data.password, redirect: false });
+    await signIn("password", { email: parsed.data.email, password: parsed.data.password, code: parsed.data.code, redirect: false });
   } catch (e) {
+    if (e instanceof AuthError && (e as { code?: string }).code === "2fa_required") return { ok: false, error: "Enter the 6-digit code from your authenticator app.", fieldErrors: { code: "required" } };
+    if (e instanceof AuthError && (e as { code?: string }).code === "2fa_invalid") return { ok: false, error: "That code didn't work. Try the newest code, or a recovery code.", fieldErrors: { code: "invalid" } };
     if (e instanceof AuthError) return { ok: false, error: "That email and password don't match an account." };
     throw e;
   }

@@ -1,3 +1,4 @@
+import { emit } from "@/server/platform/events";
 import type { Prisma } from "@prisma/client";
 import type { ScopedDb, ScopedTx } from "@/server/dal";
 import { UserFacingError } from "@/server/action-result";
@@ -67,6 +68,7 @@ export async function createLease(db: ScopedDb, raw: LeaseWizardInput, today: Da
 
   const leaseId = await db.tx((tx) => createLeaseInTx(tx, actor(db), v, today), { timeout: 60_000 });
   await audit(db, { action: "lease.created", entityType: "Lease", entityId: leaseId, after: { ...v } });
+  await emit(db, "lease.created", { leaseId, propertyId: property.id, propertyName: property.name, unitIds: v.unitIds, status: v.status, startDate: v.startDate, endDate: v.endDate || null, rentCents: v.recurring.filter((r) => r.kind === "RENT").reduce((s, r) => s + r.amountCents, 0) });
   return { id: leaseId };
 }
 
@@ -121,6 +123,8 @@ export async function endLease(db: ScopedDb, leaseId: string, input: { moveOutDa
     });
   }, { timeout: 60_000 });
   await audit(db, { action: "lease.move_out", entityType: "Lease", entityId: leaseId, after: input });
+  // Ending in the past/today ends it now; a future move-out is reported by the nightly job.
+  if (moveOut <= today) await emit(db, "lease.ended", { leaseId, propertyId: lease.propertyId, endedOn: moveOut.toISOString().slice(0, 10), reason: input.reason ?? null });
 }
 
 export async function setEviction(db: ScopedDb, leaseId: string, on: boolean): Promise<void> {
