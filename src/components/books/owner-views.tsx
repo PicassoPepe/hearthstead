@@ -34,7 +34,7 @@ export function DistributionsTable({ rows, today, canEdit }: { rows: PropertyCas
             setPicked([]);
             router.refresh();
           }}>Distribute {picked.length ? formatMoney(pickedTotal) : "selected"}</Button>
-          <span className="text-sm text-muted-foreground">Pays each owner their ownership share of what's available, dated today.</span>
+          <span className="text-sm text-muted-foreground">Pays each owner their ownership share of what&apos;s available, dated today.</span>
         </div>
       ) : null}
       <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">

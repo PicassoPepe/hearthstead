@@ -30,6 +30,14 @@ class MockLlmProvider implements LlmProvider {
       if (fair.length) parts.push(`Fair (monitor): ${fair.map(clean).join("; ")}.`);
       return parts.join(" ");
     }
+    if (req.purpose === "report-summary") {
+      // Input: a title line, then "- Label: value" facts. Produce a short, deterministic narrative.
+      const [title = "Report", ...rest] = input.split("\n");
+      const facts = rest.filter((l) => l.startsWith("- ")).map((l) => l.slice(2));
+      if (!facts.length) return `${title}: nothing to summarize for this period.`;
+      const [first, ...more] = facts;
+      return `${title.replace(/^Report:\s*/, "")} — ${first}.${more.length ? ` Also: ${more.join("; ")}.` : ""} Figures come straight from the ledger for the filters shown.`;
+    }
     return `Summary: ${input.slice(0, 280)}`;
   }
 }
