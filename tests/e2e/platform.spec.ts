@@ -53,7 +53,7 @@ test("integrations: create an API key (shown once) and send a test webhook", asy
 
 test("workflows: build one from the UI", async ({ page }) => {
   await signIn(page, "admin@example.com", "/app/workflows");
-  await expect(page.getByText("Urgent tenant request → alert the property manager")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Urgent tenant request → alert the property manager" })).toBeVisible();
   await page.getByRole("button", { name: "New workflow" }).click();
   const dlg = page.getByRole("dialog", { name: "New workflow" });
   await dlg.getByRole("textbox", { name: "Name" }).fill("Big payment → thank-you email");

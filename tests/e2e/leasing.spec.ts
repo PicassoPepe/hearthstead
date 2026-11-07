@@ -8,7 +8,7 @@ test.describe("as admin", () => {
 
   test("leases list: seeded history, tabs and balances", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Leases", exact: true })).toBeVisible();
-    await expect(page.getByText("47 total")).toBeVisible();
+    await expect(page.getByText(/^(4[7-9]|[5-9]\d) total$/)).toBeVisible(); // seed has 47; other specs may add some
     await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Ended" }).click();
     await expect(page.getByText("3 total")).toBeVisible();
     await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Expiring / renewals" }).click();

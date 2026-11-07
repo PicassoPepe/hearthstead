@@ -9,7 +9,7 @@ test("two-level sidebar swaps to a section submenu and back", async ({ page }) =
   await expect(nav.getByRole("button", { name: /Accounting.*back to all sections/ })).toBeVisible();
   await nav.getByRole("link", { name: "Bills" }).click();
   await page.waitForURL("**/app/accounting/bills");
-  await expect(page.getByRole("heading", { name: /Bills arrives in Phase 6/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bills", exact: true })).toBeVisible();
   await nav.getByRole("button", { name: /back to all sections/ }).click();
   await expect(nav.getByRole("link", { name: "Overview" })).toBeVisible();
 });
@@ -69,10 +69,10 @@ test("deep-linking /app/new/user renders a full page", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("unbuilt create kinds explain which phase they arrive in", async ({ page }) => {
+test("every Create new kind opens a real form (Bill as the example)", async ({ page }) => {
   await page.getByRole("button", { name: "Create new" }).click();
   await page.getByRole("menuitem", { name: "Bill" }).click();
-  await expect(page.getByRole("dialog", { name: "New bill" })).toContainText("Phase 6");
+  await expect(page.getByRole("dialog", { name: "New bill" }).getByRole("combobox", { name: "Vendor" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/\/app\/overview$/);
 });

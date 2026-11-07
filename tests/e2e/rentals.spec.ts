@@ -8,11 +8,12 @@ test.describe("as admin", () => {
 
   test("properties list shows the seeded portfolio and filters work", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Properties", exact: true })).toBeVisible();
-    await expect(page.getByText("12 total")).toBeVisible();
+    // Other specs may add properties to the shared seed, so counts are "at least the seed".
+    await expect(page.getByText(/^(1[2-9]|[2-9]\d) total$/)).toBeVisible();
     await page.getByRole("combobox", { name: "Filter by Portfolios" }).selectOption({ label: "Commercial" });
-    await expect(page.getByText("3 of 12")).toBeVisible();
+    await expect(page.getByText(/^3 of \d+$/)).toBeVisible();
     await page.getByRole("textbox", { name: "Search Properties" }).fill("ironbridge");
-    await expect(page.getByText("3 of 12")).toBeVisible();
+    await expect(page.getByText(/^3 of \d+$/)).toBeVisible();
   });
 
   test("New Property wizard: validation, autocomplete, units, quick owner, create", async ({ page }) => {
