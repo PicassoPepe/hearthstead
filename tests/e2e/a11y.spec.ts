@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn } from "./fixtures";
 
-const PAGES = ["/app/overview", "/app/settings", "/app/settings/users", "/app/settings/late-fees", "/app/rentals", "/app/rentals/units", "/app/rentals/portfolios", "/app/people/owners", "/app/files?tab=import", "/app/notes", "/app/leasing", "/app/leasing?tab=expiring", "/app/people/tenants", "/app/accounting", "/app/accounting/journal-entries"];
+const PAGES = ["/app/overview", "/app/settings", "/app/settings/users", "/app/settings/late-fees", "/app/rentals", "/app/rentals/units", "/app/rentals/portfolios", "/app/people/owners", "/app/files?tab=import", "/app/notes", "/app/leasing", "/app/leasing?tab=expiring", "/app/people/tenants", "/app/accounting", "/app/accounting/journal-entries", "/app/accounting/payments", "/app/settings/payments"];
 
 test("login page has no WCAG A/AA violations", async ({ page }) => {
   await page.goto("/login");
@@ -58,6 +58,23 @@ test("lease detail tabs and the New Lease wizard have no WCAG A/AA violations", 
   await page.getByRole("dialog", { name: "New lease" }).waitFor();
   const r = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
   expect(r.violations.map((v) => v.id)).toEqual([]);
+});
+
+test("tenant portal pages have no WCAG A/AA violations (mobile)", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login?portal=1");
+  await page.getByRole("tab", { name: "Password" }).click();
+  await page.getByRole("textbox", { name: "Email" }).fill("tenant@example.com");
+  await page.getByRole("textbox", { name: "Password" }).fill("Demo1234!x");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL("**/portal/tenant");
+  for (const path of ["/portal/tenant", "/portal/tenant/pay", "/portal/tenant/autopay", "/portal/tenant/methods", "/portal/tenant/history", "/portal/tenant/insurance", "/portal/tenant/documents"]) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+    expect(r.violations.map((v) => `${path} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  }
 });
 
 test("everything is reachable by keyboard with visible focus", async ({ page }) => {

@@ -15,6 +15,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <LoginForm
       defaultEmail={sp.email ?? ""}
       invited={sp.invited === "1"}
+      portal={sp.portal === "1"}
       callbackUrl={toPath(sp.callbackUrl)}
       error={sp.error ? (ERRORS[sp.error] ?? "Sign-in failed. Please try again.") : undefined}
     />

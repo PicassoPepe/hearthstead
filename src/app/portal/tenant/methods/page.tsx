@@ -1,0 +1,20 @@
+import { requirePortal } from "@/server/portal/context";
+import { portalHome } from "@/server/portal/queries";
+import { Card } from "@/components/ui/card";
+import { MethodsList } from "@/components/portal/methods-list";
+import { AddMethodForm } from "@/components/portal/method-forms";
+
+export const metadata = { title: "Payment methods" };
+
+export default async function MethodsPage() {
+  const ctx = await requirePortal();
+  const h = await portalHome(ctx);
+  return (
+    <div className="grid gap-4">
+      <h1 className="text-2xl font-semibold tracking-tight">Payment methods</h1>
+      <MethodsList methods={h?.methods ?? []} readOnly={ctx.preview} />
+      <h2 className="font-semibold">Add a payment method</h2>
+      <Card className="p-4"><AddMethodForm disabled={ctx.preview} /></Card>
+    </div>
+  );
+}

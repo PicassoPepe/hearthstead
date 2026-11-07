@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { NotesPanel } from "@/components/records/notes-panel";
 import { FilesPanel } from "@/components/records/files-panel";
 import { TenantForm } from "@/components/leasing/tenant-form";
+import { TenantPortalActions } from "@/components/payments/tenant-portal-actions";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
 import { ROLE_LABEL, tenantDisplayName } from "@/lib/leasing";
@@ -61,7 +62,12 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
           { label: "Leases", value: leases.length },
           { label: "Tenant since", value: leases.length ? formatDate(leases.map((l) => l.lease.startDate).sort((a, b) => a.getTime() - b.getTime())[0]!) : "—" },
         ]}
-        actions={can(ctx.permissions, "leasing", "edit") ? <Button asChild variant="secondary"><Link href={`/app/new/lease?tenantId=${t.id}`} scroll={false}><Plus aria-hidden /> New lease</Link></Button> : null}
+        actions={
+          <>
+            <TenantPortalActions tenantId={t.id} status={t.portalStatus} hasEmail={Boolean(t.email)} canInvite={canEdit} />
+            {can(ctx.permissions, "leasing", "edit") ? <Button asChild variant="secondary"><Link href={`/app/new/lease?tenantId=${t.id}`} scroll={false}><Plus aria-hidden /> New lease</Link></Button> : null}
+          </>
+        }
       />
       <EntityTabs base={base} active={tab} tabs={[{ id: "overview", label: "Overview" }, { id: "leases", label: "Leases", count: leases.length }, { id: "tasks", label: "Tasks" }, { id: "communications", label: "Communications" }, { id: "notes", label: "Notes" }, { id: "files", label: "Files" }]} />
       {tab === "overview" ? (

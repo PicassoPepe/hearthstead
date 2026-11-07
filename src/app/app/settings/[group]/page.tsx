@@ -6,6 +6,8 @@ import { ComingSoon } from "@/components/patterns/coming-soon";
 import { Forbidden } from "@/components/patterns/forbidden";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SettingRow } from "@/components/settings/setting-row";
+import { ProcessorCard } from "@/components/payments/processor-card";
+import { getPaymentsProvider } from "@/adapters/payments";
 import { settingsInGroup, SETTING_GROUP_LABELS, type SettingGroup } from "@/server/settings/registry";
 import { getSettings } from "@/server/settings/service";
 import { toRowData } from "@/server/settings/meta";
@@ -51,14 +53,11 @@ export default async function SettingsGroupPage({ params }: { params: Promise<{ 
     <div className="max-w-3xl">
       <PageHeader title={SETTING_GROUP_LABELS[g.group]} description={g.description} eyebrow="Settings" />
       {slug === "payments" ? (
-        <Card className="mb-4">
-          <CardHeader>
-            <div>
-              <CardTitle>Online payments</CardTitle>
-              <CardDescription>Stripe Connect onboarding and bank verification arrive in Phase 4. The fee settings below already apply.</CardDescription>
-            </div>
-          </CardHeader>
-        </Card>
+        <ProcessorCard
+          account={await ctx.db.processorAccount.findFirst().then((a) => (a ? { status: a.status, externalId: a.externalId, payoutBankMask: a.payoutBankMask } : null))}
+          provider={getPaymentsProvider().name}
+          canEdit={canEdit}
+        />
       ) : null}
       <Card>
         <CardHeader className="pb-0">

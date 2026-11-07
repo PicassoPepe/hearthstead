@@ -16,16 +16,16 @@ import { loginWithPassword, requestMagicLink } from "@/server/actions/auth";
 const pwSchema = z.object({ email: z.email("Enter a valid email"), password: z.string().min(1, "Enter your password") });
 const linkSchema = z.object({ email: z.email("Enter a valid email") });
 
-export function LoginForm({ defaultEmail, invited, callbackUrl, error }: { defaultEmail: string; invited: boolean; callbackUrl: string; error?: string }) {
+export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, error }: { defaultEmail: string; invited: boolean; portal?: boolean; callbackUrl: string; error?: string }) {
   const [serverError, setServerError] = React.useState<string | undefined>(error);
   const pw = useForm<z.infer<typeof pwSchema>>({ resolver: zodResolver(pwSchema), defaultValues: { email: defaultEmail, password: "" } });
   const link = useForm<z.infer<typeof linkSchema>>({ resolver: zodResolver(linkSchema), defaultValues: { email: defaultEmail } });
 
   return (
     <div className="w-full max-w-sm">
-      <h1 className="text-2xl font-semibold tracking-tight">{invited ? "Accept your invitation" : "Welcome back"}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{portal ? "Resident portal" : invited ? "Accept your invitation" : "Welcome back"}</h1>
       <p className="mt-1 text-muted-foreground">
-        {invited ? "Sign in with an email link to join your team." : "Sign in to manage your properties."}
+        {portal ? "We'll email you a secure sign-in link — no password needed." : invited ? "Sign in with an email link to join your team." : "Sign in to manage your properties."}
       </p>
 
       {serverError ? (
@@ -36,7 +36,7 @@ export function LoginForm({ defaultEmail, invited, callbackUrl, error }: { defau
 
       <Card className="mt-6">
         <CardContent className="pt-5">
-          <Tabs defaultValue={invited ? "link" : "password"}>
+          <Tabs defaultValue={invited || portal ? "link" : "password"}>
             <TabsList className="mb-5" aria-label="Sign-in method">
               <TabsTrigger value="password"><KeyRound className="mr-1.5 inline size-4" aria-hidden />Password</TabsTrigger>
               <TabsTrigger value="link"><Mail className="mr-1.5 inline size-4" aria-hidden />Email link</TabsTrigger>

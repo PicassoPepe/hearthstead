@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/patterns/empty-state";
 import { StatusBadge } from "@/components/patterns/status-badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { toast } from "sonner";
+import { inviteToPortal } from "@/server/actions/payments";
 
 export type TenantRow = { id: string; name: string; email: string; phone: string; unit: string; leaseId: string | null; leaseStatus: string; balanceCents: number; portalStatus: string };
 
@@ -40,6 +42,15 @@ export function TenantsTable({ rows, canEdit }: { rows: TenantRow[]; canEdit: bo
         { columnId: "leaseStatus", label: "Lease statuses", options: [{ value: "ACTIVE", label: "Active" }, { value: "EVICTION", label: "Eviction" }, { value: "ENDED", label: "Ended" }, { value: "DRAFT", label: "Draft" }] },
         { columnId: "portalStatus", label: "Portal statuses", options: [{ value: "NOT_INVITED", label: "Not invited" }, { value: "INVITED", label: "Invited" }, { value: "ACTIVE", label: "Active" }] },
       ]}
+      bulkActions={canEdit ? [{
+        label: "Invite to portal",
+        onRun: async (sel) => {
+          const r = await inviteToPortal(sel.map((x) => x.id));
+          if (!r.ok) return void toast.error(r.error);
+          toast.success(`${r.data.sent} invitation${r.data.sent === 1 ? "" : "s"} sent${r.data.skipped.length ? ` · ${r.data.skipped.length} skipped (no email)` : ""}`);
+          router.refresh();
+        },
+      }] : undefined}
       rowActions={(r) => [
         { label: "Open", onSelect: () => router.push(`/app/people/tenants/${r.id}`) },
         ...(r.leaseId ? [{ label: "Open lease", onSelect: () => router.push(`/app/leasing/${r.leaseId}`) }] : []),

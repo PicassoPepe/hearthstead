@@ -79,7 +79,7 @@ describe("online payments", () => {
   it("ACH return reverses the ledger payment (charges reopen)", async () => {
     await db.tx((tx) => runRent(tx, "2027-01-01"));
     const nsf = await P.savePaymentMethod(db, tenantId, { type: "ACH", bank: { routingNumber: "110000000", accountNumber: "000000000002", holderName: "Pat" } });
-    const pi = await P.startPayment(db, { leaseId, tenantId, paymentMethodId: nsf.id, amountCents: 200_000, origin: "PORTAL", today: d("2027-01-02") });
+    await P.startPayment(db, { leaseId, tenantId, paymentMethodId: nsf.id, amountCents: 200_000, origin: "PORTAL", today: d("2027-01-02") });
     expect(await balance()).toBe(0);
     expect(await P.advanceMockPayments(db, d("2027-01-05"))).toMatchObject({ failed: 1 });
     expect(await balance()).toBe(200_000);

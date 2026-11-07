@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ListChecks, MessagesSquare, ShieldCheck } from "lucide-react";
+import { ListChecks, MessagesSquare } from "lucide-react";
+import { InsuranceList, AutopayStatus } from "@/components/payments/lease-payment-panels";
 import { requireContext } from "@/server/context";
 import { can, canAccessProperty } from "@/server/permissions";
 import { ledger, moneyOptions, orgToday } from "@/server/leasing/queries";
@@ -204,7 +205,7 @@ export default async function LeasePage({ params, searchParams }: { params: Prom
             {lease.recurring.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No recurring charges.</p> : null}
           </div>
           <Card className="p-4 text-sm">
-            <p><strong>Autopay:</strong> not set up. Tenants turn on autopay from the tenant portal (Phase 4).</p>
+            <AutopayStatus ctx={ctx} leaseId={lease.id} />
             <p className="mt-1 text-muted-foreground">Scheduled rent increases and renewals arrive in Phase 9.</p>
           </Card>
         </div>
@@ -229,7 +230,7 @@ export default async function LeasePage({ params, searchParams }: { params: Prom
       ) : tab === "settings" ? (
         <ScopedSettings ctx={ctx} scope="LEASE" scopeId={lease.id} propertyId={lease.propertyId} canEdit={canEdit} />
       ) : tab === "insurance" ? (
-        <EmptyState icon={<ShieldCheck />} title="Renters insurance arrives in Phase 4" description="Tenants upload proof of insurance (or buy a policy through a partner) in the tenant portal." />
+        <InsuranceList ctx={ctx} leaseId={lease.id} canEdit={canEdit} />
       ) : tab === "tasks" ? (
         <EmptyState icon={<ListChecks />} title="Tasks arrive in Phase 5" description="Maintenance requests and work orders for this lease's unit." />
       ) : (
