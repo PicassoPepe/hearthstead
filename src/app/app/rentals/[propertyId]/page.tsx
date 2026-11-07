@@ -8,6 +8,7 @@ import { filesFor, notesFor } from "@/server/records/queries";
 import { EntityHeader } from "@/components/patterns/entity-header";
 import { EntityTabs } from "@/components/patterns/entity-tabs";
 import { EmptyState } from "@/components/patterns/empty-state";
+import { EntityTasks } from "@/components/tasks/entity-tasks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import { FilesPanel } from "@/components/records/files-panel";
 import { ScopedSettings } from "@/components/settings/scoped-settings";
 import { formatMoney, sumCents } from "@/lib/money";
 import { PROPERTY_TYPE_META, formatAddress, formatPercentBps, ownerDisplayName } from "@/lib/rentals";
-import { ListChecks } from "lucide-react";
+
 import { balancesBy, listLeases } from "@/server/leasing/queries";
 import { LeasesTable } from "@/components/leasing/leases-table";
 import { formatDate } from "@/lib/dates";
@@ -179,7 +180,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
       ) : tab === "transactions" ? (
         <PropertyTransactions ctx={ctx} propertyId={p.id} />
       ) : (
-        <EmptyState icon={<ListChecks />} title="Tasks arrive in Phase 5" description="Work orders, tenant requests and inspections for this property will appear here." />
+        <EntityTasks ctx={ctx} where={{ propertyId: p.id }} newHref={`/app/new/task?propertyId=${p.id}`} tableId="property-tasks" />
       )}
     </>
   );

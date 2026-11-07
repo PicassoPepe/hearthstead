@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ListChecks, MessagesSquare } from "lucide-react";
+import { MessagesSquare } from "lucide-react";
 import { InsuranceList, AutopayStatus } from "@/components/payments/lease-payment-panels";
 import { requireContext } from "@/server/context";
 import { can, canAccessProperty } from "@/server/permissions";
@@ -10,6 +10,7 @@ import * as M from "@/server/leasing/money";
 import { EntityHeader } from "@/components/patterns/entity-header";
 import { EntityTabs } from "@/components/patterns/entity-tabs";
 import { EmptyState } from "@/components/patterns/empty-state";
+import { EntityTasks } from "@/components/tasks/entity-tasks";
 import { StatusBadge } from "@/components/patterns/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -232,7 +233,7 @@ export default async function LeasePage({ params, searchParams }: { params: Prom
       ) : tab === "insurance" ? (
         <InsuranceList ctx={ctx} leaseId={lease.id} canEdit={canEdit} />
       ) : tab === "tasks" ? (
-        <EmptyState icon={<ListChecks />} title="Tasks arrive in Phase 5" description="Maintenance requests and work orders for this lease's unit." />
+        <EntityTasks ctx={ctx} where={{ OR: [{ leaseId: lease.id }, { unitId: { in: lease.units.map((u) => u.unitId) } }] }} newHref={`/app/new/task?leaseId=${lease.id}&propertyId=${lease.propertyId}`} tableId="lease-tasks" />
       ) : (
         <EmptyState icon={<MessagesSquare />} title="Communications arrive in Phase 8" description="Every email, SMS and portal message with these tenants." />
       )}

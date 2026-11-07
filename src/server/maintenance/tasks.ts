@@ -2,7 +2,6 @@ import type { Prisma, TaskStatus } from "@prisma/client";
 import type { ScopedDb } from "@/server/dal";
 import { UserFacingError } from "@/server/action-result";
 import { audit } from "@/server/audit";
-import { adminDb } from "@/server/db";
 import { getEmailProvider } from "@/adapters";
 import { getSettings } from "@/server/settings/service";
 import { parseISODate } from "@/lib/dates";
@@ -188,8 +187,8 @@ export async function updateTask(db: ScopedDb, taskId: string, patch: { priority
       await tx.taskAssignee.deleteMany({ where: { taskId } });
       if (ids.length) await tx.taskAssignee.createMany({ data: ids.map((userId) => ({ organizationId: db.ctx.orgId, taskId, userId })) });
     });
-    const users = await adminDb.user.findMany({ where: { id: { in: ids } }, select: { name: true, email: true } });
-    await addActivity(db, taskId, actor, "ASSIGNED", ids.length ? `Assigned to ${users.map((u) => u.name ?? u.email).join(", ")}` : "Unassigned");
+    const assigned = await db.membership.findMany({ where: { userId: { in: ids } }, include: { user: { select: { name: true, email: true } } } });
+    await addActivity(db, taskId, actor, "ASSIGNED", ids.length ? `Assigned to ${assigned.map((m) => m.user.name ?? m.user.email).join(", ")}` : "Unassigned");
   }
   await audit(db, { action: "task.updated", entityType: "Task", entityId: taskId, after: patch });
 }

@@ -27,6 +27,27 @@ const GROUP_HREF: Record<string, string> = {
 
 const providers: Provider[] = [
   {
+    module: "tasks",
+    async search(ctx, q) {
+      const { taskVisibility } = await import("@/server/maintenance/tasks");
+      const vis = await taskVisibility(ctx.db, { userId: ctx.user.id, roleKey: ctx.membership.roleKey, propertyScope: ctx.membership.propertyScope });
+      const num = /^#?(\d{3,6})$/.exec(q.trim());
+      const rows = await ctx.db.task.findMany({
+        where: { AND: [vis, num ? { number: Number(num[1]) } : { title: { contains: q, mode: "insensitive" } }] },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+      });
+      return rows.map((t) => ({ id: `task:${t.id}`, type: "task", group: "Tasks", title: `#${t.number} ${t.title}`, subtitle: t.status.replace("_", " ").toLowerCase(), href: `/app/tasks/${t.id}` }));
+    },
+  },
+  {
+    module: "people",
+    async search(ctx, q) {
+      const rows = await ctx.db.vendor.findMany({ where: { OR: [{ name: { contains: q, mode: "insensitive" } }, { contactName: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }] }, take: 5 });
+      return rows.map((v) => ({ id: `vendor:${v.id}`, type: "vendor", group: "Vendors", title: v.name, subtitle: v.contactName ?? v.email ?? "Vendor", href: `/app/people/vendors/${v.id}` }));
+    },
+  },
+  {
     module: "people",
     async search(ctx, q) {
       const scope = ctx.membership.propertyScope;

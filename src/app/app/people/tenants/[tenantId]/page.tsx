@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Plus, ListChecks, MessagesSquare } from "lucide-react";
+import { Plus, MessagesSquare } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { balancesBy } from "@/server/leasing/queries";
@@ -8,6 +8,7 @@ import { filesFor, notesFor } from "@/server/records/queries";
 import { EntityHeader } from "@/components/patterns/entity-header";
 import { EntityTabs } from "@/components/patterns/entity-tabs";
 import { EmptyState } from "@/components/patterns/empty-state";
+import { EntityTasks } from "@/components/tasks/entity-tasks";
 import { StatusBadge } from "@/components/patterns/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -108,7 +109,7 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
       ) : tab === "files" ? (
         <FilesPanel entityType="Tenant" entityId={t.id} files={await filesFor(ctx, "Tenant", t.id)} canEdit={canEdit} />
       ) : tab === "tasks" ? (
-        <EmptyState icon={<ListChecks />} title="Requests arrive in Phase 5" description="Maintenance requests from this tenant." />
+        <EntityTasks ctx={ctx} where={{ tenantId: t.id }} newHref="/app/new/task" tableId="tenant-tasks" />
       ) : (
         <EmptyState icon={<MessagesSquare />} title="Communications arrive in Phase 8" description="Email, SMS and portal messages." />
       )}

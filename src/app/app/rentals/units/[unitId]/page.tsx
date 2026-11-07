@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Megaphone, ListChecks, Plus } from "lucide-react";
+import { Megaphone, Plus } from "lucide-react";
 import { listLeases, occupiedUnitIds } from "@/server/leasing/queries";
 import { LeasesTable } from "@/components/leasing/leases-table";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { filesFor, notesFor } from "@/server/records/queries";
 import { EntityHeader } from "@/components/patterns/entity-header";
 import { EntityTabs } from "@/components/patterns/entity-tabs";
 import { EmptyState } from "@/components/patterns/empty-state";
+import { EntityTasks } from "@/components/tasks/entity-tasks";
 import { StatusBadge } from "@/components/patterns/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -91,7 +92,7 @@ export default async function UnitPage({ params, searchParams }: { params: Promi
       ) : tab === "leases" || tab === "transactions" ? (
         <LeasesTable rows={leases} tab={`unit-${u.id}`} canEdit={can(ctx.permissions, "leasing", "edit")} />
       ) : (
-        <EmptyState icon={<ListChecks />} title="Tasks arrive in Phase 5" description="Work orders and inspections for this unit." />
+        <EntityTasks ctx={ctx} where={{ unitId: u.id }} newHref={`/app/new/task?unitId=${u.id}`} tableId="unit-tasks" />
       )}
     </>
   );

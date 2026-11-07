@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Receipt, ListChecks, MessagesSquare } from "lucide-react";
+import { Receipt, MessagesSquare } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { filesFor, notesFor } from "@/server/records/queries";
 import { EntityHeader } from "@/components/patterns/entity-header";
 import { EntityTabs } from "@/components/patterns/entity-tabs";
 import { EmptyState } from "@/components/patterns/empty-state";
+import { EntityTasks } from "@/components/tasks/entity-tasks";
 import { StatusBadge } from "@/components/patterns/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NotesPanel } from "@/components/records/notes-panel";
@@ -118,7 +119,7 @@ export default async function OwnerPage({ params, searchParams }: { params: Prom
       ) : tab === "transactions" ? (
         <EmptyState icon={<Receipt />} title="Owner transactions arrive in Phase 6" description="Distributions, contributions and statements." />
       ) : tab === "tasks" ? (
-        <EmptyState icon={<ListChecks />} title="Owner requests arrive in Phase 5" description="Requests from this owner and tasks linked to them." />
+        <EntityTasks ctx={ctx} where={{ OR: [{ ownerId: o.id }, { propertyId: { in: o.ownerships.map((x) => x.propertyId) }, type: "OWNER_REQUEST" }] }} newHref="/app/new/task" tableId="owner-tasks" />
       ) : (
         <EmptyState icon={<MessagesSquare />} title="Communications arrive in Phase 8" description="Every email, SMS and portal message with this owner." />
       )}

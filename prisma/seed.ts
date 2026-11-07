@@ -6,6 +6,7 @@
  *  - Phase 2: 3 portfolios, 12 properties, 60 units, 9 owners (prisma/seed-rentals.ts)
  *  - Phase 3: 50 leases with 18 months of ledger history (prisma/seed-leasing.ts)
  *  - Phase 4: mock processor, tenant portal login, autopay, online payments (prisma/seed-payments.ts)
+ *  - Phase 5: vendors, tasks, work orders, inspection, bill (prisma/seed-maintenance.ts)
  *
  * Every demo password is: Demo1234!x
  */
@@ -15,6 +16,7 @@ import { provisionOrganization, purgeOrganizations } from "../src/server/orgs";
 import { seedRentals } from "./seed-rentals";
 import { seedLeasing } from "./seed-leasing";
 import { seedPayments } from "./seed-payments";
+import { seedMaintenance } from "./seed-maintenance";
 import { todayIn } from "../src/lib/dates";
 
 const db = new PrismaClient();
@@ -97,6 +99,9 @@ async function main(): Promise<void> {
   await db.user.deleteMany({ where: { email: "tenant@example.com" } });
   const payments = await seedPayments(process.env.DATABASE_ADMIN_URL!, process.env.DATABASE_URL!, orgId, users["admin@example.com"]!, todayIn("America/Chicago"), DEMO_PASSWORD);
 
+  // Phase 5: vendors, tasks, work orders, inspection, a bill from a vendor invoice.
+  const maintenance = await seedMaintenance(process.env.DATABASE_URL!, orgId, users, todayIn("America/Chicago"));
+
   // Admin lands in Maple & Main by default.
   await db.user.update({ where: { id: users["admin@example.com"] }, data: { lastOrgId: orgId } });
 
@@ -106,6 +111,7 @@ async function main(): Promise<void> {
   console.log(`  ${"(2nd org admin)".padEnd(17)} harbor@example.com`);
   console.log(`  Rentals: ${rentals.properties} properties, ${rentals.units} units, ${rentals.owners} owners in 3 portfolios.`);
   console.log(`  Leasing: ${leasing.leases} leases, ${leasing.lateFees} late fees, ${leasing.returned} returned payment(s).`);
+  console.log(`  Maintenance: ${maintenance.vendors} vendors, ${maintenance.tasks} tasks (vendor login: vendor@example.com → Ace Plumbing).`);
   console.log(`  Payments: ${payments.payments} online payments, ${payments.autopays} autopays. Tenant portal: tenant@example.com (${payments.demoTenant}).`);
 }
 
