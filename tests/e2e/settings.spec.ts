@@ -53,13 +53,13 @@ test("changing a member's role is optimistic and persists", async ({ page }) => 
 
 test("removing a member confirms first and can be undone", async ({ page }) => {
   await page.goto("/app/settings/users");
-  await page.getByRole("row", { name: /Olivia Owner/ }).getByRole("button", { name: "Row actions" }).click();
+  await page.getByRole("row", { name: /Marco Maintenance/ }).getByRole("button", { name: "Row actions" }).click();
   await page.getByRole("menuitem", { name: "Remove from team" }).click();
-  const confirm = page.getByRole("alertdialog", { name: "Remove Olivia Owner?" });
+  const confirm = page.getByRole("alertdialog", { name: "Remove Marco Maintenance?" });
   await expect(confirm).toBeVisible();
   await confirm.getByRole("button", { name: "Remove" }).click();
-  await expect(page.getByRole("row", { name: /Olivia Owner/ })).toHaveCount(0);
+  await expect(page.getByRole("row", { name: /Marco Maintenance/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Undo" }).click();
-  await expect(page.getByText("Olivia Owner restored")).toBeVisible();
-  await expect(page.getByRole("row", { name: /Olivia Owner/ })).toBeVisible();
+  await expect(page.getByText("Marco Maintenance restored")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Marco Maintenance/ })).toBeVisible();
 });

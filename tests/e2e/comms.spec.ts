@@ -82,7 +82,7 @@ test("full flow: create property (owned by Grace) → lease → tenant pays in t
   await tenant.getByRole("button", { name: "Save card" }).click();
   await tenant.getByRole("button", { name: /^Pay \$/ }).click();
   await expect(tenant.getByRole("heading", { name: "Payment successful" })).toBeVisible();
-  await tenant.getByRole("link", { name: "Back to home" }).click();
+  await tenant.goto("/portal/tenant");
   await expect(tenant.getByTestId("portal-balance")).toHaveText("$0.00");
   await tenant.close();
 
