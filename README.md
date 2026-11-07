@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 4 (Payments & tenant portal) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: Phase 5 (Maintenance) complete.** See [Roadmap](#roadmap) for what each phase adds.
 
 ## Quick start
 
@@ -51,7 +51,7 @@ Every demo user's password is `Demo1234!x`:
 | Property Manager | `pm@example.com` |
 | Bookkeeper | `books@example.com` |
 | Maintenance | `maint@example.com` |
-| Vendor | `vendor@example.com` |
+| Vendor (Ace Plumbing — sees only its jobs) | `vendor@example.com` |
 | Read-only Owner | `owner@example.com` |
 | Admin of "Harbor Light Rentals" | `harbor@example.com` |
 | **Tenant (resident portal)** | `tenant@example.com` → http://localhost:3000/portal/tenant |
@@ -211,6 +211,7 @@ src/
     jobs/            nightly job + all-org runner (BullMQ worker in scripts/worker.ts)
     payments/        online payments, status machine, autopay, mock settlement
     portal/          tenant portal context (login → tenant), invites, read models
+    maintenance/     tasks, auto-assign, vendors, inspections (+AI summary), bills from invoices
     accounting/      chart of accounts (ledger arrives in Phase 3)
     search/          global search provider registry
     actions/         server actions (uniform ActionResult)
@@ -236,7 +237,7 @@ API keys. Select an implementation with its env var.
 | ESignProvider | `ESIGN_PROVIDER` | `builtin` | 9 |
 | ListingFeedProvider | `LISTINGFEED_PROVIDER` | `file` (XML/JSON feed) | 9 |
 | AccountingExportProvider | `ACCOUNTING_EXPORT_PROVIDER` | `csv`, `quickbooks` | 10 |
-| LlmProvider | `LLM_PROVIDER` | `mock`, `anthropic` | 10 |
+| LlmProvider | `LLM_PROVIDER` | `mock`, `anthropic` (`ANTHROPIC_API_KEY`, `LLM_MODEL`, default `claude-sonnet-5-5`) | 5 ✅ (more in 10) |
 
 **Swapping a mock for a real service:** set the env var (e.g. `EMAIL_PROVIDER=smtp`) and that
 provider's credentials. To add an implementation, implement the interface in
@@ -250,12 +251,29 @@ provider's credentials. To add an implementation, implement the interface in
 | P2 | Rentals: properties, units, owners, property wizard, importer | ✅ |
 | P3 | Leasing & ledger: chart of accounts, ledger service, lease wizard, recurring/late-fee jobs | ✅ |
 | P4 | Payments & tenant portal | ✅ |
-| P5 | Maintenance: tasks, requests, work orders, vendors, inspections | |
+| P5 | Maintenance: tasks, requests, work orders, vendors, inspections | ✅ |
 | P6 | Accounting: bills, expenses, banking, reconciliation, distributions, management fees | |
 | P7 | Reports + overview widgets | |
 | P8 | Owner portal, communications, announcements, SMS | |
 | P9 | Listings, showings, applications, screening, e-sign, renewals | |
 | P10 | Public API, webhooks, workflows, AI assistant and agents | |
+
+## Phase 5 demo script (Maintenance)
+
+1. **Tasks**: table or **Board** (drag cards, or use each card's *Move to* select). Filter by type,
+   status, priority, vendor; *Assigned to me*. Search `#1004` in ⌘K.
+2. **Create new → Work order**: pick a category and see suggested vendors; leave *Email the work
+   order* checked → the vendor's email lands in `/dev/outbox`.
+3. Tenant portal (`tenant@example.com`) → **Requests → New request**: category, photos, permission
+   to enter, preferred times. *Plumbing* requests auto-assign to Ace Plumbing + Priya
+   (**Settings → Maintenance**). Staff reply with *Visible to the tenant* on → the tenant sees it
+   on the request's timeline (and gets an email).
+4. Sign in as `vendor@example.com`: only Ace Plumbing's jobs; comment and update status.
+5. Open **#… Move-out inspection** (completed): room-by-room ratings, the **AI summary**
+   (mock LLM — set `LLM_PROVIDER=anthropic` for Claude), and the **printable report**.
+6. Open **Annual furnace service** → *Enter vendor invoice → bill* → posts Dr Repairs / Cr A/P,
+   tagged to the property. Vendors → *Polar Air HVAC* shows an expired-insurance warning.
+7. **Turn over Maple Court · 302** has subtasks — it can't be completed until they are.
 
 ## Phase 4 demo script (Payments & tenant portal)
 

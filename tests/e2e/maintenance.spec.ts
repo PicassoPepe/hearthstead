@@ -47,7 +47,7 @@ test("tenant request round trip: portal → auto-assigned → staff reply → te
   await tenantSignIn(page);
   await page.goto("/portal/tenant/requests/new");
   await page.getByRole("button", { name: "Submit request" }).click();
-  await expect(page.getByText("Choose a category").first()).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Choose a category" }).first()).toBeVisible();
   await page.getByRole("combobox", { name: "What needs fixing?" }).selectOption("PLUMBING");
   await page.getByRole("textbox", { name: "Short summary" }).fill("Shower head leaking");
   await page.getByRole("textbox", { name: "Details" }).fill("Drips all night, getting worse.");

@@ -95,6 +95,21 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Maintenance requests (Phase 5) and messages/announcements (Phase 8) appear in the portal as
   placeholders until those phases.
 
+**Phase 5 (Maintenance)**
+- One Task model covers tasks, tenant/owner requests, work orders and inspections (`type`), with
+  per-org numbers (#1001…), subtasks, assignees and an activity timeline. Assigning a vendor to a
+  plain task turns it into a work order. A parent can't be completed while subtasks are open.
+- Activity entries are *internal* by default; on tenant requests, status changes and replies
+  marked "Visible to the tenant" appear on the portal timeline (and email the tenant if the
+  `maintenance.notifyTenantOnUpdate` setting is on).
+- Auto-assign rules map a category to a team member and/or vendor (company level).
+- Vendor logins (Vendor role + `Vendor.userId`) see every task assigned to their vendor and may
+  comment and change status, but never create or archive tasks, and their comments are internal.
+- Inspections use a default room-by-room template; the report is a printable page. The AI
+  summary goes through `LlmProvider` (deterministic mock by default) and is audit-logged.
+- Bills are created now (vendor invoice → bill posts Dr expense / Cr A/P); paying bills, the bills
+  list and recurring bills come in Phase 6.
+
 **Not yet done (by design)**
 - 2FA, session management and support-access toggle (Settings → Security) — Phase 10.
 - Per-member property scoping is stored and enforced by `canAccessProperty()` but has no UI
