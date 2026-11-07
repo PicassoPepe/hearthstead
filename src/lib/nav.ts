@@ -81,6 +81,7 @@ export const SETTINGS_NAV: NavLeaf[] = [
   { label: "Management fees", href: "/app/settings/management-fees", phase: 6 },
   { label: "Maintenance", href: "/app/settings/maintenance", keywords: ["auto-assign", "requests", "work orders"] },
   { label: "Notifications", href: "/app/settings/notifications", keywords: ["reminders"] },
+  { label: "Communications & SMS", href: "/app/settings/communications", keywords: ["sms", "text", "twilio"] },
   { label: "Tenant portal", href: "/app/settings/tenant-portal" },
   { label: "Owner portal", href: "/app/settings/owner-portal" },
   { label: "Rental applications", href: "/app/settings/applications" },
@@ -95,7 +96,7 @@ export const NAV_BOTTOM: NavSection[] = [
   { id: "help", label: "Help", href: "/app/help", icon: "help" },
 ];
 
-export const CURRENT_PHASE = 7;
+export const CURRENT_PHASE = 8;
 
 /** Find the section that owns a pathname (longest-prefix match across sections and children). */
 export function sectionForPath(pathname: string): NavSection | undefined {

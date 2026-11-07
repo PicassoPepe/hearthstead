@@ -92,6 +92,7 @@ export async function requireContext(): Promise<AppContext> {
   if (!ctx) {
     const session = await auth();
     if (session?.user?.id && (await adminDb.tenantUser.count({ where: { userId: session.user.id, deletedAt: null } }))) redirect("/portal/tenant");
+    if (session?.user?.id && (await adminDb.ownerUser.count({ where: { userId: session.user.id, deletedAt: null } }))) redirect("/portal/owner");
     redirect(session?.user ? "/signup?step=org" : "/login");
   }
   return ctx;

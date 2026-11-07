@@ -61,7 +61,7 @@ export async function provisionOrganization(
  * Child tables are cleared in foreign-key order. Used by the seed and test cleanup.
  */
 const PURGE_ORDER = [
-  "ManagementFeeRun", "ManagementFeeRule", "OwnerDistribution", "Reconciliation", "BankTransaction", "DepositItem", "Deposit",
+  "SmsOptOut", "AnnouncementDelivery", "Announcement", "Message", "Conversation", "OwnerUser", "ManagementFeeRun", "ManagementFeeRule", "OwnerDistribution", "Reconciliation", "BankTransaction", "DepositItem", "Deposit",
   "VendorCredit", "ExpenseLine", "Expense", "RecurringBillRun", "RecurringBill", "BillPayment",
   "BillLine", "Bill", "InspectionItem", "TaskActivity", "TaskAssignee", "Task", "Vendor",
   "PaymentEvent", "PaymentIntent", "AutopayRun", "Autopay", "PaymentMethod", "InsurancePolicy", "TenantUser", "ProcessorAccount",

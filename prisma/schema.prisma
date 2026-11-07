@@ -1327,3 +1327,135 @@ model ManagementFeeRun {
 
   @@unique([propertyId, period])
 }
+
+// ───────────────────────────── Phase 8: owner portal & communications ─────────────────────────────
+
+/// Links a login to an Owner record (owner portal). Users are global; the link is tenant data.
+model OwnerUser {
+  id             String    @id @default(cuid())
+  organizationId String
+  ownerId        String
+  userId         String
+  invitedAt      DateTime  @default(now())
+  acceptedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@unique([ownerId, userId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+/// One thread with a tenant, owner, vendor or an unknown phone number (inbound SMS).
+model Conversation {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  subject            String?
+  tenantId           String?
+  ownerId            String?
+  vendorId           String?
+  /// Normalized +1XXXXXXXXXX for SMS threads.
+  phone              String?
+  /// OPEN | CLOSED
+  status             String    @default("OPEN")
+  assigneeId         String?
+  lastMessageAt      DateTime  @default(now())
+  lastMessagePreview String?
+  /// Inbound messages staff haven't read.
+  unreadCount        Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  messages Message[]
+
+  @@index([organizationId, lastMessageAt])
+  @@index([organizationId, tenantId])
+  @@index([organizationId, ownerId])
+  @@index([organizationId, phone])
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  organizationId String
+  conversationId String
+  /// IN (from the contact) | OUT (from staff/system)
+  direction      String
+  /// PORTAL | SMS | EMAIL | NOTE (internal)
+  channel        String
+  body           String
+  authorUserId   String?
+  authorName     String
+  /// QUEUED | SENT | DELIVERED | FAILED | RECEIVED
+  status         String    @default("SENT")
+  externalId     String?
+  /// SMS segments billed (metering).
+  segments       Int       @default(0)
+  error          String?
+  /// When the contact read it (portal) — staff read state lives on the conversation.
+  readAt         DateTime?
+  announcementId String?
+  aiDrafted      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, conversationId, createdAt])
+  @@index([organizationId, channel, createdAt])
+  @@index([externalId])
+}
+
+model Announcement {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  body           String
+  /// { type: ALL_TENANTS | PROPERTY_TENANTS | ALL_OWNERS | PROPERTY_OWNERS, propertyIds: string[] }
+  audience       Json
+  /// PORTAL | EMAIL | SMS
+  channels       String[]
+  /// DRAFT | SCHEDULED | SENT | CANCELED
+  status         String    @default("DRAFT")
+  scheduledFor   DateTime?
+  sentAt         DateTime?
+  recipientCount Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  deliveries AnnouncementDelivery[]
+
+  @@index([organizationId, status, scheduledFor])
+}
+
+model AnnouncementDelivery {
+  id             String   @id @default(cuid())
+  organizationId String
+  announcementId String
+  /// "T:<tenantId>" | "O:<ownerId>"
+  recipientKey   String
+  tenantId       String?
+  ownerId        String?
+  channel        String
+  /// SENT | FAILED | SKIPPED
+  status         String
+  error          String?
+  createdAt      DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, recipientKey, channel])
+  @@index([organizationId, tenantId])
+  @@index([organizationId, ownerId])
+}
+
+/// Numbers that replied STOP. Outbound SMS to them is refused until they reply START.
+model SmsOptOut {
+  id             String   @id @default(cuid())
+  organizationId String
+  phone          String
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, phone])
+}

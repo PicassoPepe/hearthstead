@@ -30,6 +30,25 @@ class MockLlmProvider implements LlmProvider {
       if (fair.length) parts.push(`Fair (monitor): ${fair.map(clean).join("; ")}.`);
       return parts.join(" ");
     }
+    if (req.purpose === "draft-reply") {
+      const last = [...input.matchAll(/^([^:\n]+): (.*)$/gm)].filter((m) => !/^(Contact|Conversation)$/.test(m[1]!)).at(-1);
+      const name = (input.match(/^Contact: ([^(\n]+)/m)?.[1] ?? "there").trim().split(" ")[0];
+      const said = (last?.[2] ?? "").toLowerCase();
+      const sign = req.system?.match(/Sign as ([^.]+)\./)?.[1] ?? "The team";
+      const body = /leak|broken|repair|fix|not working|heat|water|clog|mold/.test(said)
+        ? "Thanks for letting us know — I'm sorry about the trouble. I've passed this to our maintenance team and someone will contact you to schedule a visit. If it's an emergency (flooding, no heat, gas smell), please call our emergency line right away."
+        : /pay|rent|balance|late|fee|charge/.test(said)
+          ? "Thanks for reaching out. You can see your balance and pay any time in the resident portal under Pay, and set up autopay there too. If something on your ledger looks wrong, reply here and I'll take a look."
+          : /lease|renew|move/.test(said)
+            ? "Thanks for your message. I'll review your lease details and get back to you shortly with next steps."
+            : "Thanks for your message — I'll look into this and get back to you shortly.";
+      return `Hi ${name},\n\n${body}\n\nBest,\n${sign}`;
+    }
+    if (req.purpose === "improve-text") {
+      const clean = input.replace(/[ \t]+/g, " ").replace(/\s+([,.!?])/g, "$1").replace(/(^|[.!?]\s+)([a-z])/g, (_m, a: string, b: string) => a + b.toUpperCase()).trim();
+      const punct = /[.!?]$/.test(clean) ? clean : `${clean}.`;
+      return /thank/i.test(punct) ? punct : `${punct}\n\nThank you!`;
+    }
     if (req.purpose === "report-summary") {
       // Input: a title line, then "- Label: value" facts. Produce a short, deterministic narrative.
       const [title = "Report", ...rest] = input.split("\n");

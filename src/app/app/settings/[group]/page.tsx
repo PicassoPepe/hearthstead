@@ -19,6 +19,7 @@ const GROUPS: Record<string, { group: SettingGroup; description: string }> = {
   applications: { group: "applications", description: "Rental application fee and required sections." },
   notifications: { group: "notifications", description: "Automatic rent reminders sent to tenants." },
   "owner-portal": { group: "ownerPortal", description: "What owners can see in their portal." },
+  communications: { group: "communications", description: "Text messaging, usage limits and portal message notifications." },
 };
 
 const LATER: Record<string, { title: string; phase: number; description: string }> = {

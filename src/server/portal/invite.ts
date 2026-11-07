@@ -32,3 +32,28 @@ export async function inviteTenantToPortal(db: ScopedDb, tenantId: string, orgNa
   await audit(db, { action: "tenant.portal_invited", entityType: "Tenant", entityId: tenantId, after: { email } });
   return { email };
 }
+
+/** Create (or reuse) a login for an owner, link it, and email an owner-portal sign-in link. */
+export async function inviteOwnerToPortal(db: ScopedDb, ownerId: string, orgName: string): Promise<{ email: string }> {
+  const o = await db.owner.findFirst({ where: { id: ownerId } });
+  if (!o) throw new UserFacingError("Owner not found");
+  const name = o.kind === "COMPANY" ? o.companyName ?? "Owner" : [o.firstName, o.lastName].filter(Boolean).join(" ");
+  if (!o.email) throw new UserFacingError(`${name} has no email address. Add one first.`);
+  const email = o.email.toLowerCase();
+  const user = (await adminDb.user.findUnique({ where: { email } })) ?? (await adminDb.user.create({ data: { email, name } }));
+  const link = await db.ownerUser.findFirst({ where: { ownerId, userId: user.id, deletedAt: undefined } });
+  if (!link) await db.ownerUser.create({ data: { organizationId: db.ctx.orgId, ownerId, userId: user.id, createdById: db.ctx.userId } });
+  else if (link.deletedAt) await db.ownerUser.update({ where: { id: link.id }, data: { deletedAt: null, invitedAt: new Date() } });
+  if (o.portalStatus !== "ACTIVE") await db.owner.update({ where: { id: ownerId }, data: { portalStatus: "INVITED" } });
+  const base = process.env.AUTH_URL ?? "http://localhost:3000";
+  const url = `${base}/login?email=${encodeURIComponent(email)}&portal=1&callbackUrl=${encodeURIComponent("/portal/owner")}`;
+  await getEmailProvider().send({
+    to: email,
+    organizationId: db.ctx.orgId,
+    subject: `${orgName} invited you to the owner portal`,
+    html: `<!doctype html><html><body style="font-family:system-ui,sans-serif;padding:24px;color:#0f172a"><h1 style="font-size:20px">See how your properties are doing</h1><p>${orgName} uses ${APP} to share statements, income, distributions and documents with owners.</p><p style="margin:24px 0"><a href="${url}" style="background:#0F766E;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Open the owner portal</a></p></body></html>`,
+    text: `${orgName} invited you to the owner portal: ${url}`,
+  });
+  await audit(db, { action: "owner.portal_invited", entityType: "Owner", entityId: ownerId, after: { email } });
+  return { email };
+}

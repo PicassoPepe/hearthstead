@@ -24,7 +24,8 @@ export type SettingGroup =
   | "notifications"
   | "ownerPortal"
   | "branding"
-  | "maintenance";
+  | "maintenance"
+  | "communications";
 
 type Def<S extends z.ZodType> = {
   key: string;
@@ -164,6 +165,22 @@ export const SETTINGS = {
     schema: z.boolean(), default: true, scopes: ORG_PROP, input: { kind: "boolean" },
   }),
 
+  // ── Communications ──
+  "communications.smsEnabled": def({
+    key: "communications.smsEnabled", group: "communications", label: "Text messaging (SMS)",
+    help: "Send and receive texts from the inbox and announcements. Tenants can reply STOP to opt out.",
+    schema: z.boolean(), default: true, scopes: ["ORG"], input: { kind: "boolean" },
+  }),
+  "communications.smsMonthlyLimit": def({
+    key: "communications.smsMonthlyLimit", group: "communications", label: "Monthly SMS limit",
+    help: "Message segments per calendar month. Sending stops at the limit so there are no surprise charges.",
+    schema: z.number().int().min(0).max(100_000), default: 1000, scopes: ["ORG"], input: { kind: "number", min: 0, max: 100000, suffix: "segments" },
+  }),
+  "communications.emailOnPortalMessage": def({
+    key: "communications.emailOnPortalMessage", group: "communications", label: "Email contacts when you reply in the portal",
+    schema: z.boolean(), default: true, scopes: ["ORG"], input: { kind: "boolean" },
+  }),
+
   // ── Maintenance ──
   "maintenance.autoAssignRules": def({
     key: "maintenance.autoAssignRules", group: "maintenance", label: "Auto-assign rules",
@@ -196,6 +213,7 @@ export const SETTING_GROUP_LABELS: Record<SettingGroup, string> = {
   ownerPortal: "Owner portal",
   branding: "Branding",
   maintenance: "Maintenance",
+  communications: "Communications & SMS",
 };
 
 export function isSettingKey(k: string): k is SettingKey {
