@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { CommLog } from "@/components/comms/comm-log";
 import { notFound } from "next/navigation";
-import { Plus, MessagesSquare } from "lucide-react";
+import { Plus } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { balancesBy } from "@/server/leasing/queries";
@@ -111,7 +112,7 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
       ) : tab === "tasks" ? (
         <EntityTasks ctx={ctx} where={{ tenantId: t.id }} newHref="/app/new/task" tableId="tenant-tasks" />
       ) : (
-        <EmptyState icon={<MessagesSquare />} title="Communications arrive in Phase 8" description="Email, SMS and portal messages." />
+        <CommLog ctx={ctx} who={{ tenantId: t.id }} email={t.email} />
       )}
     </>
   );

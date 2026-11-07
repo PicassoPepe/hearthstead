@@ -49,6 +49,14 @@ class MockLlmProvider implements LlmProvider {
       const punct = /[.!?]$/.test(clean) ? clean : `${clean}.`;
       return /thank/i.test(punct) ? punct : `${punct}\n\nThank you!`;
     }
+    if (req.purpose === "listing-description") {
+      const f = Object.fromEntries(input.split("\n").map((l) => l.split(": ")).filter((x) => x.length >= 2).map(([k, ...v]) => [k, v.join(": ")]));
+      const size = [f.Bedrooms ? `${f.Bedrooms}-bedroom` : null, f.Bathrooms ? `${f.Bathrooms}-bath` : null].filter(Boolean).join(", ");
+      const p1 = `Welcome home to ${f.Unit ? `unit ${f.Unit} at ` : ""}${(f.Property ?? "this property").split(" (")[0]}${size ? ` — a ${size} home` : ""}${f["Square feet"] ? ` with ${f["Square feet"]} square feet of living space` : ""}.`;
+      const p2 = f.Amenities ? `Highlights include ${f.Amenities.toLowerCase()}.` : "The home is freshly prepared for its next resident.";
+      const p3 = `Rent is ${f.Rent ?? "listed above"}. Pets: ${(f.Pets ?? "ask us").toLowerCase()}. Schedule a showing or apply online today.`;
+      return [p1, p2, p3].join("\n\n");
+    }
     if (req.purpose === "report-summary") {
       // Input: a title line, then "- Label: value" facts. Produce a short, deterministic narrative.
       const [title = "Report", ...rest] = input.split("\n");

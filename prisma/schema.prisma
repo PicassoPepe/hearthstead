@@ -1459,3 +1459,220 @@ model SmsOptOut {
 
   @@unique([organizationId, phone])
 }
+
+// ───────────────────────────── Phase 9: leasing funnel ─────────────────────────────
+
+model Listing {
+  id             String    @id @default(cuid())
+  organizationId String
+  unitId         String
+  propertyId     String
+  slug           String
+  title          String
+  description    String    @default("")
+  rentCents      Int
+  depositCents   Int       @default(0)
+  availableOn    DateTime? @db.Date
+  leaseTermMonths Int      @default(12)
+  petPolicy      String    @default("Ask about pets")
+  /// DRAFT | PUBLISHED | UNLISTED
+  status         String    @default("DRAFT")
+  syndicate      Boolean   @default(true)
+  publishedAt    DateTime?
+  unlistedReason String?
+  aiDescription  Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@index([unitId])
+}
+
+model Prospect {
+  id             String    @id @default(cuid())
+  organizationId String
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  /// WEBSITE | ZILLOW | WALK_IN | REFERRAL | PHONE | OTHER
+  source         String    @default("WEBSITE")
+  /// NEW | CONTACTED | TOURED | APPLIED | LEASED | LOST
+  status         String    @default("NEW")
+  listingId      String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@index([organizationId, status])
+}
+
+model Showing {
+  id             String   @id @default(cuid())
+  organizationId String
+  listingId      String
+  prospectId     String
+  startsAt       DateTime
+  durationMin    Int      @default(30)
+  /// SCHEDULED | COMPLETED | NO_SHOW | CANCELED
+  status         String   @default("SCHEDULED")
+  agentUserId    String?
+  /// STAFF | SELF_SCHEDULED
+  source         String   @default("STAFF")
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?
+
+  @@index([organizationId, startsAt])
+}
+
+model Application {
+  id                String    @id @default(cuid())
+  organizationId    String
+  number            Int
+  listingId         String?
+  propertyId        String
+  unitId            String?
+  /// DRAFT | SUBMITTED | SCREENING | APPROVED | DECLINED | WITHDRAWN
+  status            String    @default("DRAFT")
+  email             String
+  firstName         String    @default("")
+  lastName          String    @default("")
+  phone             String?
+  desiredMoveIn     DateTime? @db.Date
+  /// All step data: residence, employment, income, references, pets, vehicles, co-applicants.
+  data              Json      @default("{}")
+  step              Int       @default(0)
+  feeCents          Int       @default(0)
+  feePaidAt         DateTime?
+  feeReference      String?
+  feeJournalEntryId String?
+  consentAt         DateTime?
+  consentIp         String?
+  /// ScreeningProvider result: { provider, reportId, creditScore, criminal, eviction, incomeRatio, recommendation }
+  screening         Json?
+  screenedAt        DateTime?
+  decisionReason    String?
+  decidedAt         DateTime?
+  decidedById       String?
+  leaseId           String?
+  prospectId        String?
+  /// Hash of the applicant's resume token (the raw token lives only in their cookie/link).
+  tokenHash         String    @unique
+  submittedAt       DateTime?
+  lastSavedAt       DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+}
+
+model DocumentTemplate {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  /// LEASE | RENEWAL | NOTICE | ADVERSE_ACTION | OTHER
+  kind           String    @default("OTHER")
+  /// Markdown-ish text with {{merge.fields}}
+  body           String
+  isDefault      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@index([organizationId, kind])
+}
+
+model SignatureRequest {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  title              String
+  /// Rendered document (HTML) everyone signs — frozen at send time; its SHA-256 is recorded.
+  documentHtml       String
+  documentHash       String
+  leaseId            String?
+  renewalOfferId     String?
+  templateId         String?
+  /// SENT | COMPLETED | VOIDED | DECLINED
+  status             String    @default("SENT")
+  completedAt        DateTime?
+  finalAttachmentId  String?
+  createdAt          DateTime  @default(now())
+  createdById        String?
+
+  signers Signer[]
+  events  SignatureEvent[]
+
+  @@index([organizationId, leaseId])
+}
+
+model Signer {
+  id             String    @id @default(cuid())
+  organizationId String
+  requestId      String
+  name           String
+  email          String
+  /// TENANT | COSIGNER | MANAGER
+  role           String
+  order          Int       @default(1)
+  tokenHash      String    @unique
+  /// PENDING | VIEWED | SIGNED | DECLINED
+  status         String    @default("PENDING")
+  signedName     String?
+  signedAt       DateTime?
+  ip             String?
+  userAgent      String?
+
+  request SignatureRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+model SignatureEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  requestId      String
+  signerId       String?
+  /// SENT | VIEWED | SIGNED | DECLINED | COMPLETED | VOIDED | REMINDED
+  event          String
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  request SignatureRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+model RenewalOffer {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  leaseId            String
+  newRentCents       Int
+  termMonths         Int
+  startDate          DateTime  @db.Date
+  endDate            DateTime  @db.Date
+  /// DRAFT | SENT | ACCEPTED | DECLINED | EXPIRED | WITHDRAWN
+  status             String    @default("DRAFT")
+  expiresOn          DateTime? @db.Date
+  message            String?
+  sentAt             DateTime?
+  respondedAt        DateTime?
+  signatureRequestId String?
+  newLeaseId         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  createdById        String?
+
+  @@index([organizationId, status])
+  @@index([leaseId])
+}

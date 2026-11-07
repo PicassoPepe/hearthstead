@@ -7,6 +7,7 @@
  *  - Phase 3: 50 leases with 18 months of ledger history (prisma/seed-leasing.ts)
  *  - Phase 4: mock processor, tenant portal login, autopay, online payments (prisma/seed-payments.ts)
  *  - Phase 5: vendors, tasks, work orders, inspection, bill (prisma/seed-maintenance.ts)
+ *  - Phase 8: owner portal login, conversations, announcements (prisma/seed-comms.ts)
  *  - Phase 6: deposits, bills, expenses, fees, distributions, bank feed, reconciliation (prisma/seed-accounting.ts)
  *
  * Every demo password is: Demo1234!x
@@ -19,6 +20,7 @@ import { seedLeasing } from "./seed-leasing";
 import { seedPayments } from "./seed-payments";
 import { seedMaintenance } from "./seed-maintenance";
 import { seedAccounting } from "./seed-accounting";
+import { seedComms } from "./seed-comms";
 import { todayIn } from "../src/lib/dates";
 
 const db = new PrismaClient();
@@ -30,7 +32,8 @@ const PEOPLE = [
   { email: "books@example.com", name: "Ben Bookkeeper", role: "BOOKKEEPER" },
   { email: "maint@example.com", name: "Marco Maintenance", role: "MAINTENANCE" },
   { email: "vendor@example.com", name: "Val Vendor (Ace Plumbing)", role: "VENDOR" },
-  { email: "owner@example.com", name: "Olivia Owner", role: "OWNER_READONLY" },
+  // Owner-portal login (no staff membership), linked to owner Grace Harmon by seed-comms.
+  { email: "owner@example.com", name: "Grace Harmon", role: "OWNER_PORTAL" },
 ] as const;
 
 async function main(): Promise<void> {
@@ -56,7 +59,7 @@ async function main(): Promise<void> {
   const roles = await db.role.findMany({ where: { organizationId: orgId } });
   const roleId = (key: string) => roles.find((r) => r.key === key)!.id;
 
-  for (const p of PEOPLE.filter((x) => x.role !== "ADMIN")) {
+  for (const p of PEOPLE.filter((x) => x.role !== "ADMIN" && x.role !== "OWNER_PORTAL")) {
     await db.membership.create({
       data: { organizationId: orgId, userId: users[p.email]!, roleId: roleId(p.role), status: "ACTIVE", acceptedAt: new Date(), createdById: users["admin@example.com"] },
     });
@@ -107,6 +110,9 @@ async function main(): Promise<void> {
   // Phase 6: books — deposits, payables, management fees, distributions, bank feed, reconciliation.
   const books = await seedAccounting(process.env.DATABASE_URL!, orgId, users["admin@example.com"]!, todayIn("America/Chicago"));
 
+  // Phase 8: owner portal login, conversations, announcements.
+  const comms = await seedComms(process.env.DATABASE_ADMIN_URL!, process.env.DATABASE_URL!, orgId, users);
+
   // Admin lands in Maple & Main by default.
   await db.user.update({ where: { id: users["admin@example.com"] }, data: { lastOrgId: orgId } });
 
@@ -118,6 +124,7 @@ async function main(): Promise<void> {
   console.log(`  Leasing: ${leasing.leases} leases, ${leasing.lateFees} late fees, ${leasing.returned} returned payment(s).`);
   console.log(`  Maintenance: ${maintenance.vendors} vendors, ${maintenance.tasks} tasks (vendor login: vendor@example.com → Ace Plumbing).`);
   console.log(`  Accounting: ${books.deposits} deposits, ${books.bills} bills, ${books.expenses} expenses, ${books.feeRuns} fee runs, ${books.distributions} distributions, ${books.feed} bank-feed lines.`);
+  console.log(`  Communications: ${comms.conversations} conversations, ${comms.announcements} announcements. Owner portal: owner@example.com (Grace Harmon).`);
   console.log(`  Payments: ${payments.payments} online payments, ${payments.autopays} autopays. Tenant portal: tenant@example.com (${payments.demoTenant}).`);
 }
 

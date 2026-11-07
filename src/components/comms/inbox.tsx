@@ -29,7 +29,8 @@ export function Inbox({ rows, thread, filter, contacts, usage, canEdit, presetTo
   const router = useRouter();
   const [composeOpen, setComposeOpen] = React.useState(Boolean(presetTo));
   React.useEffect(() => {
-    if (thread && rows.find((r) => r.id === thread.id)?.unread) void markReadAction(thread.id).then(() => router.refresh());
+    if (!thread || !rows.find((r) => r.id === thread.id)?.unread) return;
+    markReadAction(thread.id).then(() => router.refresh(), () => undefined);
   }, [thread, rows, router]);
   const href = (patch: Record<string, string>) => `/app/communications?${new URLSearchParams({ filter, ...(thread ? { c: thread.id } : {}), ...patch })}`;
   const FILTERS = [["all", "All"], ["unread", "Unread"], ["Tenant", "Tenants"], ["Owner", "Owners"], ["Vendor", "Vendors"], ["closed", "Closed"]] as const;
@@ -88,7 +89,9 @@ function ThreadView({ thread, canEdit, back }: { thread: Thread; canEdit: boolea
   const [ai, setAi] = React.useState(false);
   const [busy, setBusy] = React.useState<"" | "send" | "draft" | "improve">("");
   const end = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => end.current?.scrollIntoView({ block: "end" }), [thread.messages.length]);
+  React.useEffect(() => {
+    end.current?.scrollIntoView({ block: "end" });
+  }, [thread.messages.length]);
   return (
     <>
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">

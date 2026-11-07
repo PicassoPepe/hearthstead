@@ -6,6 +6,8 @@ import { audit } from "@/server/audit";
 import { advanceMockPayments, runAutopay } from "@/server/payments/service";
 import { runRecurringBills } from "@/server/accounting/payables";
 import { previousPeriod, runManagementFees } from "@/server/accounting/owners";
+import { autoDelist } from "@/server/funnel/listings";
+import { expireRenewalOffers } from "@/server/funnel/renewals";
 
 export type NightlyResult = {
   leases: number; charges: number; lateFees: number; ended: number;
@@ -13,6 +15,8 @@ export type NightlyResult = {
   payments?: { settled: number; failed: number; paidOut: number };
   bills?: number;
   managementFees?: { created: number; totalCents: number };
+  delisted?: number;
+  renewalsExpired?: number;
   errors: { leaseId: string; message: string }[];
 };
 
@@ -61,6 +65,8 @@ export async function runNightly(db: ScopedDb, opts: { today?: Date; timezone?: 
     result.bills = await runRecurringBills(db, today);
     const fees = await runManagementFees(db, previousPeriod(today));
     result.managementFees = { created: fees.created, totalCents: fees.totalCents };
+    result.delisted = await autoDelist(db, today);
+    result.renewalsExpired = await expireRenewalOffers(db, today);
   } catch (e) {
     result.errors.push({ leaseId: "accounting", message: e instanceof Error ? e.message : String(e) });
   }

@@ -601,7 +601,8 @@ async function ownerStatement(ctx: Ctx, p: ReportParams): Promise<ReportResult> 
   const empty: ReportResult = { title: "Owner statement", subtitle: "Choose an owner", columns: [{ key: "line", label: "Line", kind: "text" }], rows: [], highlights: [] };
   if (!owner) return empty;
   const scope = ctx.membership.propertyScope;
-  const owns = await ctx.db.propertyOwnership.findMany({ where: { ownerId: owner.id, deletedAt: null, ...(scope.length ? { propertyId: { in: scope } } : {}) }, include: { property: { select: { id: true, name: true } } }, orderBy: { property: { name: "asc" } } });
+  const allowed = p.propertyId ? (scope.length ? scope.filter((id) => id === p.propertyId) : [p.propertyId]) : scope;
+  const owns = await ctx.db.propertyOwnership.findMany({ where: { ownerId: owner.id, deletedAt: null, ...(allowed.length || p.propertyId ? { propertyId: { in: allowed } } : {}) }, include: { property: { select: { id: true, name: true } } }, orderBy: { property: { name: "asc" } } });
   const { list } = await accountsById(ctx);
   const ie = await incomeExpense(ctx, { from: p.from, to: p.to, basis: p.basis, propertyIds: owns.map((o) => o.propertyId), col: (_d, prop) => prop ?? "_" });
   const dists = await ctx.db.ownerDistribution.findMany({ where: { ownerId: owner.id, date: { gte: parseISODate(p.from), lte: parseISODate(p.to) } } });

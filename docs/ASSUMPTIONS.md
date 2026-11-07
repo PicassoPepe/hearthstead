@@ -153,6 +153,24 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Chart colors use the validated categorical palette (checked for color-vision deficiency and
   contrast in both themes); every chart has a legend, direct labels or a table alternative.
 
+**Phase 8 (Owner portal & communications)**
+- Owner logins are ordinary Users linked to Owner records (`OwnerUser`); a login with no staff
+  membership is routed to its tenant or owner portal. The demo `owner@example.com` is an owner-portal
+  login (Grace Harmon); the built-in "Owner (read-only)" staff role still exists for staff use.
+- The owner portal reuses the report engine with a context whose property scope is exactly the
+  owner's properties, so filters can only narrow it. Amounts on statements are property totals with
+  the owner's share computed by ownership %.
+- One conversation per contact (tenant, owner, vendor or unknown number) holds every channel.
+  Inbound SMS is routed to the organization that last texted that number, else by matching a
+  contact's phone; unknown numbers get their own thread.
+- SMS: US numbers only (normalized to +1XXXXXXXXXX), segments metered per calendar month against a
+  company limit; STOP/START keywords are honored. The mock "delivers" every valid number except ones
+  ending in 0000 (simulated carrier failure).
+- Announcement delivery is idempotent per (recipient, channel). Portal announcements are the
+  delivery rows themselves; SMS announcements are also logged in the recipient's conversation.
+- AI drafts and rewrites go through `LlmProvider`, are labeled in the UI and audit-logged, and are
+  never sent without a person pressing Send.
+
 **Not yet done (by design)**
 - 2FA, session management and support-access toggle (Settings → Security) — Phase 10.
 - Per-member property scoping is stored and enforced by `canAccessProperty()` but has no UI

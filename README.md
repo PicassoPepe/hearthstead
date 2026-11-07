@@ -3,7 +3,7 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: Phase 7 (Reports & dashboard) complete.** See [Roadmap](#roadmap) for what each phase adds.
+> **Status: Phase 8 (Owner portal & communications) complete.** See [Roadmap](#roadmap) for what each phase adds.
 
 ## Quick start
 
@@ -52,7 +52,7 @@ Every demo user's password is `Demo1234!x`:
 | Bookkeeper | `books@example.com` |
 | Maintenance | `maint@example.com` |
 | Vendor (Ace Plumbing — sees only its jobs) | `vendor@example.com` |
-| Read-only Owner | `owner@example.com` |
+| Owner portal (Grace Harmon) | `owner@example.com` |
 | Admin of "Harbor Light Rentals" | `harbor@example.com` |
 | **Tenant (resident portal)** | `tenant@example.com` → http://localhost:3000/portal/tenant |
 
@@ -252,7 +252,7 @@ API keys. Select an implementation with its env var.
 | PaymentsProvider | `PAYMENTS_PROVIDER` | `mock`, `stripe` (Connect Express + Financial Connections) | 4 ✅ |
 | InsuranceProvider | `INSURANCE_PROVIDER` | `mock` | 4 ✅ |
 | BankFeedProvider | `BANKFEED_PROVIDER` | `mock` (mirrors the books with a 0–2 day lag + fees/interest), `plaid` (`PLAID_CLIENT_ID`, `PLAID_SECRET`); plus CSV import | 6 ✅ |
-| SmsProvider | `SMS_PROVIDER` | `mock`, `twilio` | 8 |
+| SmsProvider | `SMS_PROVIDER` | `mock` (inspect at `/dev/sms`, simulate replies), `twilio` (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`; inbound webhook `/api/webhooks/sms`, signature-checked) | 8 ✅ |
 | ScreeningProvider | `SCREENING_PROVIDER` | `mock` | 9 |
 | ESignProvider | `ESIGN_PROVIDER` | `builtin` | 9 |
 | ListingFeedProvider | `LISTINGFEED_PROVIDER` | `file` (XML/JSON feed) | 9 |
@@ -274,9 +274,29 @@ provider's credentials. To add an implementation, implement the interface in
 | P5 | Maintenance: tasks, requests, work orders, vendors, inspections | ✅ |
 | P6 | Accounting: bills, expenses, banking, reconciliation, distributions, management fees | ✅ |
 | P7 | Reports + overview widgets | ✅ |
-| P8 | Owner portal, communications, announcements, SMS | |
+| P8 | Owner portal, communications, announcements, SMS | ✅ |
 | P9 | Listings, showings, applications, screening, e-sign, renewals | |
 | P10 | Public API, webhooks, workflows, AI assistant and agents | |
+
+## Phase 8 demo script (Owner portal & communications)
+
+1. **Communications → Inbox** (admin or pm): portal messages, texts and emails in one list with
+   unread counts. Open a thread, pick **Send as** (portal / SMS / email / internal note), use
+   **AI draft** or **Improve** (AI-assisted messages are labeled and never auto-sent). The SMS meter
+   shows segments used against the monthly limit (Settings → Communications & SMS).
+2. Open `/dev/sms` to see texts the mock provider "sent" and **simulate an inbound reply** from a
+   number — it threads into the right conversation. Reply `STOP` to opt out (texts are then
+   refused) and `START` to opt back in.
+3. **Announcements**: choose an audience (all tenants, tenants at properties, all owners, owners of
+   properties), channels (portal / email / SMS), send now or schedule; the recipient count updates
+   live. Scheduled ones are sent by the worker every minute.
+4. Every tenant and owner page has a **Communications** tab: messages, texts, emails and
+   announcements with that person. Owner pages have **Invite to owner portal**.
+5. Sign in as `owner@example.com` (Grace Harmon) → the **owner portal**: year-to-date income,
+   expenses, net and distributions (her ownership share), occupancy, statements and reports for
+   her properties only, distributions, requests, documents and messages. Tenant names follow the
+   Owner portal settings.
+6. Tenants see announcements on their portal home and can message the office from **Messages**.
 
 ## Phase 7 demo script (Reports & dashboard)
 

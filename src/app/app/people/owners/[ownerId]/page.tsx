@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Receipt, MessagesSquare } from "lucide-react";
+import { Receipt } from "lucide-react";
+import type { AppContext } from "@/server/context";
+import { CommLog } from "@/components/comms/comm-log";
+import { InviteOwnerButton } from "@/components/comms/invite-owner-button";
+import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/dates";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { filesFor, notesFor } from "@/server/records/queries";
@@ -46,7 +51,7 @@ export default async function OwnerPage({ params, searchParams }: { params: Prom
       <EntityHeader
         breadcrumb={<><Link href="/app/people/owners" className="hover:underline">Owners</Link> / {name}</>}
         title={name}
-        status={<StatusBadge status={o.portalStatus} label={o.portalStatus === "NOT_INVITED" ? "Portal: not invited" : undefined} />}
+        status={<span className="flex items-center gap-2"><StatusBadge status={o.portalStatus} label={o.portalStatus === "NOT_INVITED" ? "Portal: not invited" : undefined} />{canEdit && o.email ? <InviteOwnerButton ownerId={o.id} label={o.portalStatus === "NOT_INVITED" ? "Invite to owner portal" : "Resend portal invite"} /> : null}</span>}
         subtitle={[o.email, o.phone].filter(Boolean).join(" · ") || undefined}
         stats={[
           { label: "Properties", value: o.ownerships.length },
@@ -117,12 +122,31 @@ export default async function OwnerPage({ params, searchParams }: { params: Prom
       ) : tab === "files" ? (
         <FilesPanel entityType="Owner" entityId={o.id} files={await filesFor(ctx, "Owner", o.id)} canEdit={canEdit} />
       ) : tab === "transactions" ? (
-        <EmptyState icon={<Receipt />} title="Owner transactions arrive in Phase 6" description="Distributions, contributions and statements." />
+        <OwnerTransactions ctx={ctx} ownerId={o.id} />
       ) : tab === "tasks" ? (
         <EntityTasks ctx={ctx} where={{ OR: [{ ownerId: o.id }, { propertyId: { in: o.ownerships.map((x) => x.propertyId) }, type: "OWNER_REQUEST" }] }} newHref="/app/new/task" tableId="owner-tasks" />
       ) : (
-        <EmptyState icon={<MessagesSquare />} title="Communications arrive in Phase 8" description="Every email, SMS and portal message with this owner." />
+        <CommLog ctx={ctx} who={{ ownerId: o.id }} email={o.email} />
       )}
     </>
+  );
+}
+
+async function OwnerTransactions({ ctx, ownerId }: { ctx: AppContext; ownerId: string }) {
+  const rows = await ctx.db.ownerDistribution.findMany({ where: { ownerId }, orderBy: { date: "desc" }, take: 200 });
+  const props = new Map((await ctx.db.property.findMany({ select: { id: true, name: true } })).map((p) => [p.id, p.name]));
+  if (!rows.length) return <EmptyState icon={<Receipt />} title="No distributions yet" description="Pay owners from Accounting → Owner distributions." action={<Link className="text-sm font-medium text-primary hover:underline" href="/app/accounting/distributions">Owner distributions</Link>} />;
+  return (
+    <div className="grid gap-2">
+      <p className="text-sm"><Link className="text-primary hover:underline" href={`/app/reports/owner-statement?ownerId=${ownerId}`}>Open owner statement →</Link></p>
+      <ul className="divide-y divide-border rounded-card border border-border bg-surface shadow-card">
+        {rows.map((r) => (
+          <li key={r.id} className="flex justify-between gap-2 px-4 py-2.5 text-sm">
+            <span>{formatDate(r.date)} · {props.get(r.propertyId)} · {r.kind === "DISTRIBUTION" ? `Distribution (${r.method.toLowerCase()})` : "Contribution"}</span>
+            <span className="tabular font-medium">{r.kind === "DISTRIBUTION" ? "−" : "+"}{formatMoney(r.amountCents)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
