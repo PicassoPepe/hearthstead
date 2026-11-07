@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn } from "./fixtures";
 
-const PAGES = ["/app/overview", "/app/settings", "/app/settings/users", "/app/settings/late-fees", "/app/rentals", "/app/rentals/units", "/app/rentals/portfolios", "/app/people/owners", "/app/files?tab=import", "/app/notes", "/app/leasing", "/app/leasing?tab=expiring", "/app/people/tenants", "/app/accounting", "/app/accounting/journal-entries", "/app/accounting/payments", "/app/settings/payments"];
+const PAGES = ["/app/overview", "/app/settings", "/app/settings/users", "/app/settings/late-fees", "/app/rentals", "/app/rentals/units", "/app/rentals/portfolios", "/app/people/owners", "/app/files?tab=import", "/app/notes", "/app/leasing", "/app/leasing?tab=expiring", "/app/people/tenants", "/app/accounting", "/app/accounting/journal-entries", "/app/accounting/payments", "/app/settings/payments", "/app/tasks", "/app/tasks?view=board", "/app/people/vendors", "/app/settings/maintenance"];
 
 test("login page has no WCAG A/AA violations", async ({ page }) => {
   await page.goto("/login");
@@ -69,11 +69,24 @@ test("tenant portal pages have no WCAG A/AA violations (mobile)", async ({ page 
   await page.getByRole("textbox", { name: "Password" }).fill("Demo1234!x");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("**/portal/tenant");
-  for (const path of ["/portal/tenant", "/portal/tenant/pay", "/portal/tenant/autopay", "/portal/tenant/methods", "/portal/tenant/history", "/portal/tenant/insurance", "/portal/tenant/documents"]) {
+  for (const path of ["/portal/tenant/requests", "/portal/tenant/requests/new", "/portal/tenant", "/portal/tenant/pay", "/portal/tenant/autopay", "/portal/tenant/methods", "/portal/tenant/history", "/portal/tenant/insurance", "/portal/tenant/documents"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(r.violations.map((v) => `${path} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  }
+});
+
+test("task detail and inspection checklist have no WCAG A/AA violations", async ({ page }) => {
+  await signIn(page, "admin@example.com", "/app/tasks");
+  for (const q of ["Move-out inspection", "Dishwasher not draining"]) {
+    await page.goto("/app/tasks");
+    await page.getByRole("textbox", { name: "Search Tasks" }).fill(q);
+    await page.getByRole("link", { name: new RegExp(q) }).first().click();
+    await page.waitForURL(/\/app\/tasks\/c/);
+    await page.waitForLoadState("networkidle");
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+    expect(r.violations.map((v) => `${q} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
   }
 });
 

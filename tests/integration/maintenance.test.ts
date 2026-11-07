@@ -65,7 +65,7 @@ describe("tasks", () => {
     await expect(createTask(dbB, { title: "Sneaky", vendorId }, { userId: B.userId, name: "B", kind: "STAFF" })).rejects.toThrow(/valid vendor/);
   });
 
-  it("vendors only see work orders assigned to them", async () => {
+  it("vendors only see tasks assigned to their vendor record", async () => {
     const vendorUser = await admin.user.create({ data: { email: `v-${Date.now()}@example.com` } });
     await db.vendor.update({ where: { id: vendorId }, data: { userId: vendorUser.id } });
     const wo = await createTask(db, { type: "WORK_ORDER", title: "Fix toilet", unitId, vendorId }, staff());
@@ -73,7 +73,8 @@ describe("tasks", () => {
     const where = await taskVisibility(db, { userId: vendorUser.id, roleKey: "VENDOR", propertyScope: [] });
     const visible = await db.task.findMany({ where });
     expect(visible.map((t) => t.id)).toContain(wo.id);
-    expect(visible.every((t) => t.vendorId === vendorId && t.type === "WORK_ORDER")).toBe(true);
+    expect(visible.every((t) => t.vendorId === vendorId)).toBe(true);
+    expect(visible.some((t) => t.title === "Internal only")).toBe(false);
     await admin.user.delete({ where: { id: vendorUser.id } });
   });
 

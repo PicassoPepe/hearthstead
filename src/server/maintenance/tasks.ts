@@ -12,7 +12,8 @@ import { tenantDisplayName } from "@/lib/leasing";
 export type TaskActor = { userId: string | null; name: string; kind: "STAFF" | "TENANT" | "VENDOR" | "SYSTEM" };
 
 /**
- * Which tasks a member may see. Vendors only see work orders assigned to their vendor record;
+ * Which tasks a member may see. Vendors only see tasks assigned to their vendor record (work
+ * orders and tenant requests routed to them);
  * members limited to certain properties only see tasks on those properties.
  */
 export async function taskVisibility(db: ScopedDb, member: { userId: string; roleKey: string | null; propertyScope: string[] }): Promise<Prisma.TaskWhereInput> {
@@ -20,7 +21,6 @@ export async function taskVisibility(db: ScopedDb, member: { userId: string; rol
   if (member.roleKey === "VENDOR") {
     const vendors = await db.vendor.findMany({ where: { userId: member.userId }, select: { id: true } });
     where.vendorId = { in: vendors.map((v) => v.id) };
-    where.type = "WORK_ORDER";
   }
   if (member.propertyScope.length) where.propertyId = { in: member.propertyScope };
   return where;
@@ -109,7 +109,7 @@ export async function createTask(db: ScopedDb, raw: TaskInput, actor: TaskActor)
         }
         return t;
       });
-      await addActivity(db, task.id, actor, "CREATED", `${TASK_TYPE_LABEL[v.type]} created${actor.kind === "TENANT" ? " from the tenant portal" : ""}${rule ? " · auto-assigned by rule" : ""}`, true);
+      await addActivity(db, task.id, actor, "CREATED", `${TASK_TYPE_LABEL[v.type]} created${actor.kind === "TENANT" ? " from the tenant portal" : ""}${rule ? " · auto-assigned by rule" : ""}`, v.type === "TENANT_REQUEST");
       if (vendorId) {
         const vendor = await db.vendor.findFirstOrThrow({ where: { id: vendorId } });
         await addActivity(db, task.id, actor, "VENDOR", `Assigned to ${vendor.name}`);
@@ -134,7 +134,7 @@ export async function setTaskStatus(db: ScopedDb, taskId: string, status: TaskSt
     if (open) throw new UserFacingError(`Finish the ${open} open subtask${open === 1 ? "" : "s"} first.`);
   }
   await db.task.update({ where: { id: taskId }, data: { status, completedAt: status === "COMPLETED" ? new Date() : null } });
-  await addActivity(db, taskId, actor, "STATUS", `Status: ${STATUS_LABEL[t.status]} → ${STATUS_LABEL[status]}`, true);
+  await addActivity(db, taskId, actor, "STATUS", `Status: ${STATUS_LABEL[t.status]} → ${STATUS_LABEL[status]}`, t.type === "TENANT_REQUEST");
   await audit(db, { action: "task.status_changed", entityType: "Task", entityId: taskId, before: { status: t.status }, after: { status } });
   if (t.tenantId && t.type === "TENANT_REQUEST") await notifyTenant(db, t.id, `Update on your request: ${PUBLIC_STATUS_TEXT[status]}`);
 }
@@ -176,7 +176,7 @@ export async function updateTask(db: ScopedDb, taskId: string, patch: { priority
   await db.task.update({ where: { id: taskId }, data });
   if (patch.vendorId !== undefined && patch.vendorId !== t.vendorId) {
     const vendor = patch.vendorId ? await db.vendor.findFirst({ where: { id: patch.vendorId } }) : null;
-    await addActivity(db, taskId, actor, "VENDOR", vendor ? `Assigned to ${vendor.name}` : "Vendor removed", Boolean(vendor));
+    await addActivity(db, taskId, actor, "VENDOR", vendor ? `Assigned to ${vendor.name}` : "Vendor removed", Boolean(vendor) && t.type === "TENANT_REQUEST");
     if (vendor && patch.notifyVendor && (await notifyVendor(db, taskId))) await addActivity(db, taskId, actor, "VENDOR", `Work order emailed to ${vendor.email}`);
   }
   if (patch.assigneeIds) {
