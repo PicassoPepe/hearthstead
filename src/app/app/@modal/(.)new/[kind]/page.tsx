@@ -12,7 +12,7 @@ export default async function InterceptedCreate({ params, searchParams }: { para
   if (!item) notFound();
   const ctx = await requireContext();
   return (
-    <CreateModal title={`New ${item.label.toLowerCase()}`} size={item.kind === "property" || item.kind === "lease" ? "wizard" : item.kind === "journal-entry" ? "wide" : "default"}>
+    <CreateModal title={`New ${item.label.toLowerCase()}`} size={item.kind === "property" || item.kind === "lease" ? "wizard" : ["journal-entry", "task", "work-order", "vendor"].includes(item.kind) ? "wide" : "default"}>
       <CreateBody kind={item.kind} ctx={ctx} mode="modal" query={query} />
     </CreateModal>
   );

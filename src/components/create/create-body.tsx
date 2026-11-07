@@ -14,6 +14,9 @@ import { LeaseWizard } from "@/components/leasing/lease-wizard";
 import { TenantForm } from "@/components/leasing/tenant-form";
 import { MoneyForm } from "@/components/leasing/money-form";
 import { JournalEntryForm } from "@/components/accounting/journal-entry-form";
+import { TaskForm } from "@/components/tasks/task-form";
+import { VendorForm } from "@/components/tasks/vendor-form";
+import { taskFormOptions } from "@/server/maintenance/queries";
 import { leaseWizardOptions, moneyOptions } from "@/server/leasing/queries";
 
 /** Renders the right create form for a kind. Later phases add their forms/wizards here. */
@@ -43,6 +46,12 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
       return <LeaseWizard options={await leaseWizardOptions(ctx)} preset={{ propertyId: query.propertyId, unitId: query.unitId, tenantId: query.tenantId }} />;
     case "tenant":
       return <TenantForm />;
+    case "task":
+    case "work-order":
+      if (ctx.membership.roleKey === "VENDOR") return <Forbidden what="creating tasks" />;
+      return <TaskForm options={await taskFormOptions(ctx)} defaultType={kind === "work-order" ? "WORK_ORDER" : "TASK"} preset={{ propertyId: query.propertyId, unitId: query.unitId, parentTaskId: query.parentTaskId, leaseId: query.leaseId }} />;
+    case "vendor":
+      return <VendorForm />;
     case "charge":
       return <MoneyForm kind="CHARGE" options={await moneyOptions(ctx, true)} />;
     case "payment":

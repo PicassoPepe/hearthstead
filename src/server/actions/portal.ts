@@ -12,6 +12,8 @@ import { audit } from "@/server/audit";
 import { isoDate } from "@/lib/leasing";
 import { parseISODate } from "@/lib/dates";
 import { parseMoney } from "@/lib/money";
+import { createTask, commentOnTask } from "@/server/maintenance/tasks";
+import { portalSettings } from "@/server/payments/service";
 
 /** Every portal write: signed-in tenant, not a staff preview, and only their own lease. */
 async function writer(leaseId?: string): Promise<PortalContext & { leaseId: string }> {
@@ -149,4 +151,49 @@ export async function exitPreview(): Promise<void> {
   const tenantId = jar.get(PREVIEW_COOKIE)?.value;
   jar.delete(PREVIEW_COOKIE);
   redirect(tenantId ? `/app/people/tenants/${tenantId}` : "/app/overview");
+}
+
+const requestSchema = z.object({
+  category: z.string().min(1, "Choose a category"),
+  title: z.string().trim().min(3, "Describe the problem in a few words").max(140),
+  description: z.string().trim().max(5000).default(""),
+  permissionToEnter: z.enum(["yes", "no"], { message: "Let us know if we can enter" }),
+  preferredTimes: z.string().trim().max(200).default(""),
+  urgent: z.boolean().default(false),
+});
+
+/** Tenant submits a maintenance request (with photos). */
+export async function submitRequest(form: FormData): Promise<ActionResult<{ id: string; number: number }>> {
+  return runAction(async () => {
+    const ctx = await writer();
+    const lease = await ctx.db.lease.findFirstOrThrow({ where: { id: ctx.leaseId }, include: { units: { take: 1 } } });
+    const settings = await portalSettings(ctx.db, lease);
+    if (!settings.allowRequests) throw new UserFacingError("Online requests are turned off for your lease. Please call the office.");
+    const v = requestSchema.parse({
+      category: String(form.get("category") ?? ""), title: String(form.get("title") ?? ""), description: String(form.get("description") ?? ""),
+      permissionToEnter: String(form.get("permissionToEnter") ?? ""), preferredTimes: String(form.get("preferredTimes") ?? ""), urgent: form.get("urgent") === "on",
+    });
+    const actor = { userId: ctx.user.id, name: ctx.tenant.name, kind: "TENANT" as const };
+    const r = await createTask(ctx.db, {
+      type: "TENANT_REQUEST", title: v.title, description: v.description, category: v.category, priority: v.urgent ? "URGENT" : "NORMAL",
+      propertyId: lease.propertyId, unitId: lease.units[0]?.unitId ?? null, leaseId: lease.id, tenantId: ctx.tenant.id,
+      permissionToEnter: v.permissionToEnter === "yes", preferredTimes: v.preferredTimes || null,
+    }, actor);
+    const photos = form.getAll("photos").filter((f): f is File => typeof f === "object" && "arrayBuffer" in f && (f as File).size > 0).slice(0, 6);
+    for (const f of photos) await storeAttachment(ctx.db, { name: f.name, type: f.type, bytes: new Uint8Array(await f.arrayBuffer()) }, { type: "Task", id: r.id }, "Photo");
+    await ctx.db.task.update({ where: { id: r.id }, data: { tenantId: ctx.tenant.id } });
+    refresh();
+    revalidatePath("/app", "layout");
+    return r;
+  }, "Request submitted");
+}
+
+export async function replyToRequest(taskId: string, body: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await writer();
+    const t = await ctx.db.task.findFirst({ where: { id: taskId, tenantId: ctx.tenant.id, type: "TENANT_REQUEST" } });
+    if (!t) throw new UserFacingError("Request not found");
+    await commentOnTask(ctx.db, taskId, body, true, { userId: ctx.user.id, name: ctx.tenant.name, kind: "TENANT" });
+    refresh();
+  }, "Message sent");
 }
