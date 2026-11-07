@@ -56,8 +56,8 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           })}
         </nav>
         {!isVendor ? (
-          <Link href={q(view, !mine)} aria-pressed={mine} className={cn("rounded-full border px-3 py-1.5 text-sm font-medium", mine ? "border-primary bg-primary-soft text-primary-soft-foreground" : "border-border text-muted-foreground hover:text-foreground")}>
-            Assigned to me
+          <Link href={q(view, !mine)} className={cn("rounded-full border px-3 py-1.5 text-sm font-medium", mine ? "border-primary bg-primary-soft text-primary-soft-foreground" : "border-border text-muted-foreground hover:text-foreground")}>
+            {mine ? "✓ " : ""}Assigned to me<span className="sr-only">{mine ? " (filter on — select to show everyone's tasks)" : " (filter off)"}</span>
           </Link>
         ) : null}
       </div>
