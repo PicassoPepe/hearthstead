@@ -698,17 +698,19 @@ model JournalEntry {
 }
 
 model JournalLine {
-  id             String   @id @default(cuid())
-  organizationId String
-  journalEntryId String
-  accountId      String
-  debitCents     Int      @default(0)
-  creditCents    Int      @default(0)
-  propertyId     String?
-  unitId         String?
-  leaseId        String?
-  memo           String?
-  createdAt      DateTime @default(now())
+  id               String   @id @default(cuid())
+  organizationId   String
+  journalEntryId   String
+  accountId        String
+  debitCents       Int      @default(0)
+  creditCents      Int      @default(0)
+  propertyId       String?
+  unitId           String?
+  leaseId          String?
+  memo             String?
+  /// Set when this line was ticked off in a completed bank reconciliation.
+  reconciliationId String?
+  createdAt        DateTime @default(now())
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account      Account      @relation(fields: [accountId], references: [id])
@@ -1102,4 +1104,224 @@ model BillLine {
   bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
 
   @@index([billId])
+}
+
+// ─── Phase 6: Accounting ──────────────────────────────────────────────────
+
+model BillPayment {
+  id             String    @id @default(cuid())
+  organizationId String
+  billId         String
+  amountCents    Int
+  date           DateTime  @db.Date
+  /// Bank (chart-of-accounts id) the money left from.
+  bankAccountId  String
+  method         String    @default("CHECK")
+  reference      String?
+  journalEntryId String    @unique
+  voidedAt       DateTime?
+  createdAt      DateTime  @default(now())
+  createdById    String?
+
+  @@index([organizationId, billId])
+}
+
+model RecurringBill {
+  id             String    @id @default(cuid())
+  organizationId String
+  vendorId       String
+  memo           String?
+  /// [{ accountId, amountCents, propertyId?, unitId?, description? }]
+  lines          Json
+  dayOfMonth     Int
+  dueDays        Int       @default(15)
+  nextRunDate    DateTime  @db.Date
+  endDate        DateTime? @db.Date
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@index([organizationId, nextRunDate])
+}
+
+model RecurringBillRun {
+  id              String   @id @default(cuid())
+  organizationId  String
+  recurringBillId String
+  period          String
+  billId          String?
+  createdAt       DateTime @default(now())
+
+  @@unique([recurringBillId, period])
+}
+
+model Expense {
+  id             String    @id @default(cuid())
+  organizationId String
+  vendorId       String?
+  payee          String
+  date           DateTime  @db.Date
+  bankAccountId  String
+  method         String    @default("DEBIT_CARD")
+  reference      String?
+  memo           String?
+  totalCents     Int
+  journalEntryId String    @unique
+  voidedAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  lines ExpenseLine[]
+
+  @@index([organizationId, date])
+}
+
+model ExpenseLine {
+  id             String  @id @default(cuid())
+  organizationId String
+  expenseId      String
+  accountId      String
+  amountCents    Int
+  description    String?
+  propertyId     String?
+  unitId         String?
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+}
+
+model VendorCredit {
+  id              String   @id @default(cuid())
+  organizationId  String
+  vendorId        String
+  date            DateTime @db.Date
+  amountCents     Int
+  accountId       String
+  propertyId      String?
+  memo            String?
+  appliedToBillId String?
+  journalEntryId  String   @unique
+  createdAt       DateTime @default(now())
+  createdById     String?
+
+  @@index([organizationId, vendorId])
+}
+
+/// Bank deposit: moves selected payments from Undeposited Funds to a bank account.
+model Deposit {
+  id             String   @id @default(cuid())
+  organizationId String
+  bankAccountId  String
+  date           DateTime @db.Date
+  totalCents     Int
+  memo           String?
+  journalEntryId String   @unique
+  createdAt      DateTime @default(now())
+  createdById    String?
+
+  items DepositItem[]
+}
+
+model DepositItem {
+  id                 String @id @default(cuid())
+  organizationId     String
+  depositId          String
+  leaseTransactionId String @unique
+  amountCents        Int
+
+  deposit Deposit @relation(fields: [depositId], references: [id], onDelete: Cascade)
+}
+
+/// Imported bank-feed / CSV line.
+model BankTransaction {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// Chart-of-accounts id of the bank account.
+  bankAccountId  String
+  date           DateTime @db.Date
+  /// + money in, − money out.
+  amountCents    Int
+  description    String
+  externalId     String
+  /// UNMATCHED | MATCHED | CATEGORIZED | IGNORED
+  status         String   @default("UNMATCHED")
+  matchedLineId  String?
+  journalEntryId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([bankAccountId, externalId])
+  @@index([organizationId, bankAccountId, status])
+}
+
+model Reconciliation {
+  id                    String    @id @default(cuid())
+  organizationId        String
+  bankAccountId         String
+  statementDate         DateTime  @db.Date
+  statementBalanceCents Int
+  openingBalanceCents   Int
+  /// IN_PROGRESS | COMPLETED
+  status                String    @default("IN_PROGRESS")
+  completedAt           DateTime?
+  createdAt             DateTime  @default(now())
+  createdById           String?
+
+  @@index([organizationId, bankAccountId])
+}
+
+model OwnerDistribution {
+  id             String   @id @default(cuid())
+  organizationId String
+  ownerId        String
+  propertyId     String
+  /// DISTRIBUTION | CONTRIBUTION
+  kind           String   @default("DISTRIBUTION")
+  amountCents    Int
+  date           DateTime @db.Date
+  bankAccountId  String
+  method         String   @default("ACH")
+  memo           String?
+  journalEntryId String   @unique
+  createdAt      DateTime @default(now())
+  createdById    String?
+
+  @@index([organizationId, ownerId])
+  @@index([organizationId, propertyId])
+}
+
+model ManagementFeeRule {
+  id             String    @id @default(cuid())
+  organizationId String
+  /// null = company default
+  propertyId     String?
+  /// PERCENT | FLAT
+  type           String    @default("PERCENT")
+  percentBps     Int       @default(800)
+  flatCents      Int       @default(0)
+  minimumCents   Int       @default(0)
+  /// COLLECTED_RENT | COLLECTED_INCOME
+  basis          String    @default("COLLECTED_RENT")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@unique([organizationId, propertyId])
+}
+
+model ManagementFeeRun {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  period         String
+  feeCents       Int
+  basisCents     Int
+  billId         String?
+  createdAt      DateTime @default(now())
+
+  @@unique([propertyId, period])
 }
