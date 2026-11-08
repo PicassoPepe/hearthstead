@@ -74,6 +74,6 @@ if (orgs === 0) {
 
 const port = process.env.PORT ?? "3000";
 step(`Starting Next.js on http://localhost:${port}`);
-// A bigger heap keeps the dev server from restarting itself on large apps.
-const child = spawn(`node --max-old-space-size=6144 node_modules/next/dist/bin/next dev -p ${port}`, { shell: true, stdio: "inherit" });
+// A bigger heap keeps the dev server from restarting itself on large apps (see scripts/next-dev.mjs).
+const child = spawn(`node scripts/next-dev.mjs ${port}`, { shell: true, stdio: "inherit" });
 child.on("exit", (code) => process.exit(code ?? 0));
