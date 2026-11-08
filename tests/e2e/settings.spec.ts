@@ -39,7 +39,9 @@ test("company details save with validation and a toast", async ({ page }) => {
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Company details saved")).toBeVisible();
   await page.goto("/app/overview");
-  await expect(page.getByRole("link", { name: /Add company details.*\(done\)/ })).toBeVisible();
+  // Details are now done: the item is either ticked or the whole (finished) checklist is gone.
+  await expect(page.getByRole("heading", { name: /^Good to see you/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Add company details.*\(to do\)/ })).toHaveCount(0);
 });
 
 test("changing a member's role is optimistic and persists", async ({ page }) => {

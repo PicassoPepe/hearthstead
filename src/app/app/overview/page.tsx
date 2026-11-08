@@ -46,7 +46,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const has = (prefix: string) => [...keys].some((k) => k.startsWith(prefix));
 
   const checklist: ChecklistItem[] = [
-    { id: "company", label: "Add company details & logo", description: "Address, phone and logo appear on statements and portals.", href: "/app/setup?step=1", done: Boolean(org.addressLine1 && org.phone && org.logoUrl) },
+    { id: "company", label: "Add company details", description: "Address and phone appear on statements and portals.", href: "/app/setup?step=1", done: Boolean(org.addressLine1 && org.phone) },
+    { id: "logo", label: "Upload your logo", description: "Shown in the app, portals and on your listings site.", href: "/app/settings", done: Boolean(org.logoUrl) },
     { id: "property", label: "Add your first property", description: "Units, rents, owners and bank accounts.", href: propertyCount ? "/app/rentals" : "/app/new/property", done: propertyCount > 0 },
     { id: "lease", label: "Add a lease", description: "Tenants and rent — charges post automatically.", href: "/app/new/lease", done: leaseCount > 0 },
     { id: "payments", label: "Turn on online payments", description: "Collect rent by ACH and card.", href: "/app/setup?step=3", done: Boolean(processor) },

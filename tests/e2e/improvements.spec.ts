@@ -155,11 +155,11 @@ test("year-end close locks and reopens a year", async ({ page }) => {
   const y = String(new Date().getFullYear() - 1);
   await page.getByRole("button", { name: `Close ${y}` }).click();
   await page.getByRole("dialog").getByRole("button", { name: `Close ${y}` }).click();
-  await expect(page.getByText(`${y} closed`)).toBeVisible();
+  await expect(page.getByText(`${y} closed`, { exact: true })).toBeVisible();
   await expect(page.getByText(new RegExp(`Books are closed through Dec 31, ${y}`))).toBeVisible();
   await page.getByRole("button", { name: `Reopen ${y}` }).click();
   await page.getByRole("dialog").getByRole("button", { name: `Reopen ${y}` }).click();
-  await expect(page.getByText(`${y} reopened`)).toBeVisible();
+  await expect(page.getByText(`${y} reopened`, { exact: true })).toBeVisible();
 });
 
 test.describe("phone", () => {
