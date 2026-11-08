@@ -5,7 +5,7 @@ import type { Page } from "@playwright/test";
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 
 async function passwordSignIn(page: Page, email: string, landing: string) {
-  await page.goto("/login?portal=1");
+  await page.goto(`/login?portal=1&callbackUrl=${encodeURIComponent(landing)}`);
   await page.getByRole("tab", { name: "Password" }).click();
   await page.getByRole("textbox", { name: "Email" }).fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill("Demo1234!x");
