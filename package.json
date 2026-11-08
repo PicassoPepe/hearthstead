@@ -58,6 +58,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "embedded-postgres": "16.15.0-beta.19",
     "ioredis": "^6.0.0",
     "lucide-react": "^1.70.0",
     "next": "15.5.29",
@@ -104,7 +105,12 @@
       "prisma",
       "esbuild",
       "sharp",
-      "unrs-resolver"
+      "unrs-resolver",
+      "@embedded-postgres/windows-x64",
+      "@embedded-postgres/darwin-arm64",
+      "@embedded-postgres/darwin-x64",
+      "@embedded-postgres/linux-x64",
+      "@embedded-postgres/linux-arm64"
     ]
   }
 }
