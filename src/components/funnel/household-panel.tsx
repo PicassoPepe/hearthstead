@@ -21,7 +21,7 @@ export function HouseholdPanel({ orgSlug, slug, members }: { orgSlug: string; sl
   return (
     <section aria-labelledby="hh-h" className="mt-6 rounded-card border border-border bg-surface p-5 shadow-card">
       <h2 id="hh-h" className="flex items-center gap-2 text-lg font-semibold"><UserPlus className="size-5" aria-hidden /> Anyone applying with you?</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Add every adult who'll live in the home (co-applicants) and anyone guaranteeing the lease. Each person gets an email link to fill in their own part — your details stay private.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Add every adult who&apos;ll live in the home (co-applicants) and anyone guaranteeing the lease. Each person gets an email link to fill in their own part — your details stay private.</p>
       {members.length ? (
         <ul className="mt-3 divide-y divide-border rounded-lg border border-border" data-testid="household-members">
           {members.map((m) => (
@@ -53,7 +53,7 @@ export function HouseholdPanel({ orgSlug, slug, members }: { orgSlug: string; sl
         <Field label="Their first name" error={errors.firstName}>{(a) => <Input {...a} value={v.firstName} onChange={(e) => setV({ ...v, firstName: e.target.value })} />}</Field>
         <Field label="Their last name">{(a) => <Input {...a} value={v.lastName} onChange={(e) => setV({ ...v, lastName: e.target.value })} />}</Field>
         <Field label="Their email" error={errors.email}>{(a) => <Input {...a} type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />}</Field>
-        <Field label="They are a…">{(a) => <NativeSelect {...a} value={v.role} onChange={(e) => setV({ ...v, role: e.target.value as "CO_APPLICANT" | "GUARANTOR" })}><option value="CO_APPLICANT">Co-applicant (will live there)</option><option value="GUARANTOR">Guarantor (co-signs, won't live there)</option></NativeSelect>}</Field>
+        <Field label="They are a…">{(a) => <NativeSelect {...a} value={v.role} onChange={(e) => setV({ ...v, role: e.target.value as "CO_APPLICANT" | "GUARANTOR" })}><option value="CO_APPLICANT">Co-applicant (will live there)</option><option value="GUARANTOR">Guarantor (co-signs, won&apos;t live there)</option></NativeSelect>}</Field>
         <div className="sm:col-span-2"><Button type="submit" variant="secondary" loading={busy}>Send invitation</Button></div>
       </form>
     </section>
