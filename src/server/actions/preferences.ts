@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { adminDb } from "@/server/db";
 import { auth } from "@/server/auth";
 
-const ALLOWED = new Set(["sidebarCollapsed", "checklistDismissed", "checklistDone", "dashboard"]);
+const ALLOWED = new Set(["sidebarCollapsed", "checklistDismissed", "checklistDone", "dashboard", "setupDone", "welcomeDismissed"]);
 
 /** Per-user UI preferences (global to the user, not tenant data). */
 export async function setPreference(key: string, value: Prisma.InputJsonValue): Promise<void> {

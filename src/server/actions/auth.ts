@@ -65,7 +65,7 @@ export async function signupAction(input: z.input<typeof signupSchema>): Promise
   const { orgId } = await provisionOrganization(adminDb, { name: parsed.data.orgName, ownerUserId: user.id });
   (await cookies()).set(ORG_COOKIE, orgId, { httpOnly: true, sameSite: "lax", path: "/" });
   await signIn("password", { email, password: parsed.data.password, redirect: false });
-  redirect("/app/overview");
+  redirect("/app/setup");
 }
 
 export async function signOutAction(): Promise<void> {

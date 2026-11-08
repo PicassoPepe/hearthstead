@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CircleDollarSign, DoorOpen, FileSignature, MessageSquare, PieChart, Wallet, Wrench } from "lucide-react";
+import { Rocket, Building2, CircleDollarSign, DoorOpen, FileSignature, MessageSquare, PieChart, Wallet, Wrench } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { StatCard } from "@/components/patterns/stat-card";
 import { GettingStarted, type ChecklistItem } from "@/components/overview/getting-started";
@@ -17,13 +17,16 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const ctx = await requireContext();
   const scope = ctx.membership.propertyScope;
-  const [org, memberCount, settingRows, propertyCount, unitAgg, ownerCount] = await Promise.all([
+  const [org, memberCount, settingRows, propertyCount, unitAgg, ownerCount, processor, leaseCount, invitedTenants] = await Promise.all([
     ctx.db.organization.findUniqueOrThrow({ where: { id: ctx.org.id } }),
     ctx.db.membership.count(),
     ctx.db.setting.findMany({ where: { scope: "ORG" }, select: { key: true } }),
     ctx.db.property.count({ where: scope.length ? { id: { in: scope } } : {} }),
     ctx.db.unit.aggregate({ where: { property: { deletedAt: null, ...(scope.length ? { id: { in: scope } } : {}) } }, _count: true, _sum: { marketRentCents: true } }),
     ctx.db.owner.count(),
+    ctx.db.processorAccount.findFirst({ select: { id: true } }),
+    ctx.db.lease.count(),
+    ctx.db.tenantUser.count(),
   ]);
   const keys = new Set(settingRows.map((s) => s.key));
   const today = await orgToday(ctx);
@@ -43,13 +46,15 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const has = (prefix: string) => [...keys].some((k) => k.startsWith(prefix));
 
   const checklist: ChecklistItem[] = [
-    { id: "company", label: "Add company details", description: "Address and phone appear on statements.", href: "/app/settings", done: Boolean(org.addressLine1 && org.phone) },
-    { id: "team", label: "Invite a teammate", description: "Give your team the right role.", href: "/app/new/user", done: memberCount > 1 },
+    { id: "company", label: "Add company details & logo", description: "Address, phone and logo appear on statements and portals.", href: "/app/setup?step=1", done: Boolean(org.addressLine1 && org.phone && org.logoUrl) },
+    { id: "property", label: "Add your first property", description: "Units, rents, owners and bank accounts.", href: propertyCount ? "/app/rentals" : "/app/new/property", done: propertyCount > 0 },
+    { id: "lease", label: "Add a lease", description: "Tenants and rent — charges post automatically.", href: "/app/new/lease", done: leaseCount > 0 },
+    { id: "payments", label: "Turn on online payments", description: "Collect rent by ACH and card.", href: "/app/setup?step=3", done: Boolean(processor) },
+    { id: "portal", label: "Invite tenants to the portal", description: "They pay, set up autopay and send requests online.", href: "/app/people/tenants", done: invitedTenants > 0 },
     { id: "late-fees", label: "Review your late-fee policy", description: "Grace period, amount and caps.", href: "/app/settings/late-fees", done: has("lateFees.") },
-    { id: "portal", label: "Set up the tenant portal", description: "Choose what tenants can see and do.", href: "/app/settings/tenant-portal", done: has("tenantPortal.") },
-    { id: "property", label: "Add your first property", description: "Units, owners and bank accounts.", href: propertyCount ? "/app/rentals" : "/app/new/property", done: propertyCount > 0 },
-    { id: "payments", label: "Turn on online payments", description: "Collect rent by ACH and card.", href: "/app/settings/payments", done: false, phase: 4 },
+    { id: "team", label: "Invite a teammate", description: "Give your team the right role.", href: "/app/setup?step=4", done: memberCount > 1 },
   ];
+
   const showChecklist = ctx.user.preferences.checklistDismissed !== true && checklist.some((c) => !c.done);
   const firstName = ctx.user.name?.split(" ")[0];
   const quickActions = [
@@ -76,6 +81,21 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
           ))}
         </div>
       </section>
+      {propertyCount === 0 && ctx.user.preferences.setupDone !== true && can(ctx.permissions, "settings", "edit") ? (
+        <section aria-labelledby="welcome-h" className="mb-6 flex flex-col gap-4 rounded-card border border-primary/30 bg-primary-soft/40 p-5 sm:flex-row sm:items-center">
+          <span aria-hidden className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Rocket className="size-6" /></span>
+          <div className="flex-1">
+            <h2 id="welcome-h" className="text-lg font-semibold">Welcome! Let&apos;s get {ctx.org.name} set up</h2>
+            <p className="text-sm text-muted-foreground">Company details, your first property (or sample data to explore), online payments and your team — about 5 minutes.</p>
+          </div>
+          <Link href="/app/setup" className="inline-flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover">Start setup</Link>
+        </section>
+      ) : null}
+      {org.isSandbox ? (
+        <p role="status" className="mb-6 rounded-card border border-warning/40 bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground">
+          <strong>You&apos;re exploring sample data.</strong> This sandbox is separate from your real company — try anything. Switch back from the account menu (top right).
+        </p>
+      ) : null}
       {showChecklist ? <GettingStarted items={checklist} /> : null}
 
       <section aria-labelledby="kpis" className="mb-6">

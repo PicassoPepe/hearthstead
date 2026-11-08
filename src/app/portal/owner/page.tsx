@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
+import { WelcomeSteps } from "@/components/onboarding/welcome-steps";
 
 export const metadata = { title: "Home" };
 
@@ -15,10 +16,25 @@ export default async function OwnerHome() {
   const o = await requireOwnerPortal();
   const [h, news, unread] = await Promise.all([ownerHome(o), portalAnnouncements(o.db, { ownerId: o.owner.id }, 3), unreadPortalCount(o.db, { ownerId: o.owner.id })]);
   const first = o.owner.name.split(" ")[0];
+  const [requests, sent] = await Promise.all([
+    o.db.task.count({ where: { ownerId: o.owner.id } }),
+    o.db.message.count({ where: { direction: "IN", conversation: { ownerId: o.owner.id } } }),
+  ]);
   const max = Math.max(1, ...h.trend.flatMap((t) => [t.income, t.expenses]));
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Hi, {first}</h1>
+      <WelcomeSteps
+        storageKey={`hs-welcome-owner-${o.owner.id}`}
+        title={`Welcome to your owner portal`}
+        intro={`Everything ${o.org.name} does for your properties, in one place.`}
+        steps={[
+          { id: "properties", label: "See your properties", description: "Occupancy, income and photos.", href: "/portal/owner/properties", done: false },
+          { id: "statements", label: "Read your statements", description: "Monthly owner statements and reports.", href: "/portal/owner/statements", done: false },
+          { id: "request", label: "Make a request", description: "Approve work or ask for a quote.", href: "/portal/owner/requests", done: requests > 0 },
+          { id: "message", label: "Say hello", description: "Message your property manager.", href: "/portal/owner/messages", done: sent > 0 },
+        ]}
+      />
       <p className="-mt-2 text-sm text-muted-foreground">Year to date across your {o.properties.length} propert{o.properties.length === 1 ? "y" : "ies"} — your ownership share.</p>
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[["Income", h.income], ["Expenses", h.expenses], ["Net income", h.net], ["Distributed to you", h.distributed]].map(([l, v]) => (

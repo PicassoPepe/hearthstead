@@ -79,3 +79,16 @@ export async function setAvatar(db: ScopedDb, userId: string, file: File | null)
 export function photoUrls(unitPhotos: string[], propertyPhotos: string[] = []) {
   return (unitPhotos.length ? unitPhotos : propertyPhotos).map(imageUrl);
 }
+
+/** Sample photos (procedural illustrations) for a property — sample data / sandbox. */
+export async function addSamplePhotos(db: ScopedDb, propertyId: string, kind: "house" | "apartments", seed: number) {
+  const { illustration } = await import("./illustrations");
+  const ids: string[] = [];
+  for (let v = 0; v < 3; v++) {
+    const bytes = illustration(seed, kind, v);
+    const file = new File([new Uint8Array(bytes)], `sample-${v + 1}.png`, { type: "image/png" });
+    ids.push(await storeImage(db, file, "PropertyPhoto", { type: "Property", id: propertyId }));
+  }
+  await save(db, { kind: "property", id: propertyId }, ids);
+  return ids;
+}

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Bell, Check, ChevronsUpDown, HelpCircle, LogOut, Menu, Moon, Search, Sun, UserCog, Keyboard, BookOpen } from "lucide-react";
+import { Bell, Check, ChevronsUpDown, HelpCircle, LogOut, Menu, Moon, Search, Sun, UserCog, Keyboard, BookOpen, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, Kbd } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +69,9 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
               <Link href="/app/help"><BookOpen aria-hidden /> Help center</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/app/setup"><Rocket aria-hidden /> Setup guide</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}>
               <Keyboard aria-hidden /> Keyboard shortcuts

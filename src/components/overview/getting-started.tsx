@@ -21,7 +21,7 @@ export function GettingStarted({ items }: { items: ChecklistItem[] }) {
         <div>
           <CardTitle>Getting started</CardTitle>
           <CardDescription>
-            {done} of {items.length} complete — finish setup to start collecting rent online.
+            {done} of {items.length} complete — finish setup to start collecting rent online. <Link href="/app/setup" className="font-medium text-primary underline-offset-4 hover:underline">Open setup guide</Link>
           </CardDescription>
         </div>
         <Button
@@ -73,7 +73,6 @@ export function GettingStarted({ items }: { items: ChecklistItem[] }) {
                   <span className="sr-only">{i.done ? " (done)" : " (to do)"}</span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     {i.description}
-                    {i.phase ? ` · Phase ${i.phase}` : ""}
                   </span>
                 </span>
               </Link>

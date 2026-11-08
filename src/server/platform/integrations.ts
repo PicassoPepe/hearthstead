@@ -45,14 +45,23 @@ export async function ensureSandbox(db: ScopedDb, reset = false) {
   await adminDb.organization.update({ where: { id: org.id }, data: { sandboxOrgId: orgId } });
   const sdb = forOrg({ orgId, userId: owner });
   const rent = (await sdb.account.findFirstOrThrow({ where: { systemKey: "RENT_INCOME" } })).id;
-  const p1 = await createPropertyFromWizard(sdb, { type: "MULTI_FAMILY", name: "Sandbox Apartments", address: { addressLine1: "100 Test Ave", city: "Springfield", state: "IL", postalCode: "62701" }, units: [{ name: "1A", marketRentCents: 120_000 }, { name: "1B", marketRentCents: 125_000 }, { name: "2A", marketRentCents: 130_000 }], owners: [] });
-  await createPropertyFromWizard(sdb, { type: "SINGLE_FAMILY", name: "Sandbox House", address: { addressLine1: "7 Example Ln", city: "Springfield", state: "IL", postalCode: "62702" }, units: [{ name: "Main", marketRentCents: 180_000 }], owners: [] });
+  const owner1 = await sdb.owner.create({ data: { organizationId: orgId, kind: "PERSON", firstName: "Sam", lastName: "Sample", email: "sam.owner@sandbox.example", createdById: owner } });
+  const p1 = await createPropertyFromWizard(sdb, { type: "MULTI_FAMILY", name: "Sandbox Apartments", address: { addressLine1: "100 Test Ave", city: "Springfield", state: "IL", postalCode: "62701" }, units: [{ name: "1A", marketRentCents: 120_000 }, { name: "1B", marketRentCents: 125_000 }, { name: "2A", marketRentCents: 130_000 }, { name: "2B", marketRentCents: 132_500 }], owners: [{ ownerId: owner1.id, percentBps: 10_000 }] });
+  const p2 = await createPropertyFromWizard(sdb, { type: "SINGLE_FAMILY", name: "Sandbox House", address: { addressLine1: "7 Example Ln", city: "Springfield", state: "IL", postalCode: "62702" }, units: [{ name: "Main", marketRentCents: 180_000 }], owners: [{ ownerId: owner1.id, percentBps: 10_000 }] });
+  const { addSamplePhotos } = await import("@/server/images/service");
+  await addSamplePhotos(sdb, p1.id, "apartments", 5);
+  await addSamplePhotos(sdb, p2.id, "house", 2);
   const units = await sdb.unit.findMany({ where: { propertyId: p1.id }, orderBy: { name: "asc" } });
   const start = toISODate(startOfMonth(addMonths(new Date(), -2)));
   for (const [i, u] of units.slice(0, 2).entries()) {
     await createLease(sdb, { propertyId: p1.id, unitIds: [u.id], termType: "FIXED", startDate: start, endDate: toISODate(addMonths(parseISODate(start), 12)), rentDueDay: 1, tenants: [{ newTenant: { firstName: ["Test", "Demo"][i]!, lastName: "Tenant", email: `tenant${i + 1}@sandbox.example` }, role: "PRIMARY" }], recurring: [{ kind: "RENT", accountId: rent, description: "Rent", amountCents: u.marketRentCents }], deposit: { amountCents: 0, handling: "NONE" } }, new Date());
   }
   await createTask(sdb, { title: "Sandbox: replace smoke detector batteries", propertyId: p1.id }, { userId: null, name: "Sandbox", kind: "SYSTEM" });
+  await createTask(sdb, { title: "Kitchen sink is leaking under the cabinet", propertyId: p1.id, unitId: units[0]!.id, priority: "HIGH" }, { userId: null, name: "Sandbox", kind: "SYSTEM" });
+  const { saveListing, setListingStatus } = await import("@/server/funnel/listings");
+  const vacant = units[2]!;
+  const l = await saveListing(sdb, null, { unitId: vacant.id, title: "Sunny 2-bed at Sandbox Apartments", description: "Bright corner unit with updated kitchen, in-unit laundry and a short walk to the park.", rentCents: vacant.marketRentCents, depositCents: vacant.marketRentCents, availableOn: null, leaseTermMonths: 12, petPolicy: "Cats and small dogs welcome", syndicate: false });
+  await setListingStatus(sdb, l.id, "PUBLISHED");
   await audit(db, { action: reset ? "sandbox.reset" : "sandbox.created", entityType: "Organization", entityId: orgId });
   return orgId;
 }

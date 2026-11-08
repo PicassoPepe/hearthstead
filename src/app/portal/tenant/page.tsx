@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/dates";
 import { portalAnnouncements } from "@/server/comms/announcements";
 import { unreadPortalCount } from "@/server/comms/portal-queries";
 import { openSignatureFromPortal } from "@/server/actions/portal";
+import { WelcomeSteps } from "@/components/onboarding/welcome-steps";
 
 export const metadata = { title: "Home" };
 
@@ -29,9 +30,24 @@ export default async function PortalHome() {
     );
   }
   const owes = h.balanceCents > 0;
+  const [insured, requests] = await Promise.all([
+    ctx.lease ? ctx.db.insurancePolicy.count({ where: { leaseId: ctx.lease.id } }) : Promise.resolve(0),
+    ctx.db.task.count({ where: { tenantId: ctx.tenant.id, type: "TENANT_REQUEST" } }),
+  ]);
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Hi, {first}</h1>
+      <WelcomeSteps
+        storageKey={`hs-welcome-tenant-${ctx.tenant.id}`}
+        title={`Welcome to ${ctx.org.name}'s resident portal`}
+        intro="A few things to set up so paying rent and getting help is effortless."
+        steps={[
+          { id: "method", label: "Add a payment method", description: "Bank account (ACH) or card.", href: "/portal/tenant/methods", done: h.methods.length > 0 },
+          { id: "autopay", label: "Turn on autopay", description: "Rent pays itself on the day you choose.", href: "/portal/tenant/autopay", done: Boolean(h.autopay) },
+          { id: "insurance", label: "Add renters insurance", description: "Upload your policy or get covered.", href: "/portal/tenant/insurance", done: insured > 0 },
+          { id: "request", label: "Know how to get help", description: "Submit maintenance requests with photos, 24/7.", href: "/portal/tenant/requests", done: requests > 0 },
+        ]}
+      />
 
       <Card className="p-5">
         <div className="text-sm text-muted-foreground">{h.balanceCents < 0 ? "Credit balance" : "Balance due"}</div>
