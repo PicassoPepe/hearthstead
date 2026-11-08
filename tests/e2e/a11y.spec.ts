@@ -85,6 +85,7 @@ test("task detail and inspection checklist have no WCAG A/AA violations", async 
     await page.getByRole("link", { name: new RegExp(q) }).first().click();
     await page.waitForURL(/\/app\/tasks\/c/);
     await page.waitForLoadState("networkidle");
+    await expect(page).toHaveTitle(/\S/); // metadata streams in after client navigation
     const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(r.violations.map((v) => `${q} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
   }

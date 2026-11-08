@@ -13,7 +13,7 @@ export function PageSkeleton({ variant = "staff" }: { variant?: "staff" | "porta
   return (
     <div role="status" aria-label="Loading" className="grid gap-6">
       <div className="flex items-end justify-between gap-4">
-        <div className="grid gap-2"><div className="skeleton h-4 w-24" /><div className="skeleton h-8 w-64" /><div className="skeleton h-4 w-96 max-w-full" /></div>
+        <div className="grid min-w-0 flex-1 gap-2"><div className="skeleton h-4 w-24" /><div className="skeleton h-8 w-64 max-w-full" /><div className="skeleton h-4 w-full max-w-sm" /></div>
         <div className="skeleton hidden h-9 w-32 sm:block" />
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="skeleton h-[104px] rounded-card" />)}</div>

@@ -43,6 +43,9 @@ test("signup creates a workspace with the user as Admin", async ({ page }) => {
   await page.getByRole("textbox", { name: "Work email" }).fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill("correct-horse-battery");
   await page.getByRole("button", { name: "Create workspace" }).click();
+  await page.waitForURL("**/app/setup");
+  await expect(page.getByRole("heading", { name: "Let's set up Starter Rentals LLC" })).toBeVisible();
+  await page.getByRole("button", { name: "Skip setup for now" }).click();
   await page.waitForURL("**/app/overview");
   await expect(page.getByText("Here's what's happening at Starter Rentals LLC.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Getting started" })).toBeVisible();
