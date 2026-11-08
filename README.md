@@ -7,27 +7,43 @@ double-entry ledger, tenant and owner portals, maintenance, accounting and repor
 > notifications, reminders, calendar, budgets, year-end close, RUBS, vendor invoices, owner
 > approvals, joint applications, and a phone-friendly staff app). See [What's new](#whats-new).
 
-## Quick start
+## Get started
 
-### 1. Install the prerequisites (once)
+### On your computer (Windows or Mac) — no technical setup
 
-| Tool | Version | Get it |
-| --- | --- | --- |
-| Node.js | 22 or newer | https://nodejs.org |
-| pnpm | 10 | `npm install -g pnpm` |
-| Docker Desktop | any recent | https://www.docker.com/products/docker-desktop — **start it before running the app** |
+1. **Download:** [DeedWood (ZIP)](https://github.com/PicassoPepe/hearthstead/archive/refs/heads/main.zip)
+2. **Unzip it:** right-click the downloaded file → **Extract All…** → **Extract**.
+   (Mac: double-click the ZIP.) Put the folder somewhere easy, like **Documents**.
+3. **Start it:** open the folder and double-click **`Start DeedWood.bat`**
+   (Mac: **`Start DeedWood.command`**).
+   - Windows may say *"Windows protected your PC"* — click **More info → Run anyway**.
+     Mac may say it's from an unidentified developer — right-click the file → **Open → Open**.
+   - The first start installs what it needs (including Node.js if you don't have it — if it asks
+     you to, close the window and double-click again) and builds the app. **That takes about 5–10
+     minutes once.** After that it starts in seconds.
+4. Your browser opens DeedWood. Sign in with **`admin@example.com`** / **`Demo1234!x`**.
 
-No Docker? A local PostgreSQL 16 on port 5432 (user `postgres`, password `postgres`) works too.
+**Keep the black window open** while you use DeedWood; close it to stop. Everything is stored in
+the folder (in `.deedwood`) — no Docker, no database to install, and it won't touch any other
+database on your computer.
 
-### 2. Get the code and run it
+**Get the newest version:** double-click **`Update DeedWood.bat`**, then **`Start DeedWood.bat`**.
+Your settings and data are kept.
 
-These commands work the same in **Windows PowerShell**, macOS and Linux. Run them one at a time:
+### Online, for your whole team (no install for anyone)
+
+Follow **[docs/DEPLOY.md](docs/DEPLOY.md)** — about 15 minutes on Railway, step by step.
+
+### For developers
+
+Prerequisites: Node 22+, pnpm (via `corepack`), and Docker Desktop or a local PostgreSQL 16 on port
+5432 (user `postgres`, password `postgres`).
 
 ```bash
 git clone https://github.com/PicassoPepe/hearthstead.git
 ```
 ```bash
-cd deedwood
+cd hearthstead
 ```
 ```bash
 pnpm install
@@ -36,14 +52,14 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` creates `.env`, starts the database containers, migrates, applies row-level security,
-seeds demo data on the first run, and starts the app. When it prints `Ready`, open
-**http://localhost:3000**.
+`pnpm dev` creates `.env`, starts the database containers (if Docker is running), migrates, applies
+row-level security, seeds demo data on the first run, and starts the dev server on
+**http://localhost:3000**. (`node scripts/start.mjs` is the one-click path: built-in Postgres,
+production build.)
 
-> **Windows PowerShell 5:** don't chain commands with `&&` (it isn't supported) — run each
-> command on its own line as shown above.
+> **Windows PowerShell 5:** don't chain commands with `&&` — run each on its own line.
 
-### 3. Sign in
+### Demo sign-ins
 
 Every demo user's password is `Demo1234!x`:
 
@@ -64,6 +80,8 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 
 | Problem | Fix |
 | --- | --- |
+| Start DeedWood says another copy is open / database won't start | Close any other DeedWood windows, then start again. |
+| Want to start over with fresh demo data (one-click install) | Close DeedWood, delete the `.deedwood` folder inside the DeedWood folder, start again. |
 | `Postgres is not reachable on localhost:5432` | Start Docker Desktop and wait until it says it's running, then `pnpm dev` again. |
 | `port is already allocated` (5432 / 6379) | Another Postgres/Redis is running. Stop it, or stop the other container. |
 | `The token '&&' is not a valid statement separator` | Windows PowerShell 5 — run each command on its own line. |
