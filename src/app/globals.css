@@ -173,3 +173,8 @@
 
 @keyframes skeleton-pulse { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
 .skeleton { animation: skeleton-pulse 1.6s ease-in-out infinite; background: var(--surface-muted); border-radius: 6px; }
+
+/* Top navigation progress bar (components/shell/nav-progress.tsx) */
+@keyframes nav-progress { 0% { width: 0 } 20% { width: 40% } 60% { width: 70% } 100% { width: 92% } }
+.nav-progress-run { animation: nav-progress 6s cubic-bezier(.1,.6,.3,1) forwards; box-shadow: 0 0 8px var(--primary); }
+@media (prefers-reduced-motion: reduce) { .nav-progress-run { animation: none; width: 70%; } }

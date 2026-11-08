@@ -8,6 +8,7 @@ export async function signIn(page: Page, email: string, next = "/app/overview") 
   await page.getByRole("textbox", { name: "Password" }).fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(`**${next}`);
+  await page.waitForLoadState("networkidle"); // hydrated (and prefetches settled) before the test acts
 }
 
 /**

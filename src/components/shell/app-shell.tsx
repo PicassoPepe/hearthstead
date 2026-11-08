@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
 import { MobileTabBar } from "./mobile-tab-bar";
+import { NavProgress } from "./nav-progress";
 import { CommandPalette } from "./command-palette";
 import { ShellProvider, type ShellData } from "./shell-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -46,6 +47,7 @@ export function AppShell({ data, children, modal }: { data: ShellData; children:
             </div>
           </div>
         </div>
+        <React.Suspense fallback={null}><NavProgress /></React.Suspense>
         <MobileTabBar onOpenMenu={() => setMobileOpen(true)} />
         <CommandPalette />
         {modal}
