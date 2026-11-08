@@ -26,7 +26,7 @@ export default async function OwnerHome() {
     <div className="grid gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Hi, {first}</h1>
       <WelcomeSteps
-        storageKey={`hs-welcome-owner-${o.owner.id}`}
+        storageKey={`dw-welcome-owner-${o.owner.id}`}
         title={`Welcome to your owner portal`}
         intro={`Everything ${o.org.name} does for your properties, in one place.`}
         steps={[

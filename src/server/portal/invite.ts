@@ -5,7 +5,7 @@ import { audit } from "@/server/audit";
 import { getEmailProvider } from "@/adapters";
 import { tenantDisplayName } from "@/lib/leasing";
 
-const APP = process.env.NEXT_PUBLIC_APP_NAME ?? "Hearthstead";
+const APP = process.env.NEXT_PUBLIC_APP_NAME ?? "DeedWood";
 
 /** Create (or reuse) a login for the tenant, link it, and email a portal sign-in link. */
 export async function inviteTenantToPortal(db: ScopedDb, tenantId: string, orgName: string): Promise<{ email: string }> {

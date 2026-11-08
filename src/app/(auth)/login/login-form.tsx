@@ -92,7 +92,7 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
       </Card>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        New to Hearthstead?{" "}
+        New to DeedWood?{" "}
         <Link href="/signup" className="font-medium text-primary underline-offset-4 hover:underline">Create an account</Link>
       </p>
     </div>

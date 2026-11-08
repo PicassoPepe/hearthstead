@@ -28,13 +28,13 @@ export async function forms1099(ctx: AppContext, year: number) {
 
 /**
  * IRIS-style bulk upload CSV for Form 1099-NEC (one row per recipient, box 1 = nonemployee
- * compensation). Hearthstead stores only the last 4 digits of each TIN, so the TIN column is
+ * compensation). DeedWood stores only the last 4 digits of each TIN, so the TIN column is
  * marked for completion before upload — the file says so in its first comment row.
  */
 export function irisCsv(d: Awaited<ReturnType<typeof forms1099>>) {
   const header = ["Form Type", "Tax Year", "Payer Name", "Payer Address", "Payer City", "Payer State", "Payer ZIP", "Payer Phone", "Recipient TIN Type", "Recipient TIN", "Recipient Name", "Recipient Address", "Recipient City", "Recipient State", "Recipient ZIP", "Box 1 Nonemployee Compensation", "Ready", "Issue"];
   const rows = d.forms.map((f) => ["1099-NEC", d.year, d.payer.name, d.payer.address, d.payer.city, d.payer.state, d.payer.zip, d.payer.phone, "", f.tinLast4 ? `ENTER FULL TIN (ends ${f.tinLast4})` : "MISSING", f.name, f.address, f.city, f.state, f.zip, dollars(f.amountCents), f.ready ? "Yes" : "No", f.issue ?? ""]);
-  const note = [`# Hearthstead 1099-NEC export for ${d.year}. Enter each recipient's full TIN (from their W-9) and TIN type (EIN/SSN) before uploading to IRS IRIS or your e-file provider.`];
+  const note = [`# DeedWood 1099-NEC export for ${d.year}. Enter each recipient's full TIN (from their W-9) and TIN type (EIN/SSN) before uploading to IRS IRIS or your e-file provider.`];
   return [note, header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n") + "\n";
 }
 

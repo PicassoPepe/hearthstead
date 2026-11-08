@@ -122,9 +122,9 @@ export function Webhooks({ endpoints, deliveries, events }: { endpoints: Endpoin
       </section>
       <Dialog open={edit !== null} onOpenChange={(o) => !o && setEdit(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{edit === "new" ? "Add webhook endpoint" : "Edit endpoint"}</DialogTitle><DialogDescription>Verify each request with the signing secret: <code>Hearthstead-Signature: t=…,v1=HMAC-SHA256(secret, t + &quot;.&quot; + body)</code></DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{edit === "new" ? "Add webhook endpoint" : "Edit endpoint"}</DialogTitle><DialogDescription>Verify each request with the signing secret: <code>DeedWood-Signature: t=…,v1=HMAC-SHA256(secret, t + &quot;.&quot; + body)</code></DialogDescription></DialogHeader>
           <DialogBody className="grid gap-3">
-            <Field label="Endpoint URL" required>{(a) => <Input {...a} type="url" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} placeholder="https://example.com/webhooks/hearthstead" />}</Field>
+            <Field label="Endpoint URL" required>{(a) => <Input {...a} type="url" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} placeholder="https://example.com/webhooks/deedwood" />}</Field>
             <Field label="Description">{(a) => <Input {...a} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />}</Field>
             <fieldset><legend className="mb-1.5 text-sm font-medium">Events</legend>
               <div className="grid gap-1 sm:grid-cols-2">{events.map((ev) => <label key={ev.key} className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={f.events.includes(ev.key)} onChange={(e) => setF({ ...f, events: e.target.checked ? [...f.events, ev.key] : f.events.filter((x) => x !== ev.key) })} /><code className="text-xs">{ev.key}</code></label>)}</div>

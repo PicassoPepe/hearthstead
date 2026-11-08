@@ -1,4 +1,4 @@
-// Hearthstead data model.
+// DeedWood data model.
 // Conventions:
 //  * Every tenant-owned row carries `organizationId` and is protected by Postgres RLS
 //    (see prisma/rls.sql) *and* by the data-access layer (src/server/dal).
@@ -40,7 +40,7 @@ model Organization {
   roles       Role[]
   settings    Setting[]
   auditLogs   AuditLog[]
-  /// Phase 10: the sandbox organization that `hs_test_` API keys act on.
+  /// Phase 10: the sandbox organization that `dw_test_` API keys act on.
   sandboxOrgId       String?
   isSandbox          Boolean   @default(false)
   /// Support staff may access the workspace until this time (toggle in Settings → Security).

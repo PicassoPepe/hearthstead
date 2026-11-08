@@ -1,7 +1,7 @@
 import { test, expect, signIn } from "./fixtures";
 import { totp } from "../../src/server/platform/totp";
 
-const DEMO_KEY = "hs_live_00dea100_localDemoKeyDoNotUseInProduction";
+const DEMO_KEY = "dw_live_00dea100_localDemoKeyDoNotUseInProduction";
 
 test("API: list with cursor pagination, create with an idempotency key, errors are JSON", async ({ request }) => {
   const auth = { Authorization: `Bearer ${DEMO_KEY}` };
@@ -39,7 +39,7 @@ test("integrations: create an API key (shown once) and send a test webhook", asy
   const keyName = `E2E integration ${Date.now() % 100000}`;
   await dlg.getByRole("textbox", { name: "Name" }).fill(keyName);
   await dlg.getByRole("button", { name: "Create key" }).click();
-  await expect(page.getByTestId("new-api-key")).toHaveText(/^hs_live_[a-f0-9]{8}_/);
+  await expect(page.getByTestId("new-api-key")).toHaveText(/^dw_live_[a-f0-9]{8}_/);
   const key = (await page.getByTestId("new-api-key").textContent())!;
   await page.getByRole("button", { name: "Done" }).click();
   await expect(page.getByRole("table", { name: "API keys" }).getByRole("cell", { name: keyName, exact: true })).toBeVisible();

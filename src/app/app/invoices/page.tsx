@@ -31,7 +31,7 @@ export default async function VendorInvoicesPage() {
     <>
       <PageHeader icon={<Receipt aria-hidden />} title="Invoices" description={`Submit invoices to ${ctx.org.name} and see when they're approved and paid.`} />
       <div className="mb-4">
-        <WelcomeSteps storageKey={`hs-welcome-vendor-${vendor.id}`} title={`Welcome, ${vendor.name}`} intro={`Here's how working with ${ctx.org.name} goes.`} steps={[
+        <WelcomeSteps storageKey={`dw-welcome-vendor-${vendor.id}`} title={`Welcome, ${vendor.name}`} intro={`Here's how working with ${ctx.org.name} goes.`} steps={[
           { id: "orders", label: "Check your work orders", description: "Accept jobs and update status as you go.", href: "/app/tasks", done: tasks.length > 0 || invoices.length > 0 },
           { id: "invoice", label: "Submit an invoice", description: "Attach your PDF; link it to the work order.", href: "#new-invoice", done: invoices.length > 0 },
           { id: "paid", label: "Get paid", description: "Track approval and payment here.", href: "#history", done: [...paid.values()].some((v) => v <= 0) },

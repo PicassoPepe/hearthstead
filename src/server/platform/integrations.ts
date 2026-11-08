@@ -31,7 +31,7 @@ export async function revokeApiKey(db: ScopedDb, id: string) {
 }
 
 /**
- * Sandbox: a separate, clearly-labeled organization with sample data that `hs_test_` keys act on.
+ * Sandbox: a separate, clearly-labeled organization with sample data that `dw_test_` keys act on.
  * It's fully isolated by the same tenancy rules (organizationId + RLS). Reset rebuilds it.
  */
 export async function ensureSandbox(db: ScopedDb, reset = false) {

@@ -86,8 +86,8 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
           )}
           {collapsed ? <span className="sr-only">{shell.orgName} home</span> : (
             <span className="min-w-0">
-              <span className="block truncate font-display text-[14px] font-bold leading-tight">{shell.orgName || "Hearthstead"}</span>
-              <span className="block text-[11px] text-sidebar-muted">Hearthstead</span>
+              <span className="block truncate font-display text-[14px] font-bold leading-tight">{shell.orgName || "DeedWood"}</span>
+              <span className="block text-[11px] text-sidebar-muted">DeedWood</span>
             </span>
           )}
         </Link>

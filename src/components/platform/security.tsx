@@ -79,7 +79,7 @@ export function SupportAccess({ until }: { until: string | null }) {
   return (
     <label className="flex items-start gap-3 text-sm">
       <Switch checked={on} aria-label="Allow support access" onCheckedChange={async (v) => { const r = await setSupportAccessAction(v); if (!r.ok) return void toast.error(r.error); toast.success(r.message); router.refresh(); }} />
-      <span>Allow Hearthstead support to access this workspace to help troubleshoot{on ? <> — <strong>on until {new Date(until!).toLocaleDateString()}</strong>. It turns off automatically.</> : ". Access lasts 30 days and every action is audit-logged."}</span>
+      <span>Allow DeedWood support to access this workspace to help troubleshoot{on ? <> — <strong>on until {new Date(until!).toLocaleDateString()}</strong>. It turns off automatically.</> : ". Access lasts 30 days and every action is audit-logged."}</span>
     </label>
   );
 }

@@ -59,7 +59,7 @@ export function verifyTotp(secret: string, code: string, at = Date.now()): boole
   });
 }
 
-export const otpauthUri = (secret: string, account: string, issuer = "Hearthstead") =>
+export const otpauthUri = (secret: string, account: string, issuer = "DeedWood") =>
   `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
 
 /** Single-use recovery codes (shown once; stored hashed by the caller). */

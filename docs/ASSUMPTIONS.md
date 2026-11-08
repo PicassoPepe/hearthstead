@@ -3,7 +3,7 @@
 Decisions made without asking, per the brief. Each can be changed later.
 
 **Product**
-- App name **Hearthstead**, brand color **#0F766E** (teal 700; 5.47:1 on white). Dark mode uses
+- App name **DeedWood**, brand color **#0F766E** (teal 700; 5.47:1 on white). Dark mode uses
   teal 400 (#2DD4BF) with dark text. The `{{EXTRA_CONTEXT}}` placeholder was empty.
 - Demo data is fictional; emails use the reserved `example.com` domain.
 - Currency is USD only; amounts are integer cents everywhere (`src/lib/money.ts`).
@@ -26,7 +26,7 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Users are global identities; `Membership` links a user to an org with a role. Invites are
   accepted automatically on first sign-in with that email.
 - Built-in roles are copied into each org at creation, so orgs can edit them (except Admin).
-- Active org is a cookie (`hs_org`) validated against memberships on every request; falls back
+- Active org is a cookie (`dw_org`) validated against memberships on every request; falls back
   to `User.lastOrgId`, then the oldest membership.
 - Soft delete (`deletedAt`) is filtered automatically on reads by the DAL; pass `deletedAt`
   explicitly in `where` to include deleted rows.
@@ -192,8 +192,8 @@ Decisions made without asking, per the brief. Each can be changed later.
   lease's move-out to its end date. The security deposit stays on the original lease's ledger.
 
 **Phase 10 (Platform)**
-- API keys look like `hs_live_<8 hex>_<secret>`; only the prefix and a SHA-256 of the whole key are
-  stored. Keys are read-only or read/write; `hs_test_` keys act on the organization's sandbox (a
+- API keys look like `dw_live_<8 hex>_<secret>`; only the prefix and a SHA-256 of the whole key are
+  stored. Keys are read-only or read/write; `dw_test_` keys act on the organization's sandbox (a
   separate, clearly-labeled org with sample data — the same tenancy and RLS rules apply).
 - Rate limiting is a fixed one-minute window per key in Redis (in-process fallback if Redis is
   down). Idempotency records are kept 24 hours per (key, Idempotency-Key) with a request hash.
@@ -224,7 +224,7 @@ Decisions made without asking, per the brief. Each can be changed later.
 
 **Onboarding**
 - Sign-up lands on a 4-step setup guide (company + logo, properties, payments, team). "Explore with
-  sample data" builds the company's *sandbox* (the same isolated org that `hs_test_` API keys use)
+  sample data" builds the company's *sandbox* (the same isolated org that `dw_test_` API keys use)
   with sample properties, photos, leases, tasks and a listing, and switches to it. Real books stay empty.
 - Portal welcome steps (tenant, owner, vendor) are dismissible per device (localStorage) and
   disappear once everything is done.

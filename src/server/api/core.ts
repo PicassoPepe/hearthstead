@@ -22,18 +22,18 @@ export class ApiError extends Error {
 
 export const hashSecret = (s: string) => createHash("sha256").update(s).digest("hex");
 
-/** New key: `hs_live_<prefix>_<secret>`; only the prefix and a hash of the full key are stored. */
+/** New key: `dw_live_<prefix>_<secret>`; only the prefix and a hash of the full key are stored. */
 export function generateApiKey(environment: "live" | "test") {
   const prefix = randomBytes(4).toString("hex");
   const secret = randomBytes(24).toString("base64url");
-  const key = `hs_${environment}_${prefix}_${secret}`;
-  return { key, prefix: `hs_${environment}_${prefix}`, secretHash: hashSecret(key) };
+  const key = `dw_${environment}_${prefix}_${secret}`;
+  return { key, prefix: `dw_${environment}_${prefix}`, secretHash: hashSecret(key) };
 }
 
 export async function authenticate(req: Request): Promise<ApiContext> {
   const header = req.headers.get("authorization") ?? "";
-  const m = header.match(/^Bearer\s+(hs_(live|test)_[a-f0-9]{8}_[A-Za-z0-9_-]+)$/);
-  if (!m) throw new ApiError(401, "authentication_error", "Provide an API key: Authorization: Bearer hs_live_…");
+  const m = header.match(/^Bearer\s+(dw_(live|test)_[a-f0-9]{8}_[A-Za-z0-9_-]+)$/);
+  if (!m) throw new ApiError(401, "authentication_error", "Provide an API key: Authorization: Bearer dw_live_…");
   const key = await adminDb.apiKey.findUnique({ where: { secretHash: hashSecret(m[1]!) } });
   if (!key || key.revokedAt) throw new ApiError(401, "authentication_error", "Invalid or revoked API key");
   let orgId = key.organizationId;

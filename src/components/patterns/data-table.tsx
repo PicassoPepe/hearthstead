@@ -443,7 +443,7 @@ function csvCell(v: unknown): string {
 
 /** Saved views persist per table in localStorage (per-viewer convenience). */
 function useSavedViews(tableId: string): [SavedView[], (v: SavedView[]) => void] {
-  const key = `hs.views.${tableId}`;
+  const key = `dw.views.${tableId}`;
   const [views, setViews] = React.useState<SavedView[]>([]);
   React.useEffect(() => {
     try {

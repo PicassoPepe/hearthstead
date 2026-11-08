@@ -11,8 +11,8 @@ import { can } from "@/server/permissions";
 import { todayIn } from "@/lib/dates";
 import { tenantDisplayName } from "@/lib/leasing";
 
-export const PREVIEW_COOKIE = "hs_preview_tenant";
-export const PORTAL_LEASE_COOKIE = "hs_portal_lease";
+export const PREVIEW_COOKIE = "dw_preview_tenant";
+export const PORTAL_LEASE_COOKIE = "dw_portal_lease";
 
 export type PortalContext = {
   user: { id: string; email: string };

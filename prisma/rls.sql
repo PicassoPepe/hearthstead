@@ -1,20 +1,20 @@
 -- Row-level security for tenant-scoped tables. Idempotent: safe to re-run after every migration.
--- The application connects as `hearthstead_app` (NOT the table owner, NOT superuser), so these
+-- The application connects as `deedwood_app` (NOT the table owner, NOT superuser), so these
 -- policies apply. The request context is set per transaction with:
 --   SELECT set_config('app.org_id', '<orgId>', true), set_config('app.user_id', '<userId>', true);
 -- With no context set, current_setting(...) returns '' and every policy denies.
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'hearthstead_app') THEN
-    CREATE ROLE hearthstead_app LOGIN PASSWORD 'hearthstead_app';
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'deedwood_app') THEN
+    CREATE ROLE deedwood_app LOGIN PASSWORD 'deedwood_app';
   END IF;
 END $$;
 
-GRANT USAGE ON SCHEMA public TO hearthstead_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO hearthstead_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO hearthstead_app;
-REVOKE ALL ON "_prisma_migrations" FROM hearthstead_app;
+GRANT USAGE ON SCHEMA public TO deedwood_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO deedwood_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO deedwood_app;
+REVOKE ALL ON "_prisma_migrations" FROM deedwood_app;
 
 CREATE OR REPLACE FUNCTION app_org_id() RETURNS text LANGUAGE sql STABLE AS
   $$ SELECT coalesce(current_setting('app.org_id', true), '') $$;
@@ -51,4 +51,4 @@ DROP POLICY IF EXISTS tenant_isolation ON "Organization";
 CREATE POLICY tenant_isolation ON "Organization" USING ("id" = app_org_id()) WITH CHECK ("id" = app_org_id());
 
 -- Auth tables are global; the app role can only read users (writes go through the admin client).
-REVOKE INSERT, UPDATE, DELETE ON "AuthAccount", "Session", "VerificationToken" FROM hearthstead_app;
+REVOKE INSERT, UPDATE, DELETE ON "AuthAccount", "Session", "VerificationToken" FROM deedwood_app;

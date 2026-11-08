@@ -49,8 +49,8 @@ describe("webhooks", () => {
     const del = await db.webhookDelivery.findFirstOrThrow({ where: { endpointId: ep.id } });
     expect(del.status).toBe("SUCCEEDED");
     const call = calls.find((c) => c.url === "https://hooks.example.com/hs")!;
-    expect(EV.verifySignature(ep.secret, call.body, call.headers["hearthstead-signature"]!)).toBe(true);
-    expect(EV.verifySignature("whsec_wrong", call.body, call.headers["hearthstead-signature"]!)).toBe(false);
+    expect(EV.verifySignature(ep.secret, call.body, call.headers["deedwood-signature"]!)).toBe(true);
+    expect(EV.verifySignature("whsec_wrong", call.body, call.headers["deedwood-signature"]!)).toBe(false);
     expect(JSON.parse(call.body)).toMatchObject({ type: "task.created", data: { title: "Hook me" } });
 
     respond = 500;
@@ -100,7 +100,7 @@ describe("API keys, sandbox, OpenAPI, export", () => {
     expect(await sdb.lease.count()).toBe(2);
     expect((await admin.organization.findUniqueOrThrow({ where: { id: sandboxId } })).isSandbox).toBe(true);
     const live = await I.createApiKey(db, { name: "Zapier", scope: "write", environment: "live" });
-    expect(live.key).toMatch(/^hs_live_[a-f0-9]{8}_/);
+    expect(live.key).toMatch(/^dw_live_[a-f0-9]{8}_/);
     const row = await db.apiKey.findFirstOrThrow({ where: { id: live.id } });
     expect(row.secretHash).not.toContain(live.key.slice(-10));
   });

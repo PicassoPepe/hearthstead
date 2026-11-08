@@ -5,7 +5,7 @@ import { PrismaClient } from "@prisma/client";
  * Two connections:
  *  - adminDb: table owner. Bypasses RLS. Use ONLY for auth lookups, migrations/seed, and
  *    explicitly system-level jobs. Never hand it to request-scoped business code.
- *  - appDb:   `hearthstead_app` role. RLS enforced. Wrap with `forOrg()` (src/server/dal).
+ *  - appDb:   `deedwood_app` role. RLS enforced. Wrap with `forOrg()` (src/server/dal).
  */
 const globalForPrisma = globalThis as unknown as {
   adminDb?: PrismaClient;

@@ -61,7 +61,7 @@ export function Importer({ initialKind = "properties", canImport }: { initialKin
     const url = URL.createObjectURL(new Blob([templateCsv(kind)], { type: "text/csv" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `hearthstead-${kind}-template.csv`;
+    a.download = `deedwood-${kind}-template.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -156,7 +156,7 @@ export function Importer({ initialKind = "properties", canImport }: { initialKin
               <table className="w-full text-sm">
                 <caption className="sr-only">Column mapping</caption>
                 <thead className="bg-surface-muted/60 text-left text-xs text-muted-foreground">
-                  <tr><th scope="col" className="px-3 py-2 font-medium">Hearthstead field</th><th scope="col" className="px-3 py-2 font-medium">Column in your file</th><th scope="col" className="px-3 py-2 font-medium">First value</th></tr>
+                  <tr><th scope="col" className="px-3 py-2 font-medium">DeedWood field</th><th scope="col" className="px-3 py-2 font-medium">Column in your file</th><th scope="col" className="px-3 py-2 font-medium">First value</th></tr>
                 </thead>
                 <tbody>
                   {spec.fields.map((f) => {

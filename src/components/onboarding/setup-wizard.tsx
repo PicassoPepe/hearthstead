@@ -66,7 +66,7 @@ export function SetupWizard({ initialStep, firstName, org, propertyCount, paymen
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="text-sm font-medium text-primary">Welcome to Hearthstead{firstName ? `, ${firstName}` : ""}</p>
+      <p className="text-sm font-medium text-primary">Welcome to DeedWood{firstName ? `, ${firstName}` : ""}</p>
       <h1 ref={headingRef} tabIndex={-1} className="mt-1 text-3xl font-bold tracking-tight outline-none">Let&apos;s set up {org.name}</h1>
       <p className="mt-1 text-muted-foreground">Four quick steps. Skip anything — it&apos;s all in Settings later.</p>
 

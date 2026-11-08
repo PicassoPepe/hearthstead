@@ -39,7 +39,7 @@ export async function emit(db: ScopedDb, type: EventType, data: Record<string, u
   return event;
 }
 
-/** Stripe-style signature: header `Hearthstead-Signature: t=<unix>,v1=<hex HMAC-SHA256(t + "." + body)>`. */
+/** Stripe-style signature: header `DeedWood-Signature: t=<unix>,v1=<hex HMAC-SHA256(t + "." + body)>`. */
 export function signPayload(secret: string, body: string, t = Math.floor(Date.now() / 1000)) {
   return `t=${t},v1=${createHmac("sha256", secret).update(`${t}.${body}`).digest("hex")}`;
 }
@@ -69,7 +69,7 @@ export async function deliverDue(db: ScopedDb, eventId?: string, now = new Date(
     try {
       const url = new URL(d.endpoint.url);
       if (!devToolsEnabled() && url.protocol !== "https:") throw new Error("Webhook URLs must use https");
-      const res = await fetcher(d.endpoint.url, { method: "POST", headers: { "content-type": "application/json", "user-agent": "Hearthstead-Webhooks/1.0", "hearthstead-event": d.event, "hearthstead-delivery": d.id, "hearthstead-signature": signPayload(d.endpoint.secret, body) }, body });
+      const res = await fetcher(d.endpoint.url, { method: "POST", headers: { "content-type": "application/json", "user-agent": "DeedWood-Webhooks/1.0", "deedwood-event": d.event, "deedwood-delivery": d.id, "deedwood-signature": signPayload(d.endpoint.secret, body) }, body });
       status = res.status;
       if (!res.ok) error = `HTTP ${res.status}`;
     } catch (e) {
@@ -111,7 +111,7 @@ export async function retryDelivery(db: ScopedDb, id: string) {
 export async function sendTestEvent(db: ScopedDb, endpointId: string) {
   const e = await db.webhookEndpoint.findFirst({ where: { id: endpointId } });
   if (!e) throw new UserFacingError("Endpoint not found");
-  const event: DomainEvent = { id: `evt_test_${randomUUID().replace(/-/g, "").slice(0, 16)}`, type: (e.events[0] as EventType) ?? "task.created", createdAt: new Date().toISOString(), organizationId: db.ctx.orgId, data: { test: true, message: "This is a test event from Hearthstead." } };
+  const event: DomainEvent = { id: `evt_test_${randomUUID().replace(/-/g, "").slice(0, 16)}`, type: (e.events[0] as EventType) ?? "task.created", createdAt: new Date().toISOString(), organizationId: db.ctx.orgId, data: { test: true, message: "This is a test event from DeedWood." } };
   await db.webhookDelivery.create({ data: { organizationId: db.ctx.orgId, endpointId: e.id, eventId: event.id, event: event.type, payload: event as unknown as object } });
   return deliverDue(db, event.id);
 }

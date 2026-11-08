@@ -1,4 +1,4 @@
-# Hearthstead
+# DeedWood
 
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
@@ -27,7 +27,7 @@ These commands work the same in **Windows PowerShell**, macOS and Linux. Run the
 git clone https://github.com/PicassoPepe/hearthstead.git
 ```
 ```bash
-cd hearthstead
+cd deedwood
 ```
 ```bash
 pnpm install
@@ -89,14 +89,14 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 
 | Variable | Default (dev) | Purpose |
 | --- | --- | --- |
-| `DATABASE_ADMIN_URL` | `postgres://postgres:postgres@localhost:5432/hearthstead` | Table owner. Migrations, seed, auth lookups, system jobs. Bypasses RLS. |
-| `DATABASE_URL` | `postgres://hearthstead_app:hearthstead_app@…` | Request-time role. **Not** the owner, so RLS applies. Created by `prisma/rls.sql`. |
+| `DATABASE_ADMIN_URL` | `postgres://postgres:postgres@localhost:5432/deedwood` | Table owner. Migrations, seed, auth lookups, system jobs. Bypasses RLS. |
+| `DATABASE_URL` | `postgres://deedwood_app:deedwood_app@…` | Request-time role. **Not** the owner, so RLS applies. Created by `prisma/rls.sql`. |
 | `REDIS_URL` | `redis://localhost:6379` | BullMQ (background jobs, from Phase 3) |
 | `AUTH_SECRET` | dev value | Auth.js JWT secret — **change in production** |
 | `AUTH_URL` | `http://localhost:3000` | Public base URL (links in emails) |
 | `EMAIL_PROVIDER` | `mock` | `mock` (records to DB, view at `/dev/outbox`) or `smtp` |
 | `SMTP_URL` | `smtp://localhost:1025` | Mailpit in docker-compose; any SMTP relay in prod |
-| `EMAIL_FROM` | `Hearthstead <no-reply@…>` | Sender |
+| `EMAIL_FROM` | `DeedWood <no-reply@…>` | Sender |
 | `STORAGE_PROVIDER` | `local` | `local` writes to `./storage`; `s3` uses the vars below |
 | `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | — | MinIO: `http://localhost:9000`, `minio` / `minio12345` |
 | `PAYMENTS_PROVIDER` | `mock` | `mock` (offline, Stripe-test-mode behavior) or `stripe` |
@@ -123,7 +123,7 @@ flowchart LR
     SVC --> DAL
     RSC --> ADP[Adapter registry]
   end
-  DAL -->|"hearthstead_app role\nset_config(app.org_id)"| PG[(Postgres + RLS)]
+  DAL -->|"deedwood_app role\nset_config(app.org_id)"| PG[(Postgres + RLS)]
   AUTH[Auth.js + Prisma adapter] -->|owner role| PG
   ADP --> MOCK[Mock providers]
   ADP -.-> REAL[Stripe · Twilio · Plaid · SMTP · LLM ...]
@@ -141,7 +141,7 @@ flowchart LR
    from `forOrg({ orgId, userId })`. A Prisma extension injects `organizationId` into every
    `where`, stamps it on every `create`, adds `deletedAt: null` to reads, and throws
    `CrossTenantError` if code passes a different org id.
-2. **Postgres row-level security** (`prisma/rls.sql`). The app connects as `hearthstead_app`,
+2. **Postgres row-level security** (`prisma/rls.sql`). The app connects as `deedwood_app`,
    which is neither superuser nor table owner, and every table with `organizationId` has a
    `FORCE`d policy `"organizationId" = current_setting('app.org_id')`. Each query runs in a
    transaction that sets that variable first. No context → no rows.
@@ -321,14 +321,14 @@ Try these after `pnpm db:seed` (password `Demo1234!x`):
 
 1. **API** — the seed prints a local-only demo key. Try it:
    ```bash
-   curl -H "Authorization: Bearer hs_live_00dea100_localDemoKeyDoNotUseInProduction" "http://localhost:3000/api/v1/leases?limit=2"
+   curl -H "Authorization: Bearer dw_live_00dea100_localDemoKeyDoNotUseInProduction" "http://localhost:3000/api/v1/leases?limit=2"
    ```
    The OpenAPI 3.1 spec is at `/api/v1/openapi.json`. Lists use cursor pagination (`next_cursor`);
    every key gets 120 requests/minute (`X-RateLimit-*` headers, `429` + `Retry-After` beyond);
    send `Idempotency-Key` on POST/PATCH to retry safely (a replay returns the original response
    with `Idempotent-Replayed: true`; reusing a key with a different body is a `409`).
 2. **Settings → Integrations**: create keys (shown once; only a hash is stored), **Create sandbox**
-   (a separate org with sample data that `hs_test_` keys act on), webhook endpoints with signing
+   (a separate org with sample data that `dw_test_` keys act on), webhook endpoints with signing
    secrets, **Test** sends, a delivery log with retries, and the QuickBooks ledger export.
    The seeded endpoint points at `/api/dev/webhook-sink`, which verifies signatures (see the
    server log). Events: `lease.created`, `lease.ended`, `payment.succeeded`, `payment.failed`,

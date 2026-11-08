@@ -54,8 +54,8 @@ export function openApiDocument(baseUrl: string) {
   return {
     openapi: "3.1.0",
     info: {
-      title: "Hearthstead API", version: "1.0.0",
-      description: "REST API for properties, units, tenants, leases, ledger balances and maintenance tasks.\n\n- Authenticate with `Authorization: Bearer hs_live_…` (or `hs_test_…` for your sandbox).\n- Money is integer cents. Lists use cursor pagination (`limit`, `cursor`, `next_cursor`).\n- 120 requests/minute per key (`X-RateLimit-*` headers).\n- Send `Idempotency-Key` on POST/PATCH to retry safely.\n- Webhooks are signed: `Hearthstead-Signature: t=<unix>,v1=<HMAC-SHA256(secret, t + '.' + body)>`.",
+      title: "DeedWood API", version: "1.0.0",
+      description: "REST API for properties, units, tenants, leases, ledger balances and maintenance tasks.\n\n- Authenticate with `Authorization: Bearer dw_live_…` (or `dw_test_…` for your sandbox).\n- Money is integer cents. Lists use cursor pagination (`limit`, `cursor`, `next_cursor`).\n- 120 requests/minute per key (`X-RateLimit-*` headers).\n- Send `Idempotency-Key` on POST/PATCH to retry safely.\n- Webhooks are signed: `DeedWood-Signature: t=<unix>,v1=<HMAC-SHA256(secret, t + '.' + body)>`.",
     },
     servers: [{ url: `${baseUrl}/api/v1` }],
     components: { securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "API key from Settings → Integrations" } }, schemas },

@@ -38,7 +38,7 @@ export default async function PortalHome() {
     <div className="grid gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Hi, {first}</h1>
       <WelcomeSteps
-        storageKey={`hs-welcome-tenant-${ctx.tenant.id}`}
+        storageKey={`dw-welcome-tenant-${ctx.tenant.id}`}
         title={`Welcome to ${ctx.org.name}'s resident portal`}
         intro="A few things to set up so paying rent and getting help is effortless."
         steps={[

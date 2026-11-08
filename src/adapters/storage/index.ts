@@ -76,6 +76,6 @@ export class S3Storage implements StorageProvider {
 
 let storage: StorageProvider | undefined;
 export function getStorage(): StorageProvider {
-  storage ??= process.env.STORAGE_PROVIDER === "s3" ? new S3Storage(process.env.S3_BUCKET ?? "hearthstead") : new LocalStorage();
+  storage ??= process.env.STORAGE_PROVIDER === "s3" ? new S3Storage(process.env.S3_BUCKET ?? "deedwood") : new LocalStorage();
   return storage;
 }

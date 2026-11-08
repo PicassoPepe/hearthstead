@@ -7,8 +7,8 @@ import { verifySignature } from "@/server/platform/events";
 export async function POST(req: Request) {
   if (!devToolsEnabled()) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.text();
-  const delivery = await adminDb.webhookDelivery.findUnique({ where: { id: req.headers.get("hearthstead-delivery") ?? "" }, include: { endpoint: true } });
-  const ok = Boolean(delivery && verifySignature(delivery.endpoint.secret, body, req.headers.get("hearthstead-signature") ?? ""));
-  console.log(`[webhook-sink] ${req.headers.get("hearthstead-event")} signature ${ok ? "valid" : "INVALID"}`);
+  const delivery = await adminDb.webhookDelivery.findUnique({ where: { id: req.headers.get("deedwood-delivery") ?? "" }, include: { endpoint: true } });
+  const ok = Boolean(delivery && verifySignature(delivery.endpoint.secret, body, req.headers.get("deedwood-signature") ?? ""));
+  console.log(`[webhook-sink] ${req.headers.get("deedwood-event")} signature ${ok ? "valid" : "INVALID"}`);
   return NextResponse.json({ received: true, signatureValid: ok }, { status: ok ? 200 : 400 });
 }

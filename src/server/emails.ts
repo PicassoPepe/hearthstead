@@ -1,4 +1,4 @@
-const APP = process.env.NEXT_PUBLIC_APP_NAME ?? "Hearthstead";
+const APP = process.env.NEXT_PUBLIC_APP_NAME ?? "DeedWood";
 
 function layout(title: string, body: string): string {
   return `<!doctype html><html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;padding:24px;color:#0f172a">

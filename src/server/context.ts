@@ -15,7 +15,7 @@ import {
   type PermissionSet,
 } from "@/server/permissions";
 
-export const ORG_COOKIE = "hs_org";
+export const ORG_COOKIE = "dw_org";
 
 export type AppContext = {
   user: { id: string; email: string; name: string | null; preferences: Record<string, unknown> };

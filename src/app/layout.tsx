@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Hearthstead", template: "%s · Hearthstead" },
+  title: { default: "DeedWood", template: "%s · DeedWood" },
   description: "Property management for landlords and property managers.",
 };
 

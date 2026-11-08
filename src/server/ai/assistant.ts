@@ -121,7 +121,7 @@ export async function assistantTurn(ctx: AppContext, history: ChatTurn[], messag
   const turns: ChatTurn[] = [...history.slice(-20), { role: "user", content: message.slice(0, 2000) }];
   const proposals: ProposedAction[] = [];
   const used: string[] = [];
-  const system = `You are the Hearthstead assistant for ${ctx.org.name}, a property management company. Today is ${new Date().toISOString().slice(0, 10)}. Use tools to answer with real data; never invent numbers or names. Writing actions (create_task, send_message) only create a proposal the user confirms — say so. Be brief.`;
+  const system = `You are the DeedWood assistant for ${ctx.org.name}, a property management company. Today is ${new Date().toISOString().slice(0, 10)}. Use tools to answer with real data; never invent numbers or names. Writing actions (create_task, send_message) only create a proposal the user confirms — say so. Be brief.`;
   for (let i = 0; i < 4; i++) {
     const r = await getLlmProvider().chat({ system, turns, tools: tools.map(({ write: _w, module: _m, ...t }) => t) });
     turns.push({ role: "assistant", content: r.text, toolCalls: r.toolCalls.length ? r.toolCalls : undefined });
