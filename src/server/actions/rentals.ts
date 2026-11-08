@@ -157,3 +157,13 @@ export async function refreshLandRecordAction(propertyId: string): Promise<Actio
     return { status: r.status, message: r.error };
   });
 }
+
+export async function saveManualLandRecordAction(propertyId: string, v: import("@/server/rentals/land-records").ManualLandRecord): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("rentals", "edit");
+    if (!canAccessProperty(ctx.membership.propertyScope, propertyId)) throw new UserFacingError("You don't have access to that property.");
+    const { saveManualLandRecord } = await import("@/server/rentals/land-records");
+    await saveManualLandRecord(ctx.db, propertyId, v);
+    revalidatePath(`/app/rentals/${propertyId}`);
+  }, "Land record saved");
+}

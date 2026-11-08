@@ -24,7 +24,7 @@ export default async function OwnerPropertyRecords({ params }: { params: Promise
         <h1 className="text-2xl font-semibold tracking-tight">{property.name}</h1>
         <p className="text-sm text-muted-foreground">{property.addressLine1}, {property.city}, {property.state} {property.postalCode} · you own {p.percentBps / 100}%</p>
       </div>
-      <LandRecord mode="owner" propertyId={propertyId} propertyName={property.name} {...view} />
+      <LandRecord mode="owner" propertyId={propertyId} propertyName={property.name} address={property} {...view} />
     </div>
   );
 }

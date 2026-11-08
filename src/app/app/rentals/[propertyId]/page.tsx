@@ -167,7 +167,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
           </div>
         </div>
       ) : tab === "land" ? (
-        <LandRecord mode="staff" propertyId={p.id} propertyName={p.name} {...await landRecordView(ctx.db, p.id, (id) => `/api/files/${id}`)} />
+        <LandRecord mode="staff" propertyId={p.id} propertyName={p.name} address={p} {...await landRecordView(ctx.db, p.id, (id) => `/api/files/${id}`)} />
       ) : tab === "photos" ? (
         <PhotoGallery kind="property" id={p.id} photos={p.photos} canEdit={canEdit} />
       ) : tab === "units" ? (

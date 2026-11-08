@@ -175,3 +175,15 @@ describe("land records", () => {
     delete process.env.PARCELS_PROVIDER;
   });
 });
+
+describe("land records entered by hand", () => {
+  it("are kept when an automatic lookup finds nothing (e.g. counties without public data)", async () => {
+    const LR = await import("@/server/rentals/land-records");
+    await LR.saveManualLandRecord(db, propertyId, { parcelId: "072-00-00-012.00", ownerName: "Olive Owner", acres: 0.42, deedBook: "312", deedPage: "88", assessedValueCents: 9_800_000 });
+    await expect(LR.saveManualLandRecord(db, propertyId, { lastSaleDate: "May 2020" })).rejects.toThrow(/full date/);
+    await LR.refreshLandRecord(db, propertyId, async () => ({ ...(await import("@/adapters/parcels")).mockLookup({ addressLine1: "x", city: "Monticello", state: "KY", postalCode: "42633" }), status: "NOT_FOUND", parcelId: null, ownerName: null, latitude: 36.83, longitude: -84.85 }));
+    const rec = await db.parcelRecord.findFirstOrThrow({ where: { propertyId } });
+    expect(rec).toMatchObject({ source: "manual", parcelId: "072-00-00-012.00", ownerName: "OLIVE OWNER", deedBook: "312", latitude: 36.83 });
+    expect((await LR.landRecordView(db, propertyId, (id) => id)).match).toBe(true);
+  });
+});

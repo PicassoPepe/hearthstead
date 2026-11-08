@@ -33,6 +33,11 @@ export async function refreshLandRecord(db: ScopedDb, propertyId: string, lookup
     await db.parcelRecord.upsert({ where: { propertyId }, update: { status: "ERROR", error: message, fetchedAt: new Date() }, create: { organizationId: db.ctx.orgId, propertyId, source: "error", status: "ERROR", error: message } });
     throw new UserFacingError(`Couldn't reach the land-records service: ${message}. Try again later.`);
   }
+  const existing = await db.parcelRecord.findFirst({ where: { propertyId } });
+  // Never replace details someone entered by hand with "not found" — just update the map point.
+  if (existing?.source === "manual" && result.status !== "LOOKED_UP") {
+    return db.parcelRecord.update({ where: { propertyId }, data: { latitude: result.latitude ?? existing.latitude, longitude: result.longitude ?? existing.longitude, countyFips: result.countyFips ?? existing.countyFips, countyName: result.countyName ?? existing.countyName, links: (result.links.length ? result.links : existing.links) as object, error: null, fetchedAt: new Date() } });
+  }
   const data = toData(result);
   const rec = await db.parcelRecord.upsert({ where: { propertyId }, update: { ...data, error: result.message ?? null }, create: { organizationId: db.ctx.orgId, propertyId, ...data, error: result.message ?? null } });
   await audit(db, { action: "land_record.refreshed", entityType: "Property", entityId: propertyId, after: { source: result.source, status: result.status, parcelId: result.parcelId } });
@@ -54,7 +59,7 @@ export function ownersMatch(ownerOfRecord: string | null, owners: string[]) {
 /** Nightly: refresh records older than REFRESH_DAYS, a few per run. (New properties are looked up when created.) */
 export async function refreshStaleLandRecords(db: ScopedDb, now = new Date(), limit = 10) {
   const cutoff = new Date(now.getTime() - REFRESH_DAYS * 86_400_000);
-  const stale = await db.parcelRecord.findMany({ where: { fetchedAt: { lt: cutoff } }, select: { propertyId: true }, take: limit });
+  const stale = await db.parcelRecord.findMany({ where: { fetchedAt: { lt: cutoff }, source: { not: "manual" } }, select: { propertyId: true }, take: limit });
   let done = 0;
   for (const id of stale.map((s) => s.propertyId)) {
     try {
@@ -86,4 +91,22 @@ export async function landRecordView(db: ScopedDb, propertyId: string, fileHref:
     match: rec?.status === "LOOKED_UP" ? ownersMatch(rec.ownerName, ownersOnFile) : null,
     docs: docs.map((d) => ({ id: d.id, name: d.name, category: d.category ?? "Deed", href: fileHref(d.id) })),
   };
+}
+
+export type ManualLandRecord = { parcelId?: string; ownerName?: string; acres?: number | null; landUse?: string; assessedValueCents?: number | null; taxYear?: number | null; lastSaleDate?: string; lastSalePriceCents?: number | null; deedBook?: string; deedPage?: string; legalDescription?: string };
+
+/** Staff enter what they found (PVA site, deed, Zillow…) — kept until someone changes it. */
+export async function saveManualLandRecord(db: ScopedDb, propertyId: string, v: ManualLandRecord) {
+  if (!(await db.property.findFirst({ where: { id: propertyId } }))) throw new UserFacingError("Property not found");
+  const t = (x?: string) => (x?.trim() ? x.trim().slice(0, 500) : null);
+  if (v.lastSaleDate && !/^\d{4}-\d{2}-\d{2}$/.test(v.lastSaleDate)) throw new UserFacingError("Use a full date", { lastSaleDate: "YYYY-MM-DD" });
+  if (v.acres != null && (!Number.isFinite(v.acres) || v.acres < 0)) throw new UserFacingError("Acres must be a number", { acres: "Number" });
+  const data = {
+    source: "manual", status: "LOOKED_UP", error: null, parcelId: t(v.parcelId), ownerName: t(v.ownerName)?.toUpperCase() ?? null, acres: v.acres ?? null, landUse: t(v.landUse),
+    assessedValueCents: v.assessedValueCents ?? null, taxYear: v.taxYear ?? null, lastSaleDate: t(v.lastSaleDate), lastSalePriceCents: v.lastSalePriceCents ?? null,
+    deedBook: t(v.deedBook), deedPage: t(v.deedPage), legalDescription: t(v.legalDescription), fetchedAt: new Date(),
+  };
+  const rec = await db.parcelRecord.upsert({ where: { propertyId }, update: data, create: { organizationId: db.ctx.orgId, propertyId, ...data } });
+  await audit(db, { action: "land_record.entered", entityType: "Property", entityId: propertyId, after: { parcelId: data.parcelId, ownerName: data.ownerName } });
+  return rec;
 }

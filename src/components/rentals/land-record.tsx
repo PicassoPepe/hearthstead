@@ -1,7 +1,8 @@
 import { AlertTriangle, CheckCircle2, ExternalLink, FileText, Landmark } from "lucide-react";
 import { ParcelMap } from "./parcel-map";
-import { LandDocsUpload, RefreshLandRecordButton } from "./land-record-actions";
+import { EnterLandRecordButton, LandDocsUpload, RefreshLandRecordButton } from "./land-record-actions";
 import { formatMoney } from "@/lib/money";
+import { outsideLinks } from "@/lib/outside-links";
 
 export type LandRecordData = {
   status: string;
@@ -30,15 +31,15 @@ export type LandRecordData = {
 export type LandDoc = { id: string; name: string; category: string; href: string };
 
 const DOC_LABEL: Record<string, string> = { Deed: "Deed", TitlePolicy: "Title policy", Survey: "Survey", Plat: "Plat" };
-const sourceLabel = (s: string, county: string | null) => (s.startsWith("county:") ? `${county ?? "County"} public parcel map` : s === "regrid" ? "Regrid parcel data" : s === "mock" ? "Sample data (demo)" : s);
+const sourceLabel = (s: string, county: string | null) => (s.startsWith("county:") ? `${county ?? "County"} public parcel map` : s === "regrid" ? "Regrid parcel data" : s === "mock" ? "Sample data (demo)" : s === "manual" ? "Entered by your property manager" : s);
 
 /**
  * Land records for one property: map with the parcel outline, owner of record (with a mismatch
  * warning against the owners on file), parcel facts, county links, and deed/title/survey documents.
  * `mode="owner"` is the read-only owner-portal view.
  */
-export function LandRecord({ propertyId, propertyName, record, ownersOnFile, match, docs, mode }: {
-  propertyId: string; propertyName: string; record: LandRecordData | null; ownersOnFile: string[]; match: boolean | null; docs: LandDoc[]; mode: "staff" | "owner";
+export function LandRecord({ propertyId, propertyName, address, record, ownersOnFile, match, docs, mode }: {
+  propertyId: string; propertyName: string; address: { addressLine1: string; city: string; state: string; postalCode: string }; record: LandRecordData | null; ownersOnFile: string[]; match: boolean | null; docs: LandDoc[]; mode: "staff" | "owner";
 }) {
   const staff = mode === "staff";
   const facts: [string, React.ReactNode][] = record ? [
@@ -64,15 +65,26 @@ export function LandRecord({ propertyId, propertyName, record, ownersOnFile, mat
             ))}
           </ul>
         ) : null}
+        <div className="text-sm">
+          <span className="text-muted-foreground">See it on: </span>
+          {outsideLinks(address, record ?? undefined).map((l, i) => (
+            <span key={l.label}>{i ? <span aria-hidden className="text-muted-foreground"> · </span> : null}<a href={l.url} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">{l.label}<span className="sr-only"> (opens in a new tab)</span></a></span>
+          ))}
+        </div>
       </div>
       <div className="grid content-start gap-4">
         <section aria-labelledby={`lr-${propertyId}`} className="rounded-card border border-border bg-surface p-4 shadow-card">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 id={`lr-${propertyId}`} className="flex items-center gap-2 font-semibold"><Landmark className="size-4" aria-hidden /> County land record</h2>
-            {staff ? <RefreshLandRecordButton propertyId={propertyId} hasRecord={Boolean(record)} /> : null}
+            {staff ? (
+              <div className="flex flex-wrap gap-2">
+                <EnterLandRecordButton propertyId={propertyId} initial={record ? { parcelId: record.parcelId, ownerName: record.ownerName, acres: record.acres, landUse: record.landUse, assessedValueCents: record.assessedValueCents, taxYear: record.taxYear, lastSaleDate: record.lastSaleDate, lastSalePriceCents: record.lastSalePriceCents, deedBook: record.deedBook, deedPage: record.deedPage, legalDescription: record.legalDescription } : null} />
+                <RefreshLandRecordButton propertyId={propertyId} hasRecord={Boolean(record)} />
+              </div>
+            ) : null}
           </div>
           {!record ? (
-            <p className="text-sm text-muted-foreground">{staff ? "Not looked up yet. DeedWood finds the parcel from the address using the county's public records." : "Your property manager hasn't added the county record yet."}</p>
+            <p className="text-sm text-muted-foreground">{staff ? "Not looked up yet. Look it up from the county's public records, or enter the details from the PVA site or the deed." : "Your property manager hasn't added the county record yet."}</p>
           ) : (
             <>
               {record.status !== "LOOKED_UP" ? <p role="status" className="mb-3 rounded-lg bg-warning-soft p-3 text-sm text-warning-soft-foreground">{record.error ?? "No parcel found for this address."}</p> : null}

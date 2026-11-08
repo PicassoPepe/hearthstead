@@ -102,3 +102,15 @@ describe("county registry", () => {
     expect(countyByFips("21231")).toBeNull(); // Wayne County, KY has no public parcel layer — Regrid covers it
   });
 });
+
+describe("outside links", () => {
+  it("opens the property on Google Earth, Google Maps (satellite) and Zillow", async () => {
+    const { outsideLinks } = await import("@/lib/outside-links");
+    const a = { addressLine1: "101 N Main St", city: "Monticello", state: "KY", postalCode: "42633" };
+    const links = outsideLinks(a, { latitude: 36.83, longitude: -84.85 });
+    expect(links.map((l) => l.label)).toEqual(["Google Earth", "Google Maps (satellite)", "Zillow"]);
+    expect(links[1]!.url).toContain("center=36.83,-84.85&zoom=19&basemap=satellite");
+    expect(links[2]!.url).toBe("https://www.zillow.com/homes/101-N-Main-St-Monticello-KY-42633_rb/");
+    expect(outsideLinks(a)[1]!.url).toContain("query=101%20N%20Main%20St");
+  });
+});
