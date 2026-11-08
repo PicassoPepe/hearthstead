@@ -42,8 +42,11 @@ export async function uploadFiles(form: FormData): Promise<ActionResult<{ ids: s
     if (files.length === 0) throw new UserFacingError("Choose at least one file");
     if (files.length > 20) throw new UserFacingError("Upload up to 20 files at a time");
     const ids: string[] = [];
+    // Optional document category (land documents: deed, title policy, survey, plat).
+    const category = String(form.get("category") ?? "");
+    const cat = ["Deed", "TitlePolicy", "Survey", "Plat"].includes(category) ? category : undefined;
     for (const f of files) {
-      const r = await storeAttachment(ctx.db, { name: f.name, type: f.type, bytes: new Uint8Array(await f.arrayBuffer()) }, link as never);
+      const r = await storeAttachment(ctx.db, { name: f.name, type: f.type, bytes: new Uint8Array(await f.arrayBuffer()) }, link as never, cat);
       ids.push(r.id);
     }
     revalidatePath("/app", "layout");

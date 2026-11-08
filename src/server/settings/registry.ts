@@ -164,6 +164,11 @@ export const SETTINGS = {
     key: "ownerPortal.showReports", group: "ownerPortal", label: "Owners can run reports",
     schema: z.boolean(), default: true, scopes: ORG_PROP, input: { kind: "boolean" },
   }),
+  "ownerPortal.showLandRecords": def({
+    key: "ownerPortal.showLandRecords", group: "ownerPortal", label: "Show owners their land records",
+    help: "Parcel map with lot lines, owner of record, assessed value and the deed, title and survey documents for each property they own.",
+    schema: z.boolean(), default: true, scopes: ORG_PROP, input: { kind: "boolean" },
+  }),
   "ownerPortal.approvalThresholdCents": def({
     key: "ownerPortal.approvalThresholdCents", group: "ownerPortal", label: "Owner approval for bills over",
     help: "Bills at or above this amount for a property need an owner to approve them in the owner portal before they can be paid. $0 turns this off.",

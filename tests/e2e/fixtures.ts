@@ -22,10 +22,17 @@ function benignAriaHiddenMismatch(text: string) {
   return diffs.length > 0 && diffs.every((l) => /aria-hidden=/.test(l));
 }
 
+const BLANK_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+/** Map tiles come from the internet; serve blank tiles so tests don't depend on it. */
+export async function stubMapTiles(page: Page) {
+  await page.route(/tile\.openstreetmap\.org|server\.arcgisonline\.com/, (r) => r.fulfill({ status: 200, contentType: "image/png", body: BLANK_PNG }));
+}
+
 /** Fails any test that logs a console error or hydration warning. */
 export const test = base.extend<{ consoleErrors: string[] }>({
   consoleErrors: [
     async ({ page }, use) => {
+      await stubMapTiles(page);
       const errors: string[] = [];
       page.on("console", (m) => {
         if ((m.type() === "error" || /hydrat/i.test(m.text())) && !benignAriaHiddenMismatch(m.text())) errors.push(m.text());

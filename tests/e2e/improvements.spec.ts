@@ -1,4 +1,4 @@
-import { test, expect, signIn } from "./fixtures";
+import { test, expect, signIn, stubMapTiles } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 // A tiny valid PNG (1×1) for upload tests.
@@ -175,4 +175,28 @@ test.describe("phone", () => {
     await page.getByRole("dialog", { name: "Quick actions" }).getByRole("link", { name: "New task or request" }).click();
     await expect(page.getByRole("dialog", { name: /New task/ })).toBeVisible();
   });
+});
+
+test("land records: staff see the county record and attach a deed; the owner sees both in their portal", async ({ page, browser }) => {
+  await signIn(page, "admin@example.com", "/app/rentals");
+  await page.getByRole("link", { name: "Cedar Duplex" }).first().click();
+  await page.getByRole("link", { name: "Land records" }).click();
+  const panel = page.getByTestId("land-record");
+  await expect(panel.getByText("Owner of record", { exact: true })).toBeVisible();
+  await expect(panel.getByText(/Owner of record matches the owners on file/)).toBeVisible();
+  await expect(panel.getByRole("img", { name: /Map of the parcel/ })).toBeVisible();
+  await page.getByRole("combobox", { name: "Document type" }).selectOption("Deed");
+  await page.locator('input[type="file"][accept^="application/pdf"]').setInputFiles({ name: "cedar-deed.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 sample") });
+  await expect(page.getByText("Document attached")).toBeVisible();
+  await expect(page.getByTestId("land-docs")).toContainText("cedar-deed.pdf");
+
+  const owner = await browser.newPage();
+  await stubMapTiles(owner);
+  await passwordSignIn(owner, "owner@example.com", "/portal/owner");
+  await owner.goto("/portal/owner/properties");
+  await owner.getByRole("link", { name: "Cedar Duplex" }).click();
+  await expect(owner.getByRole("heading", { name: "County land record" })).toBeVisible();
+  await expect(owner.getByTestId("land-docs")).toContainText("cedar-deed.pdf");
+  await expect(owner.getByRole("button", { name: /Refresh from county/ })).toHaveCount(0); // read-only
+  await owner.close();
 });

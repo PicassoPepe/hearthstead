@@ -147,6 +147,7 @@ async function main(): Promise<void> {
   console.log(`  Leasing funnel: ${funnel.published} published listings (${funnel.listings} total), ${funnel.prospects} prospects, ${funnel.applications} applications. Public page: /l/maple-main`);
   console.log(`  Platform: demo API key ${DEMO_API_KEY} · 2 workflows · ${platform.proposed} agent proposals waiting in AI → Agents.`);
   console.log(`  Operations: ${ops.keys} keys & spaces tracked at Maple Court (Rentals → Keys & spaces). Calendar: /app/calendar`);
+  console.log(`  Land records: ${ops.parcels} sample parcels (property → Land records; owners see them in their portal).`);
   console.log(`  Payments: ${payments.payments} online payments, ${payments.autopays} autopays. Tenant portal: tenant@example.com (${payments.demoTenant}).`);
 }
 

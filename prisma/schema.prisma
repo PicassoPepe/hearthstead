@@ -293,6 +293,7 @@ model Property {
   ownerships       PropertyOwnership[]
   leases           Lease[]
 
+  parcelRecord ParcelRecord?
   @@index([organizationId, deletedAt])
   @@index([portfolioId])
 }
@@ -2032,4 +2033,50 @@ model OwnerApproval {
 
   @@index([organizationId, status])
   @@index([entityId])
+}
+
+// ─── Land records (parcels, owner of record, deed references) ─────────────
+
+/// The county's record for a property's parcel: fetched from a county GIS service or a parcel
+/// data provider, stored so pages load instantly and paid lookups happen once per refresh.
+model ParcelRecord {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  propertyId         String    @unique
+  /// e.g. "county:21231" (Wayne County, KY), "regrid", "mock", "manual"
+  source             String
+  /// LOOKED_UP | NOT_FOUND | ERROR
+  status             String    @default("LOOKED_UP")
+  error              String?
+  latitude           Float?
+  longitude          Float?
+  /// 5-digit county FIPS (state + county), e.g. 21231
+  countyFips         String?
+  countyName         String?
+  parcelId           String?
+  ownerName          String?
+  ownerMailing       String?
+  situsAddress       String?
+  legalDescription   String?
+  acres              Float?
+  landUse            String?
+  assessedValueCents Int?
+  taxYear            Int?
+  lastSaleDate       String?
+  lastSalePriceCents Int?
+  deedBook           String?
+  deedPage           String?
+  /// GeoJSON Polygon/MultiPolygon in WGS84
+  geometry           Json?
+  /// { label, url }[] — county PVA / clerk / GIS pages
+  links              Json      @default("[]")
+  /// Provider fields as returned (for audit and future columns)
+  raw                Json?
+  fetchedAt          DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, fetchedAt])
 }

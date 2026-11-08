@@ -20,6 +20,7 @@ export type NightlyResult = {
   renewalsExpired?: number;
   reminders?: number;
   ownerStatements?: number;
+  landRecords?: number;
   errors: { leaseId: string; message: string }[];
 };
 
@@ -81,6 +82,11 @@ export async function runNightly(db: ScopedDb, opts: { today?: Date; timezone?: 
     result.reminders = await sendRentReminders(db, today);
     const { emailOwnerStatements } = await import("@/server/accounting/owner-statements");
     result.ownerStatements = await emailOwnerStatements(db, today);
+    // Keep county land records fresh (a few per night; only records older than 90 days).
+    if (process.env.PARCELS_PROVIDER !== "off") {
+      const { refreshStaleLandRecords } = await import("@/server/rentals/land-records");
+      result.landRecords = await refreshStaleLandRecords(db, today);
+    }
   } catch (e) {
     result.errors.push({ leaseId: "accounting", message: e instanceof Error ? e.message : String(e) });
   }

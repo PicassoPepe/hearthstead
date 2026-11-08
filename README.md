@@ -318,6 +318,7 @@ Try these after `pnpm db:seed` (password `Demo1234!x`):
 | Vendor invoices | `vendor@example.com` → **Invoices** | Submit an invoice; staff approve it on **Bills** (one from Ace Plumbing is waiting). |
 | Owner approvals | `owner@example.com` → **Approvals** | Cedar Duplex requires approval over $1,500 — a $2,480 gutter bill is waiting and can't be paid until approved. |
 | Reminders & statements | nightly job | Rent reminders (Settings → Notifications) and monthly owner statements (Distributions → **Email last month's statements**). |
+| Land records | Property → **Land records**; owner portal → Properties → a property | Parcel map with lot lines, owner of record (with a warning when it doesn't match your records), parcel ID, acres, assessed value, last sale, deed book/page, and deed/title/survey documents. Owners see it in their portal. Demo data uses sample parcels; real lookups use free county maps (Wayne County, KY first) or Regrid. |
 | Phone | any page at phone width | Bottom tab bar with a **+** quick-actions sheet; tables become cards. |
 
 ## Roadmap

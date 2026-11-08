@@ -146,3 +146,32 @@ describe("keys & spaces", () => {
     expect((await db.recurringCharge.findFirstOrThrow({ where: { id: rc.id } })).endDate?.toISOString().slice(0, 10)).toBe("2027-05-15");
   });
 });
+
+describe("land records", () => {
+  it("stores the county record, flags owner mismatches, records errors, and refreshes when stale", async () => {
+    const LR = await import("@/server/rentals/land-records");
+    const { mockLookup } = await import("@/adapters/parcels");
+    let rec = await LR.refreshLandRecord(db, propertyId, async (q) => mockLookup(q));
+    expect(rec).toMatchObject({ status: "LOOKED_UP", source: "mock", ownerName: "OLIVE OWNER" });
+    let v = await LR.landRecordView(db, propertyId, (id) => `/f/${id}`);
+    expect(v.match).toBe(true); // Olive Owner is the owner on file
+    await LR.refreshLandRecord(db, propertyId, async (q) => ({ ...mockLookup(q), ownerName: "NEW BUYER LLC" }));
+    v = await LR.landRecordView(db, propertyId, (id) => `/f/${id}`);
+    expect(v.match).toBe(false);
+    // Service errors are kept on the record and surfaced as a friendly message.
+    await expect(LR.refreshLandRecord(db, propertyId, async () => { throw new Error("county map is down"); })).rejects.toThrow(/county map is down/);
+    rec = (await db.parcelRecord.findFirstOrThrow({ where: { propertyId } }));
+    expect(rec).toMatchObject({ status: "ERROR", error: "county map is down", ownerName: "NEW BUYER LLC" }); // last good data kept
+    // Deed documents appear in the view (and therefore the owner portal).
+    const { storeAttachment } = await import("@/server/records/service");
+    await storeAttachment(db, { name: "deed.pdf", type: "application/pdf", bytes: new Uint8Array([37, 80, 68, 70]) }, { type: "Property", id: propertyId }, "Deed");
+    v = await LR.landRecordView(db, propertyId, (id) => `/f/${id}`);
+    expect(v.docs).toEqual([expect.objectContaining({ name: "deed.pdf", category: "Deed" })]);
+    // Nightly refresh only touches records older than 90 days.
+    process.env.PARCELS_PROVIDER = "mock";
+    expect(await LR.refreshStaleLandRecords(db, new Date())).toBe(0);
+    expect(await LR.refreshStaleLandRecords(db, new Date(Date.now() + 91 * 86_400_000))).toBe(1);
+    expect((await db.parcelRecord.findFirstOrThrow({ where: { propertyId } })).status).toBe("LOOKED_UP");
+    delete process.env.PARCELS_PROVIDER;
+  });
+});

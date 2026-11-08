@@ -288,3 +288,29 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Images aren't resized server-side (8 MB cap per image).
 - The 1099 export needs full TINs added by hand (only last 4 are stored by design).
 - Billing shows plan math and usage only; it doesn't charge.
+
+## Land records (parcels, owner of record, deeds)
+
+- Lookup chain (`PARCELS_PROVIDER=auto`): the free US Census geocoder turns the address into
+  coordinates and a county FIPS code; counties in `src/adapters/parcels/counties.ts` are queried
+  directly on their public ArcGIS parcel layer (free); other counties use Regrid when
+  `REGRID_TOKEN` is set (paid, per record); otherwise the page says the county isn't connected yet.
+  `PARCELS_PROVIDER=mock` gives deterministic sample parcels (demo data, tests); `off` disables it.
+- Kentucky has no free statewide parcel file, so Kentucky is added county by county. Wayne County
+  (FIPS 21231, ArcGIS item `8709730aa2774a58aa41568f2febbb69`) is registered first. Column names are
+  detected automatically (PIDN/PIN/PARCEL, OWNER, ACRES, DEED_BOOK/PAGE, LEGAL…); a county entry can
+  map columns explicitly. **The Wayne County layer's public access and column names were not
+  verified from the build environment (its network blocks arcgis.com)** — check the first real
+  lookup, then adjust `fields` if a value lands in the wrong place.
+- Records are stored (`ParcelRecord`, one per property) and refreshed every 90 days by the nightly
+  job, so paid lookups happen rarely. New properties are looked up in the background when created.
+  If a refresh fails, the last good data stays and the error is shown.
+- Owner-of-record check: every owner on file must share a significant name word with the county's
+  owner name (LLC/INC/TRUST/ETAL and punctuation ignored). It's a prompt to check the deed, not a
+  legal determination.
+- Deeds and title: county clerk and PVA (qPublic) sites don't allow automated access, so DeedWood
+  links to them and stores attached deed / title policy / survey / plat PDFs (owners see them).
+  Title searches come from a title company. Parcel outlines are approximate (not surveys); the UI
+  says so.
+- Map tiles: OpenStreetMap (street) and Esri World Imagery (satellite), loaded by the viewer's
+  browser with attribution. High-traffic hosted installs should use a tile provider account.

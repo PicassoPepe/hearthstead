@@ -45,6 +45,17 @@ export async function seedOps(appUrl: string, orgId: string, adminId: string, to
   const wo = await db.task.findFirst({ where: { vendorId: ace.id, billId: null } });
   const vdb = createScopedClient(app, { orgId, userId: ace.userId });
   await submitVendorInvoice(vdb, ace.id, { invoiceNumber: "ACE-1043", invoiceDate: day, amountCents: 38_500, description: wo ? `Labor and parts — ${wo.title}` : "Service call and parts", taskId: wo?.id ?? null }, null);
+  // Land records: sample parcels (real lookups use the county's public map — PARCELS_PROVIDER=auto).
+  const { refreshLandRecord } = await import("../src/server/rentals/land-records");
+  const { mockLookup } = await import("../src/adapters/parcels");
+  const props = await db.property.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } });
+  let parcels = 0;
+  for (const p of props) {
+    // One property shows the "owner of record doesn't match" warning (e.g. a recent sale to an LLC).
+    const mismatch = p.name === "Oak Terrace Apartments";
+    await refreshLandRecord(db, p.id, async (q) => ({ ...mockLookup(q), ...(mismatch ? { ownerName: "MIDWEST HOUSING PARTNERS LP" } : {}) }));
+    parcels++;
+  }
   await app.$disconnect();
-  return { keys: n };
+  return { keys: n, parcels };
 }

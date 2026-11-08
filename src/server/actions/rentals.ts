@@ -20,6 +20,8 @@ export async function createProperty(input: PropertyWizardInput): Promise<Action
     const ctx = await requirePermission("rentals", "edit");
     if (ctx.membership.propertyScope.length) throw new UserFacingError("Your access is limited to specific properties, so you can't create new ones.");
     const r = await svc.createPropertyFromWizard(ctx.db, input);
+    // Look up the county land record in the background; the property page shows it when ready.
+    void import("@/server/rentals/land-records").then((m) => m.refreshLandRecord(ctx.db, r.id)).catch(() => undefined);
     refresh();
     return r;
   }, "Property created");
@@ -142,4 +144,16 @@ export async function setMemberPropertyScope(membershipId: string, propertyIds: 
     await audit(ctx.db, { action: "member.property_scope_changed", entityType: "Membership", entityId: m.id, before: m.propertyScope, after: propertyIds });
     revalidatePath("/app/settings/users");
   }, "Property access updated");
+}
+
+/** Look up (or refresh) a property's land record from the county / parcel provider. */
+export async function refreshLandRecordAction(propertyId: string): Promise<ActionResult<{ status: string; message: string | null }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("rentals", "edit");
+    if (!canAccessProperty(ctx.membership.propertyScope, propertyId)) throw new UserFacingError("You don't have access to that property.");
+    const { refreshLandRecord } = await import("@/server/rentals/land-records");
+    const r = await refreshLandRecord(ctx.db, propertyId);
+    revalidatePath(`/app/rentals/${propertyId}`);
+    return { status: r.status, message: r.error };
+  });
 }
