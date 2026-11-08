@@ -20,6 +20,7 @@ import { ScopedSettings } from "@/components/settings/scoped-settings";
 import { LeaseActions } from "@/components/leasing/lease-actions";
 import { LedgerTable } from "@/components/leasing/ledger-table";
 import { formatMoney } from "@/lib/money";
+import { RecurringEditor } from "@/components/leasing/recurring-editor";
 import { diffDays, formatDate, toISODate } from "@/lib/dates";
 import { ROLE_LABEL, TX_LABEL, tenantDisplayName } from "@/lib/leasing";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ async function load(leaseId: string) {
       property: true,
       units: { include: { unit: true } },
       tenants: { include: { tenant: true }, orderBy: { role: "asc" } },
-      recurring: { where: { deletedAt: null }, include: { account: true }, orderBy: { createdAt: "asc" } },
+      recurring: { where: { deletedAt: null }, include: { account: true, runs: { select: { id: true }, take: 1 } }, orderBy: [{ startDate: "asc" }, { createdAt: "asc" }] },
     },
   });
   return { ctx, lease };
@@ -184,30 +185,21 @@ export default async function LeasePage({ params, searchParams }: { params: Prom
         <LedgerTable rows={rows} canVoid={canMoney} today={options.today} />
       ) : tab === "rent" ? (
         <div className="grid gap-4">
-          <div className="overflow-x-auto rounded-card border border-border bg-surface">
-            <table className="w-full text-sm">
-              <caption className="sr-only">Recurring charges</caption>
-              <thead className="bg-surface-muted/60 text-left text-xs text-muted-foreground">
-                <tr>{["Charge", "Account", "Amount", "Starts", "Ends", "Next posts"].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {lease.recurring.map((r) => (
-                  <tr key={r.id} className="border-t border-border">
-                    <td className="px-3 py-2 font-medium">{r.description} <Badge tone={r.kind === "RENT" ? "primary" : "neutral"}>{r.kind === "RENT" ? "Rent" : "Other"}</Badge></td>
-                    <td className="px-3 py-2">{r.account.code} · {r.account.name}</td>
-                    <td className="px-3 py-2 tabular">{formatMoney(r.amountCents)} / mo</td>
-                    <td className="px-3 py-2 tabular">{formatDate(r.startDate)}</td>
-                    <td className="px-3 py-2 tabular">{r.endDate ? formatDate(r.endDate) : "—"}</td>
-                    <td className="px-3 py-2 tabular">{r.endDate && r.nextRunDate > r.endDate ? "Finished" : lease.status === "DRAFT" ? "On activation" : formatDate(r.nextRunDate)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {lease.recurring.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No recurring charges.</p> : null}
-          </div>
+          <RecurringEditor
+            leaseId={lease.id}
+            draft={lease.status === "DRAFT"}
+            canEdit={canEdit && !["ENDED", "CANCELLED"].includes(lease.status)}
+            accounts={options.incomeAccounts}
+            rows={lease.recurring.map((r) => ({
+              id: r.id, kind: r.kind, description: r.description, account: `${r.account.code} · ${r.account.name}`, amountCents: r.amountCents,
+              startDate: toISODate(r.startDate), endDate: r.endDate ? toISODate(r.endDate) : null, nextRunDate: toISODate(r.nextRunDate),
+              status: r.endDate && r.nextRunDate > r.endDate ? "Finished" : r.startDate > today ? "Scheduled" : "Active",
+              earliestChange: toISODate(r.runs.length ? r.nextRunDate : r.startDate),
+            }))}
+          />
           <Card className="p-4 text-sm">
             <AutopayStatus ctx={ctx} leaseId={lease.id} />
-            <p className="mt-1 text-muted-foreground">Scheduled rent increases and renewals arrive in Phase 9.</p>
+            <p className="mt-1 text-muted-foreground">Raise rent for many leases at once in <a className="font-medium text-primary hover:underline" href="/app/leasing/rent-increase">Rent increases</a>, or offer a renewal from <a className="font-medium text-primary hover:underline" href="/app/leasing/renewals">Renewals</a>.</p>
           </Card>
         </div>
       ) : tab === "tenants" ? (

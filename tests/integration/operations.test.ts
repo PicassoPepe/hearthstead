@@ -94,3 +94,37 @@ describe("photos", () => {
     await expect(setPhotos(db, { kind: "property", id: propertyId }, ["not-mine"])).rejects.toThrow();
   });
 });
+
+describe("recurring charges & rent increases", () => {
+  it("changes take effect only from the next unposted month and bill exactly", async () => {
+    const R = await import("@/server/leasing/recurring");
+    const { runRecurringForLease } = await import("@/server/leasing/leases");
+    const rc = await db.recurringCharge.findFirstOrThrow({ where: { leaseId, kind: "RENT" } });
+    await expect(R.changeRecurringCharge(db, rc.id, { amountCents: 160_000, effectiveDate: "2026-11-15" })).rejects.toThrow(/already posted/);
+    await R.changeRecurringCharge(db, rc.id, { amountCents: 160_000, effectiveDate: "2026-12-01" });
+    await db.tx((tx) => runRecurringForLease(tx, { orgId: O.orgId, userId: null }, leaseId, d("2026-12-05")));
+    const dec = await db.leaseTransaction.findMany({ where: { leaseId, type: "CHARGE", date: { gte: d("2026-12-01"), lte: d("2026-12-31") } } });
+    expect(dec.map((t) => t.amountCents)).toEqual([160_000]);
+
+    const preview = await R.previewIncrease(db, { leaseIds: [leaseId], mode: "PERCENT", value: 3, effectiveDate: "2027-01-01" });
+    expect(preview[0]).toMatchObject({ currentCents: 160_000, newCents: 164_800, error: null });
+    expect((await R.previewIncrease(db, { leaseIds: [leaseId], mode: "PERCENT", value: 3, effectiveDate: "2026-12-01" }))[0]!.error).toMatch(/already posted/);
+    const r = await R.applyIncrease(db, { leaseIds: [leaseId], mode: "PERCENT", value: 3, effectiveDate: "2027-01-01", notify: true });
+    expect(r).toMatchObject({ updated: 1, notified: 1 });
+    await db.tx((tx) => runRecurringForLease(tx, { orgId: O.orgId, userId: null }, leaseId, d("2027-01-03")));
+    const jan = await db.leaseTransaction.findMany({ where: { leaseId, type: "CHARGE", date: { gte: d("2027-01-01"), lte: d("2027-01-31") } } });
+    expect(jan.map((t) => t.amountCents)).toEqual([164_800]);
+  });
+  it("adds a parking charge mid-month (prorated) and ends it", async () => {
+    const R = await import("@/server/leasing/recurring");
+    const { runRecurringForLease } = await import("@/server/leasing/leases");
+    const acct = (await db.account.findFirstOrThrow({ where: { systemKey: "RENT_INCOME" } })).id;
+    const p = await R.addRecurringCharge(db, leaseId, { kind: "OTHER", accountId: acct, description: "Parking P7", amountCents: 6_200, startDate: "2027-01-17" });
+    await db.tx((tx) => runRecurringForLease(tx, { orgId: O.orgId, userId: null }, leaseId, d("2027-02-02")));
+    const parking = await db.leaseTransaction.findMany({ where: { leaseId, memo: { startsWith: "Parking P7" } }, orderBy: { date: "asc" } });
+    expect(parking.map((t) => t.amountCents)).toEqual([3_000, 6_200]); // 15/31 days of $62, then February
+    await expect(R.endRecurringCharge(db, p.id, "2027-01-31")).rejects.toThrow(/Already billed/);
+    await R.endRecurringCharge(db, p.id, "2027-03-31");
+    expect((await db.recurringCharge.findFirstOrThrow({ where: { id: p.id } })).endDate?.toISOString().slice(0, 10)).toBe("2027-03-31");
+  });
+});

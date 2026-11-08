@@ -36,6 +36,7 @@ export const NAV_MAIN: NavSection[] = [
     children: [
       { label: "Leases", href: "/app/leasing", phase: 3 },
       { label: "Renewals", href: "/app/leasing/renewals", phase: 9 },
+      { label: "Rent increases", href: "/app/leasing/rent-increase", keywords: ["raise rent", "bulk"] },
       { label: "Applications", href: "/app/leasing/applications", phase: 9 },
       { label: "Showings", href: "/app/leasing/showings", phase: 9 },
     ],

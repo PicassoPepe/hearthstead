@@ -192,3 +192,68 @@ export async function runNightlyNow(): Promise<ActionResult<{ charges: number; l
     return { charges: r.charges, lateFees: r.lateFees, ended: r.ended };
   });
 }
+
+// ─── Recurring charges & rent increases ───────────────────────────────────
+
+export async function addRecurringChargeAction(leaseId: string, v: { kind: "RENT" | "OTHER"; accountId: string; description: string; amountCents: number; startDate: string; endDate?: string | null }): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("leasing", "edit");
+    await guardLease(ctx, leaseId);
+    const R = await import("@/server/leasing/recurring");
+    await R.addRecurringCharge(ctx.db, leaseId, v);
+    await catchUpLease(ctx, leaseId);
+    refresh();
+  }, "Recurring charge added");
+}
+
+export async function changeRecurringChargeAction(leaseId: string, chargeId: string, v: { amountCents: number; effectiveDate: string; description?: string }): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("leasing", "edit");
+    await guardLease(ctx, leaseId);
+    const R = await import("@/server/leasing/recurring");
+    if (!(await ctx.db.recurringCharge.findFirst({ where: { id: chargeId, leaseId } }))) throw new UserFacingError("Charge not found");
+    await R.changeRecurringCharge(ctx.db, chargeId, v);
+    await catchUpLease(ctx, leaseId);
+    refresh();
+  }, "Charge updated");
+}
+
+export async function endRecurringChargeAction(leaseId: string, chargeId: string, endDate: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("leasing", "edit");
+    await guardLease(ctx, leaseId);
+    const R = await import("@/server/leasing/recurring");
+    if (!(await ctx.db.recurringCharge.findFirst({ where: { id: chargeId, leaseId } }))) throw new UserFacingError("Charge not found");
+    await R.endRecurringCharge(ctx.db, chargeId, endDate);
+    refresh();
+  }, "Charge ended");
+}
+
+/** Post anything now due (e.g. a back-dated new charge) right away instead of waiting for tonight. */
+async function catchUpLease(ctx: AppContext, leaseId: string) {
+  const { runRecurringForLease } = await import("@/server/leasing/leases");
+  const today = await orgToday(ctx);
+  await ctx.db.tx((tx) => runRecurringForLease(tx, { orgId: ctx.org.id, userId: ctx.user.id }, leaseId, today), { timeout: 60_000 });
+}
+
+export async function previewRentIncrease(v: import("@/server/leasing/recurring").IncreaseInput): Promise<ActionResult<import("@/server/leasing/recurring").IncreaseLine[]>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("leasing", "edit");
+    const R = await import("@/server/leasing/recurring");
+    const scope = ctx.membership.propertyScope;
+    const allowed = scope.length ? (await ctx.db.lease.findMany({ where: { id: { in: v.leaseIds }, propertyId: { in: scope } }, select: { id: true } })).map((l) => l.id) : v.leaseIds;
+    return R.previewIncrease(ctx.db, { ...v, leaseIds: allowed });
+  });
+}
+
+export async function applyRentIncrease(v: import("@/server/leasing/recurring").IncreaseInput): Promise<ActionResult<{ updated: number; notified: number }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("leasing", "edit");
+    const R = await import("@/server/leasing/recurring");
+    const scope = ctx.membership.propertyScope;
+    const allowed = scope.length ? (await ctx.db.lease.findMany({ where: { id: { in: v.leaseIds }, propertyId: { in: scope } }, select: { id: true } })).map((l) => l.id) : v.leaseIds;
+    const r = await R.applyIncrease(ctx.db, { ...v, leaseIds: allowed });
+    refresh();
+    return { updated: r.updated, notified: r.notified };
+  });
+}
