@@ -143,6 +143,8 @@ export async function receivePortalMessage(db: ScopedDb, party: { tenantId?: str
   const msg = await record(db, conv.id, { direction: "IN", channel: "PORTAL", body: text, author });
   // Portal readers have now seen everything we sent.
   await db.message.updateMany({ where: { conversationId: conv.id, direction: "OUT", readAt: null }, data: { readAt: new Date() } });
+  const { notifyModule } = await import("@/server/notifications/service");
+  await notifyModule(db, "communications", { kind: "message", title: `New message from ${author.name ?? (party.ownerId ? "an owner" : "a tenant")}`, body: text.slice(0, 140), href: `/app/communications?c=${conv.id}` });
   return msg;
 }
 
@@ -166,6 +168,8 @@ export async function receiveInboundSms(input: { from: string; body: string; ext
   const contact = await contactOf(db, conv);
   const word = input.body.trim().toUpperCase();
   await record(db, conv.id, { direction: "IN", channel: "SMS", body: input.body, author: { userId: null, name: contact.name }, externalId: input.externalId });
+  const { notifyModule } = await import("@/server/notifications/service");
+  await notifyModule(db, "communications", { kind: "message", title: `New text from ${contact.name}`, body: input.body.slice(0, 140), href: `/app/communications?c=${conv.id}` });
   if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(word)) {
     await db.smsOptOut.upsert({ where: { organizationId_phone: { organizationId: orgId, phone } }, update: {}, create: { organizationId: orgId, phone } });
     await record(db, conv.id, { direction: "OUT", channel: "NOTE", body: "Contact opted out of texts (replied STOP).", author: { userId: null, name: "System" } });

@@ -20,7 +20,7 @@ export default async function OwnersPage() {
     <>
       <PageHeader icon={<BriefcaseIcon aria-hidden />}
         title="Owners"
-        description="Property owners, their ownership shares, and (from Phase 8) their portal access."
+        description="Property owners, their ownership shares and their owner-portal access."
         actions={canEdit ? <Button asChild><Link href="/app/new/owner" scroll={false}><Plus aria-hidden /> Add owner</Link></Button> : null}
       />
       <OwnersTable rows={rows} canEdit={canEdit} canDelete={can(ctx.permissions, "people", "delete")} />

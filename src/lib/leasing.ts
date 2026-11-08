@@ -52,7 +52,7 @@ export const leaseWizardSchema = z
     recurring: z.array(recurringInputSchema).default([]),
     deposit: z.object({ amountCents: z.number().int().min(0), handling: z.enum(["CHARGE", "RECEIVED", "NONE"]) }),
     overrides: z.record(z.string(), z.unknown()).default({}),
-    documents: z.enum(["NONE", "OFFLINE"]).default("NONE"),
+    documents: z.enum(["NONE", "OFFLINE", "ESIGN"]).default("NONE"),
     portalInvite: z.boolean().default(false),
   })
   .superRefine((v, ctx) => {

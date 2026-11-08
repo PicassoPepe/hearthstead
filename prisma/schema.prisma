@@ -1860,3 +1860,51 @@ model UserSession {
 
   @@index([userId])
 }
+
+// ─── In-app notifications ─────────────────────────────────────────────────
+
+model Notification {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  /// task | message | payment | application | signature | agent | system
+  kind           String
+  title          String
+  body           String?
+  href           String?
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId, userId, readAt])
+  @@index([organizationId, userId, createdAt])
+}
+
+/// One row per reminder sent, so the nightly job never sends the same reminder twice.
+model RentReminder {
+  id             String   @id @default(cuid())
+  organizationId String
+  leaseId        String
+  /// BEFORE | AFTER
+  kind           String
+  /// Due date the reminder is about (YYYY-MM-DD)
+  dueOn          String
+  channels       String[] @default([])
+  createdAt      DateTime @default(now())
+
+  @@unique([leaseId, kind, dueOn])
+  @@index([organizationId, createdAt])
+}
+
+/// Monthly owner statement emails already sent (one per owner per period).
+model StatementSend {
+  id             String   @id @default(cuid())
+  organizationId String
+  ownerId        String
+  /// YYYY-MM
+  period         String
+  email          String
+  createdAt      DateTime @default(now())
+
+  @@unique([ownerId, period])
+  @@index([organizationId, period])
+}

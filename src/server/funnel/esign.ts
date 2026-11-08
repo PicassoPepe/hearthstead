@@ -157,6 +157,8 @@ ${req.signers.map((s) => `<tr><td>${s.name} &lt;${s.email}&gt;</td><td>${s.role}
     await acceptRenewal(db, req.renewalOfferId, "signature");
   }
   await audit(db, { action: "esign.completed", entityType: "SignatureRequest", entityId: req.id, actorType: "SYSTEM" });
+  const { notifyModule } = await import("@/server/notifications/service");
+  await notifyModule(db, "leasing", { kind: "signature", title: "Document fully signed", body: req.title, href: req.leaseId ? `/app/leasing/${req.leaseId}?tab=files` : "/app/files?tab=signatures" });
 }
 
 export async function voidSignatureRequest(db: ScopedDb, id: string) {

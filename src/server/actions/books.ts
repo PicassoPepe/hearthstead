@@ -270,3 +270,14 @@ export async function runManagementFeesAction(period: string): Promise<ActionRes
     return r;
   });
 }
+
+/** Email every owner last month's statement now (normally the nightly job does this on the 1st). */
+export async function emailOwnerStatementsNow(): Promise<ActionResult<{ sent: number }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "edit");
+    const { emailOwnerStatements } = await import("@/server/accounting/owner-statements");
+    const { orgToday } = await import("@/server/leasing/queries");
+    const sent = await emailOwnerStatements(ctx.db, await orgToday(ctx), { force: true });
+    return { sent };
+  });
+}

@@ -85,6 +85,13 @@ export async function runAgents(db: ScopedDb, now = new Date()) {
     }
     await db.agentConfig.updateMany({ where: { agent }, data: { lastRunAt: now } });
   }
+  if (proposed) {
+    const waiting = await db.agentAction.count({ where: { status: "PROPOSED" } });
+    if (waiting) {
+      const { notifyModule } = await import("@/server/notifications/service");
+      await notifyModule(db, "ai", { kind: "agent", title: `${waiting} AI agent ${waiting === 1 ? "action needs" : "actions need"} your approval`, body: "Review drafted replies, triage and renewal offers.", href: "/app/ai?tab=agents" });
+    }
+  }
   return proposed;
 }
 

@@ -4,9 +4,10 @@ import { adminDb } from "@/server/db";
 
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const ctx = await requireContext();
-  const [org, user] = await Promise.all([
+  const [org, user, unread] = await Promise.all([
     adminDb.organization.findUnique({ where: { id: ctx.org.id }, select: { logoUrl: true } }),
     adminDb.user.findUnique({ where: { id: ctx.user.id }, select: { image: true } }),
+    ctx.db.notification.count({ where: { userId: ctx.user.id, readAt: null } }),
   ]);
   return (
     <AppShell
@@ -21,7 +22,7 @@ export default async function StaffLayout({ children, modal }: { children: React
         orgName: ctx.org.name,
         orgLogoUrl: org?.logoUrl ?? null,
         userImage: user?.image ?? null,
-        unreadNotifications: 0,
+        unreadNotifications: unread,
       }}
     >
       {children}

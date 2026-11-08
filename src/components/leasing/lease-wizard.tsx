@@ -58,7 +58,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
   const [depositCents, setDepositCents] = React.useState<number | null>(preset?.depositCents ?? null);
   const [depositHandling, setDepositHandling] = React.useState<"CHARGE" | "RECEIVED" | "NONE">("CHARGE");
   const [overrides, setOverrides] = React.useState<Overrides>({});
-  const [documents, setDocuments] = React.useState<"NONE" | "OFFLINE">("OFFLINE");
+  const [documents, setDocuments] = React.useState<"NONE" | "OFFLINE" | "ESIGN">("ESIGN");
   const [portalInvite, setPortalInvite] = React.useState(true);
   const [status, setStatus] = React.useState<"ACTIVE" | "DRAFT">("ACTIVE");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -365,7 +365,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
             <fieldset className="grid gap-2 text-sm">
               <legend className="mb-2 text-muted-foreground">How will the lease be signed?</legend>
               <label className="flex items-start gap-2"><input type="radio" name="docs" className="mt-0.5 size-4 accent-[var(--primary)]" checked={documents === "OFFLINE"} onChange={() => setDocuments("OFFLINE")} /><span><span className="font-medium">Track signatures offline</span><br /><span className="text-muted-foreground">Upload the signed lease to the lease&apos;s Files tab.</span></span></label>
-              <label className="flex items-start gap-2 opacity-60"><input type="radio" name="docs" disabled className="mt-0.5 size-4" /><span><span className="font-medium">Send for e-signature</span><br /><span className="text-muted-foreground">Built-in e-sign with audit trail arrives in Phase 9.</span></span></label>
+              <label className="flex items-start gap-2"><input type="radio" name="docs" className="mt-0.5 size-4 accent-[var(--primary)]" checked={documents === "ESIGN"} onChange={() => setDocuments("ESIGN")} /><span><span className="font-medium">Send for e-signature</span><br /><span className="text-muted-foreground">Emails each tenant (and you) a secure signing link using your default lease template. Every view and signature is recorded.</span></span></label>
               <label className="flex items-start gap-2"><input type="radio" name="docs" className="mt-0.5 size-4 accent-[var(--primary)]" checked={documents === "NONE"} onChange={() => setDocuments("NONE")} /><span className="font-medium">Skip for now</span></label>
             </fieldset>
           ),
@@ -378,7 +378,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
       content: (
         <label className="flex items-start gap-3 rounded-lg border border-border p-3 text-sm">
           <Switch checked={portalInvite} onCheckedChange={setPortalInvite} aria-label="Invite tenants to the tenant portal" />
-          <span><span className="font-medium">Invite tenants to the tenant portal</span><br /><span className="text-muted-foreground">Tenants with an email address are marked as invited. Invitation emails start sending in Phase 4, when the portal opens.</span></span>
+          <span><span className="font-medium">Invite tenants to the tenant portal</span><br /><span className="text-muted-foreground">Tenants with an email address get an invitation to pay rent, set up autopay and send requests online.</span></span>
         </label>
       ),
     },
@@ -431,7 +431,8 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
             toast.error(r.error);
             return;
           }
-          toast.success(status === "ACTIVE" ? "Lease created" : "Draft lease saved");
+          toast.success(status === "ACTIVE" ? "Lease created" : "Draft lease saved", documents === "ESIGN" && !r.data.esignError ? { description: "Sent to tenants for e-signature." } : undefined);
+          if (r.data.esignError) toast.warning(`Not sent for e-signature: ${r.data.esignError}`);
           router.push(`/app/leasing/${r.data.id}`);
           router.refresh();
         }}

@@ -30,6 +30,8 @@ export async function emit(db: ScopedDb, type: EventType, data: Record<string, u
     }
     const { runWorkflowsFor } = await import("./workflows");
     await runWorkflowsFor(db, event);
+    const { notifyForEvent } = await import("@/server/notifications/service");
+    await notifyForEvent(db, type, data);
   } catch (e) {
     console.error("[events] emit failed", type, e);
   }

@@ -28,7 +28,7 @@ async function guardLease(ctx: AppContext, leaseId: string) {
 
 const refresh = () => revalidatePath("/app", "layout");
 
-export async function createLease(input: LeaseWizardInput, applicationId?: string): Promise<ActionResult<{ id: string }>> {
+export async function createLease(input: LeaseWizardInput, applicationId?: string): Promise<ActionResult<{ id: string; esignError?: string }>> {
   return runAction(async () => {
     const ctx = await requirePermission("leasing", "edit");
     if (!canAccessProperty(ctx.membership.propertyScope, input.propertyId)) throw new UserFacingError("You don't have access to that property.");
@@ -38,12 +38,23 @@ export async function createLease(input: LeaseWizardInput, applicationId?: strin
       const tenants = await ctx.db.leaseTenant.findMany({ where: { leaseId: r.id }, include: { tenant: true } });
       for (const t of tenants) if (t.tenant.email && t.role !== "COSIGNER") await inviteTenantToPortal(ctx.db, t.tenantId, ctx.org.name).catch(() => undefined);
     }
+    let esignError: string | undefined;
+    if (input.documents === "ESIGN") {
+      const { sendLeaseForSignature } = await import("@/server/funnel/esign");
+      try {
+        await sendLeaseForSignature(ctx.db, r.id, null, { name: ctx.user.name ?? ctx.user.email, email: ctx.user.email });
+      } catch (e) {
+        // The lease is created either way; tell the user why signing didn't go out.
+        if (e instanceof UserFacingError) esignError = e.message;
+        else throw e;
+      }
+    }
     // Leasing funnel: link the approved application, and take the unit's listing down.
     if (applicationId) await ctx.db.application.updateMany({ where: { id: applicationId, status: "APPROVED" }, data: { leaseId: r.id } });
     const { autoDelist } = await import("@/server/funnel/listings");
     await autoDelist(ctx.db);
     refresh();
-    return r;
+    return { ...r, esignError };
   }, "Lease created");
 }
 

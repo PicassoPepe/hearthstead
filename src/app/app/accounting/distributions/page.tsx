@@ -7,6 +7,7 @@ import { StatCard } from "@/components/patterns/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DistributionsTable } from "@/components/books/owner-views";
 import { availableCash } from "@/server/accounting/owners";
+import { EmailStatementsButton } from "@/components/books/email-statements-button";
 import { formatMoney } from "@/lib/money";
 import { formatDate, toISODate } from "@/lib/dates";
 
@@ -25,7 +26,7 @@ export default async function DistributionsPage() {
   const month = toISODate(new Date()).slice(0, 7);
   return (
     <>
-      <PageHeader icon={<HandCoinsIcon aria-hidden />} eyebrow="Accounting" title="Owner distributions" description="Available cash = cash in the bank and undeposited − prepaid rent − open bills − reserve. Security deposits are never distributed." />
+      <PageHeader icon={<HandCoinsIcon aria-hidden />} eyebrow="Accounting" title="Owner distributions" description="Available cash = cash in the bank and undeposited − prepaid rent − open bills − reserve. Security deposits are never distributed." actions={<EmailStatementsButton />} />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard label="Available to distribute" value={formatMoney(rows.reduce((s, r) => s + r.availableCents, 0))} hint={`${rows.filter((r) => r.availableCents > 0).length} properties`} />
         <StatCard label="Distributed this month" value={formatMoney(history.filter((h) => h.kind === "DISTRIBUTION" && toISODate(h.date).startsWith(month)).reduce((s, h) => s + h.amountCents, 0))} />

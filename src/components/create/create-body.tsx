@@ -100,10 +100,8 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
           <div aria-hidden className="mb-3 flex size-10 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground">
             <Hammer className="size-5" />
           </div>
-          <p className="font-medium">Creating a {item.label.toLowerCase()} arrives in Phase {item.phase}.</p>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            The modal-route framework is live — this form plugs in here without changing navigation.
-          </p>
+          <p className="font-medium">This form isn&apos;t available here.</p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">Use the matching page in the sidebar to create a {item.label.toLowerCase()}.</p>
         </div>
       );
   }

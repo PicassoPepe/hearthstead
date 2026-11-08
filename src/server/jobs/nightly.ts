@@ -18,6 +18,8 @@ export type NightlyResult = {
   managementFees?: { created: number; totalCents: number };
   delisted?: number;
   renewalsExpired?: number;
+  reminders?: number;
+  ownerStatements?: number;
   errors: { leaseId: string; message: string }[];
 };
 
@@ -70,6 +72,15 @@ export async function runNightly(db: ScopedDb, opts: { today?: Date; timezone?: 
     result.managementFees = { created: fees.created, totalCents: fees.totalCents };
     result.delisted = await autoDelist(db, today);
     result.renewalsExpired = await expireRenewalOffers(db, today);
+  } catch (e) {
+    result.errors.push({ leaseId: "accounting", message: e instanceof Error ? e.message : String(e) });
+  }
+  // 7. rent reminders (after charges and autopay, so balances are current), 8. monthly owner statements.
+  try {
+    const { sendRentReminders } = await import("@/server/leasing/reminders");
+    result.reminders = await sendRentReminders(db, today);
+    const { emailOwnerStatements } = await import("@/server/accounting/owner-statements");
+    result.ownerStatements = await emailOwnerStatements(db, today);
   } catch (e) {
     result.errors.push({ leaseId: "accounting", message: e instanceof Error ? e.message : String(e) });
   }

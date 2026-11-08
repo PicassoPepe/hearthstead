@@ -134,6 +134,8 @@ async function runAction(db: ScopedDb, a: { type: string; params: Record<string,
       const m = await db.membership.findFirst({ where: { userId: a.params.userId }, include: { user: true } });
       if (!m) return "skipped — team member not found";
       await getEmailProvider().send({ to: m.user.email, organizationId: db.ctx.orgId, subject: fill(a.params.subject ?? "", d), text: fill(a.params.body ?? "", d), html: `<p style="font-family:system-ui,sans-serif;white-space:pre-wrap">${fill(a.params.body ?? "", d).replace(/[<>&]/g, (x) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[x]!)}</p>` });
+      const { notifyUsers } = await import("@/server/notifications/service");
+      await notifyUsers(db, [m.userId], { kind: "system", title: fill(a.params.subject ?? "", d), body: fill(a.params.body ?? "", d), href: d.taskId ? `/app/tasks/${d.taskId}` : d.leaseId ? `/app/leasing/${d.leaseId}` : null });
       return `emailed ${m.user.email}`;
     }
     default:

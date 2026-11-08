@@ -164,6 +164,11 @@ export const SETTINGS = {
     key: "ownerPortal.showReports", group: "ownerPortal", label: "Owners can run reports",
     schema: z.boolean(), default: true, scopes: ORG_PROP, input: { kind: "boolean" },
   }),
+  "ownerPortal.emailMonthlyStatements": def({
+    key: "ownerPortal.emailMonthlyStatements", group: "ownerPortal", label: "Email owners their monthly statement",
+    help: "On the 1st, each owner with an email gets last month's statement (cash basis) with a link to the portal.",
+    schema: z.boolean(), default: true, scopes: ["ORG"], input: { kind: "boolean" },
+  }),
 
   // ── Communications ──
   "communications.smsEnabled": def({

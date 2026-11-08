@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Bell, Check, ChevronsUpDown, HelpCircle, LogOut, Menu, Moon, Search, Sun, UserCog, Keyboard, BookOpen, Rocket } from "lucide-react";
+import { Check, ChevronsUpDown, HelpCircle, LogOut, Menu, Moon, Search, Sun, UserCog, Keyboard, BookOpen, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, Kbd } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CreateNewMenu } from "./create-new-menu";
+import { NotificationBell } from "./notification-bell";
 import { OPEN_PALETTE_EVENT } from "./command-palette";
 import { useShell } from "./shell-context";
 import { signOutAction, switchOrganization } from "@/server/actions/auth";
@@ -48,17 +49,7 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
       <div className="ml-auto flex items-center gap-1">
         {shell.org.sandbox ? <Badge tone="warning">Sandbox</Badge> : null}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Notifications">
-              <Bell aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-            <div className="px-2 py-6 text-center text-sm text-muted-foreground">You&apos;re all caught up.</div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationBell initialUnread={shell.unreadNotifications} />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
