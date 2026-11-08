@@ -18,6 +18,7 @@ export function HouseholdPanel({ orgSlug, slug, members }: { orgSlug: string; sl
   const [v, setV] = React.useState({ firstName: "", lastName: "", email: "", role: "CO_APPLICANT" as "CO_APPLICANT" | "GUARANTOR" });
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [busy, setBusy] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
   return (
     <section aria-labelledby="hh-h" className="mt-6 rounded-card border border-border bg-surface p-5 shadow-card">
       <h2 id="hh-h" className="flex items-center gap-2 text-lg font-semibold"><UserPlus className="size-5" aria-hidden /> Anyone applying with you?</h2>
@@ -39,7 +40,8 @@ export function HouseholdPanel({ orgSlug, slug, members }: { orgSlug: string; sl
           ))}
         </ul>
       ) : null}
-      <form noValidate className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={async (e) => {
+      {!open ? <Button type="button" variant="secondary" className="mt-4" onClick={() => setOpen(true)}><UserPlus aria-hidden /> Add a co-applicant or guarantor</Button> : (
+      <form noValidate aria-label="Invite a co-applicant or guarantor" className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true);
         const r = await addHouseholdMemberAction(orgSlug, slug, v);
@@ -54,8 +56,9 @@ export function HouseholdPanel({ orgSlug, slug, members }: { orgSlug: string; sl
         <Field label="Their last name">{(a) => <Input {...a} value={v.lastName} onChange={(e) => setV({ ...v, lastName: e.target.value })} />}</Field>
         <Field label="Their email" error={errors.email}>{(a) => <Input {...a} type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />}</Field>
         <Field label="They are a…">{(a) => <NativeSelect {...a} value={v.role} onChange={(e) => setV({ ...v, role: e.target.value as "CO_APPLICANT" | "GUARANTOR" })}><option value="CO_APPLICANT">Co-applicant (will live there)</option><option value="GUARANTOR">Guarantor (co-signs, won&apos;t live there)</option></NativeSelect>}</Field>
-        <div className="sm:col-span-2"><Button type="submit" variant="secondary" loading={busy}>Send invitation</Button></div>
+        <div className="flex gap-2 sm:col-span-2"><Button type="submit" variant="secondary" loading={busy}>Send invitation</Button><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Done</Button></div>
       </form>
+      )}
     </section>
   );
 }
