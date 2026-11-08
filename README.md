@@ -3,7 +3,9 @@
 Multi-tenant property management for landlords and property managers: rentals, leasing, a
 double-entry ledger, tenant and owner portals, maintenance, accounting and reporting.
 
-> **Status: all 10 phases complete.** See [Roadmap](#roadmap) and the per-phase demo scripts below.
+> **Status: all 10 phases complete, plus an improvement round** (onboarding, photos everywhere,
+> notifications, reminders, calendar, budgets, year-end close, RUBS, vendor invoices, owner
+> approvals, joint applications, and a phone-friendly staff app). See [What's new](#whats-new).
 
 ## Quick start
 
@@ -78,7 +80,7 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | ESLint, `tsc --noEmit`, Prettier |
 | `pnpm db:migrate` | `prisma migrate deploy` + apply row-level security |
 | `pnpm db:seed` / `pnpm db:reset` | Reseed demo data / drop everything and reseed |
-| `pnpm worker` | BullMQ worker (needs Redis): nightly job at 02:15 (end leases, rent, late fees, payments, autopay, recurring bills, management fees, auto-delist, renewal expiry) and a minutely job (scheduled announcements, webhook retries, AI agents). Without it, those catch up when you open the relevant page or use the "run now" buttons. |
+| `pnpm worker` | BullMQ worker (needs Redis): nightly job at 02:15 (end leases, rent, late fees, payments, autopay, recurring bills, management fees, auto-delist, renewal expiry, rent reminders, owner statements on the 1st) and a minutely job (scheduled announcements, webhook retries, AI agents). Without it, those catch up when you open the relevant page or use the "run now" buttons. |
 | `pnpm jobs:nightly [YYYY-MM-DD]` | Run the nightly job once, without Redis (idempotent) |
 | `pnpm ledger:check` | Verify ledger invariants for every org (A/R, prepaid, A/P, balanced entries) |
 
@@ -188,7 +190,8 @@ Each owner's share follows ownership % with largest-remainder rounding.
 **Nightly job** (`src/server/jobs/nightly.ts`): ends leases past move-out, posts recurring
 charges due through today (prorated: daily rate = monthly ÷ days in month), and assesses late
 fees from the settings resolver (grace, flat/percent, monthly max, optional daily accrual),
-creates due recurring bills, and charges last month's management fees.
+creates due recurring bills, charges last month's management fees, sends rent reminders, and on
+the 1st emails owner statements. Postings dated on or before the year-end close date are refused.
 Both are idempotent via unique keys (`recurringChargeId + period`, `leaseId + key`).
 
 ### Settings inheritance
@@ -276,6 +279,27 @@ API keys. Select an implementation with its env var.
 **Swapping a mock for a real service:** set the env var (e.g. `EMAIL_PROVIDER=smtp`) and that
 provider's credentials. To add an implementation, implement the interface in
 `src/adapters/<name>/` and register it in `src/adapters/index.ts`.
+
+## What's new
+
+Try these after `pnpm db:seed` (password `Demo1234!x`):
+
+| Area | Where | What to try |
+| --- | --- | --- |
+| Getting started | `/signup` → `/app/setup` | Sign up a new company; step 2 → **Load sample data** builds a sandbox to explore. Help → **Setup guide** any time. |
+| Photos & logo | Property → **Photos**; Settings → Company | Drag in photos, reorder, set the cover. They appear on `/l/maple-main`, the feed, the owner portal and listings. Inspection items take photos too (camera on phones). |
+| Notifications | 🔔 top bar | Send a message from the tenant portal → it shows up for staff. Also requests, payments, applications, signatures, approvals. |
+| Calendar | **Calendar** | Showings, move-ins/outs, lease ends, inspections, tasks and renewal deadlines; **+** on a day creates a task due then. |
+| Keys & spaces | Rentals → **Keys & spaces** | Assign parking P1–P6 or storage; paid spaces bill on the lease. |
+| Rent changes | Lease → **Rent** tab; Leasing → **Rent increases** | Change or add recurring charges (history-safe), or raise rent for many leases with a preview and tenant notices. |
+| Joint applications | Public apply form | The primary applicant invites co-applicants and guarantors; staff see the household on the application. |
+| Budgets | Accounting → **Budgets** | Start from last year's actuals (+%), edit by month, compare to actuals. |
+| Year-end close & 1099s | Accounting → **Year-end close** | Close/reopen a year (locks the books); download the 1099-NEC e-file CSV or print recipient copies. |
+| Utility billback | Accounting → **Utility billback** | Split a water bill across occupied units (RUBS) and post the charges. |
+| Vendor invoices | `vendor@example.com` → **Invoices** | Submit an invoice; staff approve it on **Bills** (one from Ace Plumbing is waiting). |
+| Owner approvals | `owner@example.com` → **Approvals** | Cedar Duplex requires approval over $1,500 — a $2,480 gutter bill is waiting and can't be paid until approved. |
+| Reminders & statements | nightly job | Rent reminders (Settings → Notifications) and monthly owner statements (Distributions → **Email last month's statements**). |
+| Phone | any page at phone width | Bottom tab bar with a **+** quick-actions sheet; tables become cards. |
 
 ## Roadmap
 

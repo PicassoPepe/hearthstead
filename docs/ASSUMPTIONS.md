@@ -218,7 +218,73 @@ Decisions made without asking, per the brief. Each can be changed later.
   against their documented REST APIs but exercised in tests only through the mocks.
 - PDFs are produced by the browser's print-to-PDF from print-styled pages; there is no server-side
   PDF renderer. Signed e-sign copies are stored as self-contained HTML with the audit certificate.
-- Co-applicants apply separately; there is no joint application. Listing photos use the unit's
-  photo URLs (no upload pipeline for listings yet).
-- The balance sheet has no year-end close (net income rolls into equity continuously).
+- Billing shows plan math and usage only; it doesn't charge.
+
+## Improvement round (after Phase 10)
+
+**Onboarding**
+- Sign-up lands on a 4-step setup guide (company + logo, properties, payments, team). "Explore with
+  sample data" builds the company's *sandbox* (the same isolated org that `hs_test_` API keys use)
+  with sample properties, photos, leases, tasks and a listing, and switches to it. Real books stay empty.
+- Portal welcome steps (tenant, owner, vendor) are dismissible per device (localStorage) and
+  disappear once everything is done.
+
+**Images**
+- Logos, avatars and property/unit photos are stored as attachments flagged `public` and served
+  without login at `/api/images/<id>` (unguessable ids) so portals, the listings site and the feed
+  can show them. Inspection photos are private and go through the authenticated file route.
+- The first photo is the cover. A unit without photos falls back to the property's photos.
+- Demo photos and the demo logo are generated procedurally (a tiny PNG encoder) — no binary assets in git.
+
+**Notifications & reminders**
+- The bell is fed from domain events (tenant requests, online payments, failed payments,
+  applications), inbound portal/SMS messages, completed e-signatures, owner decisions, vendor
+  invoices and agent proposals. A person is never notified about their own action. Recipients are
+  members whose role can view the relevant module and whose property scope covers the property.
+- Rent reminders run nightly after charges and autopay: before-due (skipped when the lease is paid
+  ahead; mentions autopay when it's on) and past-due (only with a balance). Email always; SMS when
+  enabled and the tenant isn't opted out. One reminder per lease, kind and due date.
+- Owner statements email on the 1st (cash basis, previous month) when the owner-portal setting is
+  on; one per owner per month. "Email last month's statements" sends them on demand.
+
+**Daily operations**
+- Recurring charges never rewrite history: a change takes effect on or after the next unposted
+  month (it ends the old charge the day before and starts a new one; both prorate). Bulk rent
+  increases use the same rule and can email a rent-change notice. Local notice-period law is not
+  enforced — choose an effective date that complies.
+- Keys & spaces: paid parking/storage assigned to a lease adds a prorated recurring charge; returning
+  it ends the charge (never before what's already billed).
+- Joint applications: co-applicants and guarantors each complete their own application (own fee,
+  consent and screening) via an emailed link. Approving the primary approves everyone who has
+  submitted. Household income excludes guarantors. The lease wizard adds co-applicants as co-tenants
+  and guarantors as cosigners.
+- The calendar is computed from existing data (no separate events table).
+
+**Money**
+- Budgets store 12 monthly amounts per income/expense account (company-wide or per property);
+  "budget vs actual" uses accrual actuals; variance is favorable-positive for both income and expense.
+- Year-end close posts a closing entry per property (so owner reporting stays right) moving net
+  income to Retained Earnings, dated Dec 31, and locks the books through that date (no posting or
+  voiding on or before it). P&L reports exclude closing entries. Close years in order; only the
+  latest closed year can be reopened (its closing entry is reversed).
+- 1099-NEC export: IRS IRIS-style CSV plus printable recipient copies. Only the last 4 digits of a
+  vendor's TIN are stored, so the CSV marks each TIN to be completed from the W-9 before upload.
+- Utility billback (RUBS) allocates a month's utility expense (from the ledger, or entered) across
+  leases occupied that month: by sq ft, occupants (non-cosigners, min 1), equally, or 50/50. A
+  recovery % leaves the common-area share with the owner. One billback per property/month/account.
+- Owner approvals: bills at or above the property's threshold (default off) need an owner's
+  approval in the portal before payment; a decline blocks payment until the bill is voided.
+- Vendor invoices are submitted by vendor logins and become bills only after staff review.
+
+**Mobile**
+- Below 768px every data table renders as cards (first column as title), staff get a bottom tab bar
+  with a quick-actions sheet, and toasts sit above the bar. The switch happens after hydration, so
+  the server always renders the desktop table.
+
+**Known limitations (current)**
+- Real-provider adapters (Stripe, Twilio, Plaid, QuickBooks OAuth, Anthropic) are implemented
+  against their documented REST APIs but exercised in tests only through the mocks.
+- PDFs come from the browser's print-to-PDF; signed e-sign copies are self-contained HTML.
+- Images aren't resized server-side (8 MB cap per image).
+- The 1099 export needs full TINs added by hand (only last 4 are stored by design).
 - Billing shows plan math and usage only; it doesn't charge.
