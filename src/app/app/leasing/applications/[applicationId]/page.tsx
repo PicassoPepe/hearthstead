@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/patterns/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ApplicationActions } from "@/components/funnel/application-actions";
-import { applicationDataSchema, incomeOf } from "@/server/funnel/applications";
+import { applicationDataSchema, household, incomeOf, ROLE_LABEL } from "@/server/funnel/applications";
 import type { ScreeningResult } from "@/adapters/screening";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
@@ -32,14 +32,40 @@ export default async function ApplicationPage({ params }: { params: Promise<{ ap
   ]);
   const d = applicationDataSchema.parse(a.data);
   const s = a.screening as ScreeningResult | null;
+  const hh = await household(ctx.db, a.id);
+  const joint = hh && hh.members.length > 1;
   return (
     <>
       <PageHeader
         eyebrow={<Link href="/app/leasing/applications" className="hover:underline">← Applications</Link>}
-        title={`#${a.number} · ${`${a.firstName} ${a.lastName}`.trim() || a.email}`}
+        title={`#${a.number} · ${`${a.firstName} ${a.lastName}`.trim() || a.email}${a.role !== "PRIMARY" ? ` (${ROLE_LABEL[a.role]?.toLowerCase()})` : ""}`}
         description={<span className="flex flex-wrap items-center gap-2"><StatusBadge status={a.status} /> {property?.name}{unit ? ` · ${unit.name}` : ""}{listing ? ` · ${formatMoney(listing.rentCents)}/mo` : ""}{a.submittedAt ? ` · submitted ${formatDate(a.submittedAt)}` : ""}</span>}
         actions={can(ctx.permissions, "leasing", "edit") ? <ApplicationActions id={a.id} status={a.status} leaseId={a.leaseId} suggestedReasons={s?.reasons.join("; ") ?? ""} /> : null}
       />
+      {joint && hh ? (
+        <Card className="mb-4">
+          <CardHeader><CardTitle>Household · {hh.members.length} people</CardTitle></CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border text-sm" data-testid="household">
+              {hh.members.map((m) => (
+                <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                  <span className="min-w-0 flex-1">{m.id === a.id ? <span className="font-semibold">{m.name} (this application)</span> : <Link className="font-medium text-primary hover:underline" href={`/app/leasing/applications/${m.id}`}>{m.name}</Link>} <span className="text-muted-foreground">· #{m.number} · {ROLE_LABEL[m.role]}</span></span>
+                  <span className="tabular text-muted-foreground">{formatMoney(m.incomeCents)}/mo income</span>
+                  {m.creditScore ? <span className="tabular text-muted-foreground">Credit {m.creditScore}</span> : null}
+                  {m.recommendation ? <Badge tone={m.recommendation === "ACCEPT" ? "success" : m.recommendation === "DECLINE" ? "danger" : "warning"}>{m.recommendation.toLowerCase()}</Badge> : null}
+                  <StatusBadge status={m.status} />
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm">
+              Household income (excluding guarantors): <strong className="tabular">{formatMoney(hh.householdIncomeCents)}</strong>/mo
+              {hh.incomeRatio !== null ? <> · <strong className="tabular">{hh.incomeRatio.toFixed(1)}×</strong> rent</> : null}
+              {!hh.allSubmitted ? <span className="text-warning-soft-foreground"> · waiting on {hh.members.filter((m) => m.status === "DRAFT").length} to submit</span> : null}
+            </p>
+            {a.role === "PRIMARY" ? <p className="mt-1 text-xs text-muted-foreground">Approving this application approves everyone who has submitted; the lease adds co-applicants as co-tenants and guarantors as cosigners.</p> : null}
+          </CardContent>
+        </Card>
+      ) : null}
       {a.decisionReason ? <p className="mb-4 rounded-lg bg-danger-soft p-3 text-sm text-danger-soft-foreground">Declined: {a.decisionReason}</p> : null}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">

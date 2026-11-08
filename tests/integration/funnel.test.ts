@@ -80,6 +80,28 @@ describe("applications", () => {
     expect((await db.prospect.findFirstOrThrow({ where: { email: "jordan.lee@example.com" } })).status).toBe("APPLIED");
   });
 
+  it("joint application: co-applicant and guarantor each complete their own part", async () => {
+    const links = { base: "http://localhost:3000", orgSlug: "o", listingSlug: "l" };
+    await expect(A.addHouseholdMember(db, appId, { firstName: "Jo", lastName: "Lee", email: "jordan.lee@example.com", role: "CO_APPLICANT" }, links)).rejects.toThrow(/own email/);
+    const co = await A.addHouseholdMember(db, appId, { firstName: "Casey", lastName: "Lee", email: "casey.lee@example.com", role: "CO_APPLICANT" }, links);
+    const gu = await A.addHouseholdMember(db, appId, { firstName: "Gale", lastName: "Lee", email: "gale.lee@example.com", role: "GUARANTOR" }, links);
+    await expect(A.addHouseholdMember(db, appId, { firstName: "Casey", lastName: "Lee", email: "casey.lee@example.com", role: "CO_APPLICANT" }, links)).rejects.toThrow(/Already invited/);
+    const invite = await admin.emailMessage.findFirst({ where: { to: "casey.lee@example.com" }, orderBy: { createdAt: "desc" } });
+    expect(invite?.text).toMatch(/\/apply\/o\/l\/join\?t=/);
+    // The emailed token is exchanged for a fresh one; the old link stops working.
+    const claimed = await A.claimJoinToken(db, co.token);
+    expect(claimed?.id).toBe(co.id);
+    expect(await A.claimJoinToken(db, co.token)).toBeNull();
+    await A.saveApplicationStep(db, co.id, 4, { about: { firstName: "Casey", lastName: "Lee", phone: "3125550199", dob: "1995-05-05", ssnLast4: "4321" }, residence: { currentAddress: "1 Old St", monthsAtAddress: "24" }, employment: { employer: "Beta", monthlyIncome: "3000" }, more: { evicted: "no" } });
+    await A.payApplicationFee(db, co.id, { number: "4242424242424242", expMonth: 1, expYear: 2031, cvc: "123" });
+    await A.submitApplication(db, co.id, { ip: null });
+    const hh = await A.household(db, appId);
+    expect(hh?.members.map((m) => m.role)).toEqual(["PRIMARY", "CO_APPLICANT", "GUARANTOR"]);
+    expect(hh?.householdIncomeCents).toBe(1_000_000); // 7,000 + 3,000; guarantors excluded
+    expect(hh?.allSubmitted).toBe(false);
+    void gu;
+  });
+
   it("decline sends an adverse action notice; approve gives a lease preset", async () => {
     const s = await A.startApplication(db, listingId, "evicted@example.com");
     await A.saveApplicationStep(db, s.id, 4, { about: { firstName: "Eve", lastName: "Vic", phone: "3125550100", dob: "1990-01-01", ssnLast4: "6666" }, residence: { currentAddress: "x", monthsAtAddress: "1" }, employment: { employer: "y", monthlyIncome: "2000" }, more: { evicted: "yes" } });
@@ -93,6 +115,8 @@ describe("applications", () => {
     await A.approveApplication(db, appId);
     const preset = await A.leasePresetFromApplication(db, appId);
     expect(preset).toMatchObject({ propertyId, unitId: units[0], rentCents: 180_000, startDate: "2026-12-01", tenant: { firstName: "Jordan", email: "jordan.lee@example.com" } });
+    // The submitted co-applicant was approved with the primary and joins the lease as a co-tenant.
+    expect(preset?.others).toEqual([expect.objectContaining({ firstName: "Casey", email: "casey.lee@example.com", role: "COTENANT" })]);
   });
 });
 

@@ -33,6 +33,8 @@ export type LeasePreset = {
   propertyId?: string; unitId?: string; tenantId?: string;
   /** From an approved application. */
   applicationId?: string; tenant?: { firstName: string; lastName: string; email: string; phone: string };
+  /** Co-applicants (co-tenants) and guarantors (cosigners) from a joint application. */
+  others?: { firstName: string; lastName: string; email: string; phone: string; role: "COTENANT" | "COSIGNER" }[];
   rentCents?: number | null; depositCents?: number | null; startDate?: string | null; termMonths?: number;
 };
 
@@ -52,6 +54,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
   const [rentDueDay, setRentDueDay] = React.useState(1);
   const [tenants, setTenants] = React.useState<TenantRow[]>([
     { key: k(), mode: preset?.tenantId ? "existing" : "new", tenantId: preset?.tenantId ?? "", role: "PRIMARY", firstName: preset?.tenant?.firstName ?? "", lastName: preset?.tenant?.lastName ?? "", email: preset?.tenant?.email ?? "", phone: preset?.tenant?.phone ?? "" },
+    ...(preset?.others ?? []).map((o) => ({ key: k(), mode: "new" as const, tenantId: "", role: o.role as Role, firstName: o.firstName, lastName: o.lastName, email: o.email, phone: o.phone })),
   ]);
   const [rentCents, setRentCents] = React.useState<number | null>(preset?.rentCents ?? null);
   const [others, setOthers] = React.useState<ChargeRow[]>([]);

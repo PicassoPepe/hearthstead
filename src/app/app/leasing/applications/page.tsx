@@ -50,7 +50,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
               return (
                 <tr key={a.id} className="border-t border-border">
                   <td className="px-3 py-2 tabular">{a.number}</td>
-                  <td className="px-3 py-2"><Link className="font-medium text-primary hover:underline" href={`/app/leasing/applications/${a.id}`}>{`${a.firstName} ${a.lastName}`.trim() || a.email}</Link><div className="text-xs text-muted-foreground">{a.email}</div></td>
+                  <td className="px-3 py-2"><Link className="font-medium text-primary hover:underline" href={`/app/leasing/applications/${a.id}`}>{`${a.firstName} ${a.lastName}`.trim() || a.email}</Link><div className="text-xs text-muted-foreground">{a.email}{a.role !== "PRIMARY" ? ` · ${a.role === "GUARANTOR" ? "guarantor" : "co-applicant"}` : ""}</div></td>
                   <td className="px-3 py-2">{props.find((p) => p.id === a.propertyId)?.name}{a.unitId ? ` · ${units.find((u) => u.id === a.unitId)?.name}` : ""}{rent ? <div className="text-xs text-muted-foreground">{formatMoney(rent)}/mo</div> : null}</td>
                   <td className="px-3 py-2">{a.desiredMoveIn ? formatDate(a.desiredMoveIn) : "—"}</td>
                   <td className="px-3 py-2 tabular">{s?.incomeToRent ? `${s.incomeToRent}×` : "—"}</td>

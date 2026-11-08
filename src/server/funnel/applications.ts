@@ -152,10 +152,12 @@ export async function submitApplication(db: ScopedDb, id: string, consent: { ip:
     monthlyIncomeCents: cents(d.employment.monthlyIncome) + cents(d.employment.otherIncome), rentCents: listing?.rentCents ?? 0,
   });
   await db.application.update({ where: { id }, data: { status: "SUBMITTED", screening: result as unknown as object, screenedAt: new Date() } });
-  // Link (or create) the prospect so the funnel shows them as applied.
-  const prospect = (await db.prospect.findFirst({ where: { email: a.email } })) ?? (await db.prospect.create({ data: { organizationId: db.ctx.orgId, firstName: d.about.firstName ?? "", lastName: d.about.lastName ?? "", email: a.email, phone: d.about.phone ?? null, source: "WEBSITE", listingId: a.listingId } }));
-  await db.prospect.update({ where: { id: prospect.id }, data: { status: "APPLIED" } });
-  await db.application.update({ where: { id }, data: { prospectId: prospect.id } });
+  // Link (or create) the prospect so the funnel shows them as applied (primary applicants only).
+  const prospect = a.role !== "PRIMARY" ? null : (await db.prospect.findFirst({ where: { email: a.email } })) ?? (await db.prospect.create({ data: { organizationId: db.ctx.orgId, firstName: d.about.firstName ?? "", lastName: d.about.lastName ?? "", email: a.email, phone: d.about.phone ?? null, source: "WEBSITE", listingId: a.listingId } }));
+  if (prospect) {
+    await db.prospect.update({ where: { id: prospect.id }, data: { status: "APPLIED" } });
+    await db.application.update({ where: { id }, data: { prospectId: prospect.id } });
+  }
   const org = await db.organization.findFirst({ where: { id: db.ctx.orgId } });
   await getEmailProvider().send({ to: a.email, organizationId: db.ctx.orgId, subject: `We received your application #${a.number}`, text: `Thanks for applying${listing ? ` for ${listing.title}` : ""}. ${org?.name ?? "We"} will review it and get back to you soon.`, html: `<p style="font-family:system-ui,sans-serif">Thanks for applying${listing ? ` for <strong>${listing.title}</strong>` : ""}. ${org?.name ?? "We"} will review it and get back to you soon.</p>` });
   await audit(db, { action: "application.submitted", entityType: "Application", entityId: id, actorType: "SYSTEM", after: { recommendation: result.recommendation } });
@@ -168,6 +170,8 @@ export async function approveApplication(db: ScopedDb, id: string) {
   if (!a) throw new UserFacingError("Application not found");
   if (!["SUBMITTED", "SCREENING"].includes(a.status)) throw new UserFacingError("Only submitted applications can be approved");
   await db.application.update({ where: { id }, data: { status: "APPROVED", decidedAt: new Date(), decidedById: db.ctx.userId } });
+  // Approving the primary approves the household members who have submitted.
+  if (a.role === "PRIMARY") await db.application.updateMany({ where: { primaryId: id, status: { in: ["SUBMITTED", "SCREENING"] } }, data: { status: "APPROVED", decidedAt: new Date(), decidedById: db.ctx.userId } });
   const org = await db.organization.findFirst({ where: { id: db.ctx.orgId } });
   await getEmailProvider().send({ to: a.email, organizationId: db.ctx.orgId, subject: `Your application #${a.number} is approved`, text: `Good news — ${org?.name} approved your application. We'll send your lease to sign shortly.`, html: `<p style="font-family:system-ui,sans-serif">Good news — <strong>${org?.name}</strong> approved your application. We'll send your lease to sign shortly.</p>` });
   await audit(db, { action: "application.approved", entityType: "Application", entityId: id });
@@ -203,9 +207,14 @@ export async function leasePresetFromApplication(db: ScopedDb, id: string) {
   if (!a || a.status !== "APPROVED") return null;
   const d = applicationDataSchema.parse(a.data);
   const listing = a.listingId ? await db.listing.findFirst({ where: { id: a.listingId } }) : null;
+  const members = await db.application.findMany({ where: { primaryId: a.id, status: "APPROVED" }, orderBy: { createdAt: "asc" } });
   return {
     applicationId: a.id, propertyId: a.propertyId, unitId: a.unitId ?? undefined,
     tenant: { firstName: d.about.firstName ?? a.firstName, lastName: d.about.lastName ?? a.lastName, email: a.email, phone: d.about.phone ?? "" },
+    others: members.map((m) => {
+      const md = applicationDataSchema.parse(m.data);
+      return { firstName: md.about.firstName ?? m.firstName, lastName: md.about.lastName ?? m.lastName, email: m.email, phone: md.about.phone ?? "", role: (m.role === "GUARANTOR" ? "COSIGNER" : "COTENANT") as "COTENANT" | "COSIGNER" };
+    }),
     rentCents: listing?.rentCents ?? null, depositCents: listing?.depositCents ?? null,
     startDate: a.desiredMoveIn ? a.desiredMoveIn.toISOString().slice(0, 10) : null, termMonths: listing?.leaseTermMonths ?? 12,
   };
@@ -213,3 +222,82 @@ export async function leasePresetFromApplication(db: ScopedDb, id: string) {
 
 export const incomeOf = (d: ApplicationData) => cents(d.employment.monthlyIncome) + cents(d.employment.otherIncome);
 export { formatMoney };
+
+// ─── Joint applications: co-applicants and guarantors ─────────────────────
+
+export const HOUSEHOLD_ROLES = ["CO_APPLICANT", "GUARANTOR"] as const;
+export type HouseholdRole = (typeof HOUSEHOLD_ROLES)[number];
+export const ROLE_LABEL: Record<string, string> = { PRIMARY: "Primary applicant", CO_APPLICANT: "Co-applicant", GUARANTOR: "Guarantor" };
+
+/**
+ * The primary applicant invites another adult (co-applicant) or a guarantor. Each gets their own
+ * application — their own personal details, income, consent, fee and screening — linked to the
+ * primary's. Returns the raw join token (also emailed as a link).
+ */
+export async function addHouseholdMember(db: ScopedDb, primaryId: string, v: { firstName: string; lastName: string; email: string; role: HouseholdRole }, links: { base: string; orgSlug: string; listingSlug: string }) {
+  const p = await db.application.findFirst({ where: { id: primaryId } });
+  if (!p || p.role !== "PRIMARY") throw new UserFacingError("Application not found");
+  if (!["DRAFT", "SUBMITTED", "SCREENING"].includes(p.status)) throw new UserFacingError("This application is already decided");
+  if (!HOUSEHOLD_ROLES.includes(v.role)) throw new UserFacingError("Choose co-applicant or guarantor", { role: "Required" });
+  const email = v.email.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new UserFacingError("Enter a valid email", { email: "Enter a valid email" });
+  if (!v.firstName.trim()) throw new UserFacingError("Enter their first name", { firstName: "Required" });
+  if (email === p.email) throw new UserFacingError("That's your own email", { email: "Use their email" });
+  const members = await db.application.findMany({ where: { primaryId } });
+  if (members.length >= 5) throw new UserFacingError("Up to 5 people per application");
+  if (members.some((m) => m.email === email && m.status !== "WITHDRAWN")) throw new UserFacingError("Already invited", { email: "Already invited" });
+  const token = randomBytes(24).toString("base64url");
+  const fee = (await getSettings(db, ["applications.feeCents"], { orgId: db.ctx.orgId, propertyId: p.propertyId }))["applications.feeCents"].value;
+  let created: { id: string; number: number } | null = null;
+  for (let attempt = 0; attempt < 3 && !created; attempt++) {
+    const last = await db.application.findFirst({ orderBy: { number: "desc" }, select: { number: true } });
+    try {
+      created = await db.application.create({ data: { organizationId: db.ctx.orgId, number: (last?.number ?? 2000) + 1, listingId: p.listingId, propertyId: p.propertyId, unitId: p.unitId, email, firstName: v.firstName.trim(), lastName: v.lastName.trim(), role: v.role, primaryId, feeCents: fee, tokenHash: hashToken(token), data: { about: { firstName: v.firstName.trim(), lastName: v.lastName.trim() } } } });
+    } catch (err) {
+      if ((err as { code?: string }).code !== "P2002") throw err;
+    }
+  }
+  if (!created) throw new UserFacingError("Please try again");
+  const org = await db.organization.findFirst({ where: { id: db.ctx.orgId } });
+  const pd = applicationDataSchema.parse(p.data);
+  const who = `${pd.about.firstName ?? p.firstName} ${pd.about.lastName ?? p.lastName}`.trim() || p.email;
+  const url = `${links.base}/apply/${links.orgSlug}/${links.listingSlug}/join?t=${token}`;
+  const what = v.role === "GUARANTOR" ? "a guarantor on their rental application" : "a co-applicant on their rental application";
+  await getEmailProvider().send({ to: email, organizationId: db.ctx.orgId, subject: `${who} added you to a rental application`, text: `${who} added you as ${what} with ${org?.name ?? "us"}. Complete your part here: ${url}`, html: `<p style="font-family:system-ui,sans-serif">${who} added you as ${what} with <strong>${org?.name ?? "us"}</strong>.</p><p><a href="${url}">Complete your part of the application</a></p>` });
+  await audit(db, { action: "application.member_added", entityType: "Application", entityId: primaryId, actorType: "SYSTEM", after: { role: v.role, email } });
+  return { id: created.id, number: created.number, token };
+}
+
+export async function removeHouseholdMember(db: ScopedDb, primaryId: string, memberId: string) {
+  const m = await db.application.findFirst({ where: { id: memberId, primaryId } });
+  if (!m) throw new UserFacingError("Not found");
+  if (m.status !== "DRAFT") throw new UserFacingError("They've already submitted — ask the office to remove them");
+  await db.application.update({ where: { id: memberId }, data: { status: "WITHDRAWN" } });
+}
+
+/** Join link → swap the token for a fresh one (stored in the applicant's cookie). */
+export async function claimJoinToken(db: ScopedDb, token: string) {
+  const a = await db.application.findFirst({ where: { tokenHash: hashToken(token), status: "DRAFT" } });
+  if (!a) return null;
+  const fresh = randomBytes(24).toString("base64url");
+  await db.application.update({ where: { id: a.id }, data: { tokenHash: hashToken(fresh) } });
+  return { id: a.id, listingId: a.listingId, token: fresh };
+}
+
+/** Everyone on an application (primary first), with combined household income vs rent. */
+export async function household(db: ScopedDb, id: string) {
+  const a = await db.application.findFirst({ where: { id } });
+  if (!a) return null;
+  const primaryId = a.primaryId ?? a.id;
+  const all = await db.application.findMany({ where: { OR: [{ id: primaryId }, { primaryId }], status: { not: "WITHDRAWN" } }, orderBy: { createdAt: "asc" } });
+  const listing = a.listingId ? await db.listing.findFirst({ where: { id: a.listingId } }) : null;
+  const rows = all.map((m) => {
+    const d = applicationDataSchema.parse(m.data);
+    const s = m.screening as ScreeningResult | null;
+    return { id: m.id, number: m.number, role: m.role, name: `${d.about.firstName ?? m.firstName} ${d.about.lastName ?? m.lastName}`.trim() || m.email, email: m.email, status: m.status, incomeCents: incomeOf(d), recommendation: s?.recommendation ?? null, creditScore: s?.creditScore ?? null };
+  });
+  const tenants = rows.filter((r) => r.role !== "GUARANTOR");
+  const householdIncome = tenants.reduce((n, r) => n + r.incomeCents, 0);
+  const rent = listing?.rentCents ?? 0;
+  return { primaryId, members: rows, rentCents: rent, householdIncomeCents: householdIncome, incomeRatio: rent ? householdIncome / rent : null, allSubmitted: rows.every((r) => r.status !== "DRAFT") };
+}

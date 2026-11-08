@@ -1556,6 +1556,9 @@ model Application {
   unitId            String?
   /// DRAFT | SUBMITTED | SCREENING | APPROVED | DECLINED | WITHDRAWN
   status            String    @default("DRAFT")
+  /// PRIMARY | CO_APPLICANT | GUARANTOR — joint applications link to the primary's application.
+  role              String    @default("PRIMARY")
+  primaryId         String?
   email             String
   firstName         String    @default("")
   lastName          String    @default("")

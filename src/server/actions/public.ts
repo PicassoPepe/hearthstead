@@ -92,3 +92,20 @@ export async function declineSignAction(token: string, reason: string): Promise<
     await E.declineToSign(token, reason, await meta());
   }, "You declined to sign");
 }
+
+/** Primary applicant adds a co-applicant or guarantor (they get an email link to their own part). */
+export async function addHouseholdMemberAction(orgSlug: string, listingSlug: string, v: { firstName: string; lastName: string; email: string; role: "CO_APPLICANT" | "GUARANTOR" }): Promise<ActionResult> {
+  return runAction(async () => {
+    const { db, a } = await myApplication(orgSlug);
+    const h = await headers();
+    const base = process.env.AUTH_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+    await A.addHouseholdMember(db, a.id, v, { base, orgSlug, listingSlug });
+  }, `Invitation sent to ${v.email}`);
+}
+
+export async function removeHouseholdMemberAction(orgSlug: string, memberId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { db, a } = await myApplication(orgSlug);
+    await A.removeHouseholdMember(db, a.id, memberId);
+  }, "Removed");
+}
