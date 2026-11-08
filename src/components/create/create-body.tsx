@@ -56,7 +56,7 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
     case "task":
     case "work-order":
       if (ctx.membership.roleKey === "VENDOR") return <Forbidden what="creating tasks" />;
-      return <TaskForm options={await taskFormOptions(ctx)} defaultType={kind === "work-order" ? "WORK_ORDER" : "TASK"} preset={{ propertyId: query.propertyId, unitId: query.unitId, parentTaskId: query.parentTaskId, leaseId: query.leaseId, dueDate: query.dueDate }} />;
+      return <TaskForm options={await taskFormOptions(ctx)} defaultType={kind === "work-order" ? "WORK_ORDER" : query.type === "INSPECTION" ? "INSPECTION" : "TASK"} preset={{ propertyId: query.propertyId, unitId: query.unitId, parentTaskId: query.parentTaskId, leaseId: query.leaseId, dueDate: query.dueDate }} />;
     case "vendor":
       return <VendorForm />;
     case "charge":

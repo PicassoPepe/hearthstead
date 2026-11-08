@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useIsPhone } from "@/lib/hooks/use-media";
 
 export type RowAction<T> = { label: string; onSelect: (row: T) => void; destructive?: boolean; icon?: React.ReactNode };
 export type FilterDef = { columnId: string; label: string; options: { value: string; label: string }[] };
@@ -182,6 +183,39 @@ export function DataTable<T>({
   };
 
   const hasActiveFilters = globalFilter !== "" || columnFilters.length > 0;
+  const phone = useIsPhone();
+
+  /** Phone layout: each row is a card — first column as the title, the rest as label/value pairs. */
+  const renderCard = (row: Row<T>) => {
+    const cells = row.getVisibleCells();
+    const data = cells.filter((c) => !c.column.id.startsWith("__"));
+    const select = cells.find((c) => c.column.id === "__select");
+    const actions = cells.find((c) => c.column.id === "__actions");
+    const [first, ...rest] = data;
+    const headerOf = (id: string) => {
+      const h = table.getFlatHeaders().find((x) => x.column.id === id);
+      return h ? flexRender(h.column.columnDef.header, h.getContext()) : id;
+    };
+    return (
+      <li key={row.id} data-state={row.getIsSelected() ? "selected" : undefined} className={cn("relative border-b border-border p-3 last:border-0 data-[state=selected]:bg-primary-soft/40", onRowClick && "active:bg-surface-muted")} onClick={onRowClick ? () => onRowClick(row.original) : undefined}>
+        <div className="flex items-start gap-2">
+          {select ? <span className="pt-0.5">{flexRender(select.column.columnDef.cell, select.getContext())}</span> : null}
+          <div className="min-w-0 flex-1 font-medium [&_a]:font-semibold">{first ? flexRender(first.column.columnDef.cell, first.getContext()) : null}</div>
+          {actions ? flexRender(actions.column.columnDef.cell, actions.getContext()) : null}
+        </div>
+        {rest.length ? (
+          <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px]">
+            {rest.map((c) => (
+              <div key={c.id} className="min-w-0">
+                <dt className="truncate text-[11px] uppercase tracking-wide text-muted-foreground [&_button]:pointer-events-none [&_svg]:hidden">{headerOf(c.column.id)}</dt>
+                <dd className="truncate">{flexRender(c.column.columnDef.cell, c.getContext())}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+      </li>
+    );
+  };
 
   const renderRow = (row: Row<T>, style?: React.CSSProperties) => (
     <tr
@@ -286,6 +320,13 @@ export function DataTable<T>({
         </div>
       ) : null}
 
+      {phone ? (
+        rows.length === 0 ? (
+          <p className="px-3 py-10 text-center text-sm text-muted-foreground">No results match your search or filters.</p>
+        ) : (
+          <ul aria-label={label} data-testid="table-cards">{rows.slice(0, 200).map((r) => renderCard(r))}</ul>
+        )
+      ) : (
       <div ref={scrollRef} className={cn("overflow-x-auto", virtualize && "max-h-[70dvh] overflow-y-auto")}>
         <table className="w-full border-collapse text-left text-sm">
           <caption className="sr-only">{label}</caption>
@@ -338,6 +379,7 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Pagination */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2 text-[13px] text-muted-foreground">

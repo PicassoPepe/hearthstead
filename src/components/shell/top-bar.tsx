@@ -53,7 +53,7 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Help">
+            <Button variant="ghost" size="icon" aria-label="Help" className="hidden sm:inline-flex">
               <HelpCircle aria-hidden />
             </Button>
           </DropdownMenuTrigger>

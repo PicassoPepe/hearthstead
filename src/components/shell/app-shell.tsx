@@ -5,6 +5,7 @@ import * as D from "@radix-ui/react-dialog";
 import { usePathname } from "next/navigation";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
+import { MobileTabBar } from "./mobile-tab-bar";
 import { CommandPalette } from "./command-palette";
 import { ShellProvider, type ShellData } from "./shell-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -39,12 +40,13 @@ export function AppShell({ data, children, modal }: { data: ShellData; children:
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
             <div className="page-wash flex-1">
-              <main id="main" key={pathname} tabIndex={-1} className="page-enter mx-auto w-full max-w-[1400px] px-4 py-6 focus:outline-none sm:px-6 lg:px-8">
+              <main id="main" key={pathname} tabIndex={-1} className="page-enter mx-auto w-full max-w-[1400px] px-4 pb-28 pt-6 focus:outline-none sm:px-6 md:pb-6 lg:px-8">
                 {children}
               </main>
             </div>
           </div>
         </div>
+        <MobileTabBar onOpenMenu={() => setMobileOpen(true)} />
         <CommandPalette />
         {modal}
       </TooltipProvider>
