@@ -1,3 +1,4 @@
+import { CalendarClock as CalendarClockIcon } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -25,7 +26,7 @@ export default async function ShowingsPage() {
   const canEdit = can(ctx.permissions, "leasing", "edit");
   return (
     <>
-      <PageHeader eyebrow="Leasing" title="Showings" description="Upcoming tours, including ones prospects book themselves from your listings."
+      <PageHeader icon={<CalendarClockIcon aria-hidden />} eyebrow="Leasing" title="Showings" description="Upcoming tours, including ones prospects book themselves from your listings."
         actions={canEdit ? <ScheduleShowing listings={listings.filter((l) => l.status === "PUBLISHED").map((l) => ({ id: l.id, label: l.title }))} prospects={prospects.map((p) => ({ id: p.id, label: `${p.firstName} ${p.lastName}${p.email ? ` · ${p.email}` : ""}` }))} /> : null} />
       {[...days].map(([day, list]) => (
         <section key={day} aria-labelledby={`d-${day}`} className="mb-4">

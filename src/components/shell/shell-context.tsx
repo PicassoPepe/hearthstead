@@ -9,6 +9,10 @@ export type ShellData = {
   roleName: string;
   permissions: PermissionSet;
   sidebarCollapsed: boolean;
+  orgName: string;
+  orgLogoUrl: string | null;
+  userImage: string | null;
+  unreadNotifications: number;
 };
 
 const Ctx = React.createContext<ShellData | null>(null);

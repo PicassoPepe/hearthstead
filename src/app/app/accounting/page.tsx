@@ -1,3 +1,4 @@
+import { Landmark as LandmarkIcon } from "lucide-react";
 import Link from "next/link";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
@@ -19,7 +20,7 @@ export default async function ChartOfAccountsPage() {
   const net = new Map(sums.map((s) => [s.accountId, (s._sum.debitCents ?? 0) - (s._sum.creditCents ?? 0)]));
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<LandmarkIcon aria-hidden />}
         eyebrow="Accounting"
         title="Chart of accounts"
         description="Every balance here is computed from the journal — nothing is edited directly."

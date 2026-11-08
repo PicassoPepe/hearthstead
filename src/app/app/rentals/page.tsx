@@ -1,3 +1,4 @@
+import { Building2 as Building2Icon } from "lucide-react";
 import Link from "next/link";
 import { Plus, Upload } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -20,7 +21,7 @@ export default async function PropertiesPage() {
   const canEdit = can(ctx.permissions, "rentals", "edit");
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<Building2Icon aria-hidden />}
         title="Properties"
         description="Every building and home you manage."
         actions={

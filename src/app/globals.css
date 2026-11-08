@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/plus-jakarta-sans";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -13,7 +15,7 @@
   --primary-soft: #ccfbf1;
   --primary-soft-foreground: #134e4a;
 
-  --background: #f8fafc;        /* slate 50 */
+  --background: #f5f7f6;        /* warm slate with a hint of the brand */
   --surface: #ffffff;
   --surface-muted: #f1f5f9;     /* slate 100 */
   --foreground: #0f172a;        /* slate 900 */
@@ -33,10 +35,19 @@
   --chart-1: #2a78d6; --chart-2: #eb6834; --chart-3: #1baf7a; --chart-4: #eda100;
   --chart-5: #e87ba4; --chart-6: #008300;
 
-  --radius: 8px;
-  --radius-card: 12px;
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
-  --shadow-md: 0 4px 16px rgb(15 23 42 / 0.08);
+  /* Sidebar: deep brand panel (text contrast ≥ 7:1, muted ≥ 4.5:1 — see contrast tests). */
+  --sidebar: #0b3532;
+  --sidebar-foreground: #ecfdf9;
+  --sidebar-muted: #a7d4cd;
+  --sidebar-hover: #12443f;
+  --sidebar-active: #1a5a53;
+  --sidebar-border: #15433f;
+  --accent: #f59e0b;            /* warm accent for highlights and illustrations */
+
+  --radius: 10px;
+  --radius-card: 14px;
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.03);
+  --shadow-md: 0 10px 30px -12px rgb(15 23 42 / 0.18), 0 2px 6px rgb(15 23 42 / 0.06);
 }
 
 .dark {
@@ -46,7 +57,7 @@
   --primary-soft: #134e4a;
   --primary-soft-foreground: #ccfbf1;
 
-  --background: #020617;
+  --background: #050b0f;
   --surface: #0f172a;
   --surface-muted: #1e293b;
   --foreground: #f1f5f9;
@@ -63,7 +74,13 @@
 
   --chart-1: #3987e5; --chart-2: #d95926; --chart-3: #199e70; --chart-4: #c98500;
   --chart-5: #d55181; --chart-6: #008300;
-  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.4);
+  --sidebar: #07110f;
+  --sidebar-foreground: #ecfdf9;
+  --sidebar-muted: #9fc7c1;
+  --sidebar-hover: #0f1f1c;
+  --sidebar-active: #153430;
+  --sidebar-border: #13211f;
+  --shadow-md: 0 10px 30px -12px rgb(0 0 0 / 0.6);
 }
 
 @theme inline {
@@ -99,8 +116,16 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-accent: var(--accent);
   --radius-card: var(--radius-card);
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --shadow-card: var(--shadow-sm);
   --shadow-pop: var(--shadow-md);
 }
@@ -129,9 +154,22 @@
   }
 }
 
+@layer base {
+  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+}
+
 @layer utilities {
   .tabular { font-variant-numeric: tabular-nums; }
+  /* Subtle brand wash behind page content. */
+  .page-wash { background-image: radial-gradient(1200px 300px at 20% -120px, color-mix(in srgb, var(--primary) 9%, transparent), transparent 70%); }
+  .card-hover { transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease; }
+  .card-hover:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); transform: translateY(-1px); }
 }
+
+@keyframes page-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.page-enter { animation: page-enter .22s ease-out both; }
+@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+.fade-in { animation: fade-in .2s ease-out both; }
 
 @keyframes skeleton-pulse { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
 .skeleton { animation: skeleton-pulse 1.6s ease-in-out infinite; background: var(--surface-muted); border-radius: 6px; }

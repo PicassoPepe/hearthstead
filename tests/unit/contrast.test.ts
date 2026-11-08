@@ -24,6 +24,8 @@ const TEXT_PAIRS: [string, string][] = [
   ["success-soft-foreground", "success-soft"], ["warning-soft-foreground", "warning-soft"],
   ["danger-soft-foreground", "danger-soft"], ["info-soft-foreground", "info-soft"],
   ["danger", "surface"], ["success", "surface"],
+  ["sidebar-foreground", "sidebar"], ["sidebar-muted", "sidebar"], ["sidebar-muted", "sidebar-hover"],
+  ["sidebar-foreground", "sidebar-active"], ["sidebar-muted", "sidebar-active"],
 ];
 
 describe.each(["root", "dark"] as const)("contrast (%s theme)", (block) => {

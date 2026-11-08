@@ -44,8 +44,10 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
 
   const linkCls = (active: boolean) =>
     cn(
-      "group flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition-colors",
-      active ? "bg-primary-soft text-primary-soft-foreground" : "text-muted-foreground hover:bg-surface-muted hover:text-foreground",
+      "group relative flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition-colors focus-visible:outline-sidebar-foreground",
+      active
+        ? "bg-sidebar-active text-sidebar-foreground before:absolute before:inset-y-1.5 before:-left-2 before:w-1 before:rounded-r before:bg-accent"
+        : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground",
       collapsed && "justify-center px-0",
     );
 
@@ -71,13 +73,23 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
   };
 
   return (
-    <nav aria-label="Main" className={cn("flex h-full flex-col border-r border-border bg-surface", collapsed ? "w-[60px]" : "w-60")}>
-      <div className={cn("flex h-14 items-center gap-2 border-b border-border px-3", collapsed && "justify-center px-0")}>
-        <Link href="/app/overview" className="flex items-center gap-2 rounded-md" onClick={onNavigate}>
-          <span aria-hidden className="flex size-7 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-            H
-          </span>
-          {collapsed ? <span className="sr-only">Hearthstead home</span> : <span className="text-[15px] font-semibold tracking-tight">Hearthstead</span>}
+    <nav aria-label="Main" className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground", collapsed ? "w-[64px]" : "w-60")}>
+      <div className={cn("flex h-14 items-center gap-2 border-b border-sidebar-border px-3", collapsed && "justify-center px-0")}>
+        <Link href="/app/overview" className="flex min-w-0 items-center gap-2.5 rounded-md" onClick={onNavigate}>
+          {shell.orgLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- user-uploaded logo served from our file route
+            <img src={shell.orgLogoUrl} alt="" className="size-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
+          ) : (
+            <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-orange-500 font-display text-sm font-extrabold text-slate-950">
+              {(shell.orgName || "H").slice(0, 1)}
+            </span>
+          )}
+          {collapsed ? <span className="sr-only">{shell.orgName} home</span> : (
+            <span className="min-w-0">
+              <span className="block truncate font-display text-[14px] font-bold leading-tight">{shell.orgName || "Hearthstead"}</span>
+              <span className="block text-[11px] text-sidebar-muted">Hearthstead</span>
+            </span>
+          )}
         </Link>
       </div>
 
@@ -87,7 +99,7 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
             <button
               type="button"
               onClick={() => setBrowsingTop(true)}
-              className="mb-2 flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-[13.5px] font-semibold text-foreground hover:bg-surface-muted"
+              className="mb-2 flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-[13.5px] font-semibold text-sidebar-foreground hover:bg-sidebar-hover"
             >
               <ArrowLeft className="size-4" aria-hidden />
               <span>{sub.label}</span>
@@ -114,7 +126,7 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
         )}
       </div>
 
-      <div className="border-t border-border p-2">
+      <div className="border-t border-sidebar-border p-2">
         <ul className="space-y-0.5">{bottom.map(renderSection)}</ul>
         {!forceExpanded ? (
           <button

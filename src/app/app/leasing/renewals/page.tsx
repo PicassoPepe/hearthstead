@@ -1,3 +1,4 @@
+import { RefreshCw as RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
@@ -20,7 +21,7 @@ export default async function RenewalsPage() {
   const canEdit = can(ctx.permissions, "leasing", "edit");
   return (
     <>
-      <PageHeader eyebrow="Leasing" title="Renewals" description="Leases ending in the next 120 days. Offers go out as an e-sign addendum; once everyone signs, the renewal lease is created." />
+      <PageHeader icon={<RefreshCwIcon aria-hidden />} eyebrow="Leasing" title="Renewals" description="Leases ending in the next 120 days. Offers go out as an e-sign addendum; once everyone signs, the renewal lease is created." />
       <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
         <table className="w-full text-sm">
           <caption className="sr-only">Upcoming renewals</caption>

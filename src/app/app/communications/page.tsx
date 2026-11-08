@@ -1,3 +1,4 @@
+import { MessagesSquare as MessagesSquareIcon } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -55,7 +56,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   ];
   return (
     <>
-      <PageHeader eyebrow="Communications" title="Inbox" description="Portal messages, texts and emails with tenants, owners and vendors — in one place." />
+      <PageHeader icon={<MessagesSquareIcon aria-hidden />} eyebrow="Communications" title="Inbox" description="Portal messages, texts and emails with tenants, owners and vendors — in one place." />
       <Inbox rows={rows} thread={thread} filter={filter} contacts={contacts} usage={usage} canEdit={can(ctx.permissions, "communications", "edit")} presetTo={sp.to} />
     </>
   );

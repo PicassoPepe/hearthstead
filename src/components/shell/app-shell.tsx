@@ -38,9 +38,11 @@ export function AppShell({ data, children, modal }: { data: ShellData; children:
 
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
-            <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 focus:outline-none sm:px-6">
-              {children}
-            </main>
+            <div className="page-wash flex-1">
+              <main id="main" key={pathname} tabIndex={-1} className="page-enter mx-auto w-full max-w-[1400px] px-4 py-6 focus:outline-none sm:px-6 lg:px-8">
+                {children}
+              </main>
+            </div>
           </div>
         </div>
         <CommandPalette />

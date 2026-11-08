@@ -1,3 +1,4 @@
+import { Workflow as WorkflowIcon } from "lucide-react";
 import { Plus } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
@@ -28,7 +29,7 @@ export default async function WorkflowsPage() {
   const canEdit = can(ctx.permissions, "workflows", "edit");
   return (
     <>
-      <PageHeader title="Workflows" description="Automate the routine: when something happens and conditions match, send messages or create tasks."
+      <PageHeader icon={<WorkflowIcon aria-hidden />} title="Workflows" description="Automate the routine: when something happens and conditions match, send messages or create tasks."
         actions={canEdit ? <WorkflowBuilder meta={meta} trigger={<Button><Plus aria-hidden /> New workflow</Button>} /> : null} />
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
         <ul className="grid content-start gap-3">

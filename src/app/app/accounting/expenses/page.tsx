@@ -1,3 +1,4 @@
+import { CreditCard as CreditCardIcon } from "lucide-react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -22,7 +23,7 @@ export default async function ExpensesPage() {
   const pn = new Map(props.map((p) => [p.id, p.name]));
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<CreditCardIcon aria-hidden />}
         eyebrow="Accounting"
         title="Expenses"
         description="Purchases paid straight from a bank account or card — no bill needed."

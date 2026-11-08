@@ -1,3 +1,4 @@
+import { StickyNote as StickyNoteIcon } from "lucide-react";
 import Link from "next/link";
 import { StickyNote } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -31,7 +32,7 @@ export default async function NotesPage() {
 
   return (
     <>
-      <PageHeader title="Notes" description="Notes from every property, unit and owner." />
+      <PageHeader icon={<StickyNoteIcon aria-hidden />} title="Notes" description="Notes from every property, unit and owner." />
       {notes.length === 0 ? (
         <EmptyState icon={<StickyNote />} title="No notes yet" description="Open any property, unit or owner and use the Notes tab to capture what your team should know." action={<Link href="/app/rentals" className="font-medium text-primary underline">Go to properties</Link>} />
       ) : (

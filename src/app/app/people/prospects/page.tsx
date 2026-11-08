@@ -1,3 +1,4 @@
+import { UserPlus as UserPlusIcon } from "lucide-react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -22,7 +23,7 @@ export default async function ProspectsPage() {
   const canEdit = can(ctx.permissions, "leasing", "edit");
   return (
     <>
-      <PageHeader eyebrow="People" title="Prospects" description="Leads from your listings, walk-ins and referrals — from first contact to signed lease."
+      <PageHeader icon={<UserPlusIcon aria-hidden />} eyebrow="People" title="Prospects" description="Leads from your listings, walk-ins and referrals — from first contact to signed lease."
         actions={canEdit ? <Button asChild><Link href="/app/new/prospect" scroll={false}><Plus aria-hidden /> New prospect</Link></Button> : null} />
       <dl className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
         {PROSPECT_STATUSES.map((s) => <div key={s} className="rounded-card border border-border bg-surface p-3 text-center shadow-card"><dt className="text-xs text-muted-foreground">{PROSPECT_STATUS_LABEL[s]}</dt><dd className="text-xl font-semibold tabular">{prospects.filter((p) => p.status === s).length}</dd></div>)}

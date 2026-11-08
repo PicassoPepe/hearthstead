@@ -1,3 +1,4 @@
+import { BarChart3 as BarChart3Icon } from "lucide-react";
 import Link from "next/link";
 import { BarChart3, ChevronRight } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -14,7 +15,7 @@ export default async function ReportsPage() {
   const cats = [...new Set(REPORT_CATALOG.map((r) => r.category))];
   return (
     <>
-      <PageHeader title="Reports" description="Every number is computed live from the ledger. Filter, compare, export to CSV or PDF, or ask for an AI summary." />
+      <PageHeader icon={<BarChart3Icon aria-hidden />} title="Reports" description="Every number is computed live from the ledger. Filter, compare, export to CSV or PDF, or ask for an AI summary." />
       <div className="grid gap-6 lg:grid-cols-2">
         {cats.map((c) => (
           <section key={c} aria-labelledby={`cat-${c}`} className="rounded-card border border-border bg-surface shadow-card">

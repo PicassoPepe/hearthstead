@@ -1,3 +1,4 @@
+import { FolderOpen as FolderOpenIcon } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { filesFor } from "@/server/records/queries";
@@ -24,7 +25,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
   };
   return (
     <>
-      <PageHeader title="Files" description="Every document across your properties, plus spreadsheet imports and templates." />
+      <PageHeader icon={<FolderOpenIcon aria-hidden />} title="Files" description="Every document across your properties, plus spreadsheet imports and templates." />
       <EntityTabs
         base="/app/files"
         active={tab}

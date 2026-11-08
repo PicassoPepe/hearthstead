@@ -10,7 +10,9 @@ export function StatCard({
   trend,
   href,
   className,
+  icon,
 }: {
+  icon?: React.ReactNode;
   label: string;
   value: React.ReactNode;
   hint?: React.ReactNode;
@@ -20,8 +22,11 @@ export function StatCard({
 }) {
   const body = (
     <>
-      <div className="text-[13px] text-muted-foreground">{label}</div>
-      <div className="tabular mt-1 text-2xl font-semibold tracking-tight">{value}</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[13px] font-medium text-muted-foreground">{label}</div>
+        {icon ? <span aria-hidden className="flex size-8 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground [&_svg]:size-4">{icon}</span> : null}
+      </div>
+      <div className="tabular mt-1 font-display text-[26px] font-bold tracking-tight">{value}</div>
       <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
         {trend ? (
           <span className={cn("inline-flex items-center gap-0.5 font-medium", trend.good ? "text-success" : "text-danger")}>
@@ -33,6 +38,6 @@ export function StatCard({
       </div>
     </>
   );
-  const cls = cn("block rounded-card border border-border bg-surface p-4 shadow-card", href && "transition-colors hover:border-border-strong", className);
+  const cls = cn("block rounded-card border border-border bg-surface p-4 shadow-card", href && "card-hover", className);
   return href ? <Link href={href} className={cls}>{body}</Link> : <div className={cls}>{body}</div>;
 }

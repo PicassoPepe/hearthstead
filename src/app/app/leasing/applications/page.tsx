@@ -1,3 +1,4 @@
+import { ClipboardList as ClipboardListIcon } from "lucide-react";
 import Link from "next/link";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
@@ -30,7 +31,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   const n = (s: string[]) => counts.filter((c) => s.includes(c.status)).reduce((t, c) => t + c._count, 0);
   return (
     <>
-      <PageHeader eyebrow="Leasing" title="Applications" description="Applicants apply online from your listings. Screening runs automatically on submit." />
+      <PageHeader icon={<ClipboardListIcon aria-hidden />} eyebrow="Leasing" title="Applications" description="Applicants apply online from your listings. Screening runs automatically on submit." />
       <nav aria-label="Application status" className="mb-3 flex flex-wrap gap-1">
         {TABS.map(([k, l]) => (
           <Link key={k} href={`/app/leasing/applications?tab=${k}`} aria-current={tab === k ? "page" : undefined} className={cn("rounded-full border px-3 py-1 text-sm", tab === k ? "border-primary bg-primary-soft text-primary-soft-foreground" : "border-border text-muted-foreground hover:text-foreground")}>

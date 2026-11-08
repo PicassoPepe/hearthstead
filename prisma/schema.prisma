@@ -272,6 +272,8 @@ model Property {
   country                   String       @default("US")
   yearBuilt                 Int?
   photoUrl                  String?
+  /// Ordered public image attachment ids; the first is the cover.
+  photos                    String[]     @default([])
   /// Default bank accounts used when posting money for this property (chart-of-accounts ids).
   defaultOperatingAccountId String?
   defaultDepositAccountId   String?
@@ -452,6 +454,8 @@ model Attachment {
   sizeBytes      Int
   storageKey     String    @unique
   category       String? // "Lease" | "Photo" | "Statement" | "Other" ...
+  /// Public images (logos, property/unit/listing photos, avatars) are served without login at /api/images/<id>.
+  public         Boolean   @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   createdById    String?

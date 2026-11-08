@@ -1,3 +1,4 @@
+import { Megaphone as MegaphoneIcon } from "lucide-react";
 import Link from "next/link";
 import { ExternalLink, Plus, Rss } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -29,7 +30,7 @@ export default async function ListingsPage() {
   const canEdit = can(ctx.permissions, "rentals", "edit");
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<MegaphoneIcon aria-hidden />}
         eyebrow="Rentals"
         title="Listings"
         description={`${listings.filter((l) => l.status === "PUBLISHED").length} published · ${vacant.length} vacant units not listed yet`}

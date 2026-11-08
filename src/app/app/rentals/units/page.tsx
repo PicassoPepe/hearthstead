@@ -1,3 +1,4 @@
+import { DoorOpen as DoorOpenIcon } from "lucide-react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -17,7 +18,7 @@ export default async function UnitsPage() {
   const canEdit = can(ctx.permissions, "rentals", "edit");
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<DoorOpenIcon aria-hidden />}
         title="Units"
         description="Every rentable unit across your properties."
         actions={canEdit ? <Button asChild><Link href="/app/new/unit" scroll={false}><Plus aria-hidden /> Add unit</Link></Button> : null}

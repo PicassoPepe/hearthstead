@@ -1,3 +1,4 @@
+import { Sparkles as SparklesIcon } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -22,7 +23,7 @@ export default async function AiPage({ searchParams }: { searchParams: Promise<{
   ]);
   return (
     <>
-      <PageHeader title="AI" description={`Assistant and background agents · model: ${llm.name === "mock" ? "built-in demo model (set LLM_PROVIDER=anthropic for Claude)" : llm.model}. Every AI action is audit-logged.`} />
+      <PageHeader icon={<SparklesIcon aria-hidden />} title="AI" description={`Assistant and background agents · model: ${llm.name === "mock" ? "built-in demo model (set LLM_PROVIDER=anthropic for Claude)" : llm.model}. Every AI action is audit-logged.`} />
       <EntityTabs base="/app/ai" active={tab} tabs={[{ id: "assistant", label: "Assistant" }, { id: "agents", label: "Agents", count: pending || undefined }]} />
       {tab === "assistant" ? <Assistant /> : (
         <div className="grid gap-6">

@@ -1,3 +1,4 @@
+import { Receipt as ReceiptIcon } from "lucide-react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -23,7 +24,7 @@ export default async function BillsPage() {
   const canEdit = can(ctx.permissions, "accounting", "edit");
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<ReceiptIcon aria-hidden />}
         eyebrow="Accounting"
         title="Bills"
         description="What you owe vendors. Select bills to pay them in one go — each payment posts to the ledger."

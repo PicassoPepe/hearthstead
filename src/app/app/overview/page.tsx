@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { Building2, CircleDollarSign, DoorOpen, FileSignature, MessageSquare, PieChart, Wallet, Wrench } from "lucide-react";
 import { requireContext } from "@/server/context";
-import { PageHeader } from "@/components/patterns/page-header";
 import { StatCard } from "@/components/patterns/stat-card";
-import { Button } from "@/components/ui/button";
 import { GettingStarted, type ChecklistItem } from "@/components/overview/getting-started";
 import { can } from "@/server/permissions";
 import { formatMoney } from "@/lib/money";
@@ -54,29 +52,39 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   ];
   const showChecklist = ctx.user.preferences.checklistDismissed !== true && checklist.some((c) => !c.done);
   const firstName = ctx.user.name?.split(" ")[0];
+  const quickActions = [
+    { label: "Add property", href: "/app/new/property", icon: Building2, ok: can(ctx.permissions, "rentals", "edit") },
+    { label: "New lease", href: "/app/new/lease", icon: FileSignature, ok: can(ctx.permissions, "leasing", "edit") },
+    { label: "Record payment", href: "/app/new/payment", icon: Wallet, ok: can(ctx.permissions, "leasing", "edit") },
+    { label: "New task", href: "/app/new/task", icon: Wrench, ok: can(ctx.permissions, "tasks", "edit") },
+    { label: "Message", href: "/app/communications", icon: MessageSquare, ok: can(ctx.permissions, "communications", "view") },
+  ].filter((q) => q.ok);
 
   return (
     <>
-      <PageHeader
-        title={firstName ? `Good to see you, ${firstName}` : "Overview"}
-        description={`Here's what's happening at ${ctx.org.name}.`}
-        actions={
-          can(ctx.permissions, "rentals", "edit") ? (
-            <Button asChild variant="secondary">
-              <Link href="/app/new/property" scroll={false}><Building2 aria-hidden /> Add property</Link>
-            </Button>
-          ) : null
-        }
-      />
+      <section aria-labelledby="hero-h" className="relative mb-6 overflow-hidden rounded-[20px] bg-gradient-to-br from-[#0b3532] via-[#0f5a52] to-[#0f766e] p-6 text-white shadow-pop sm:p-8">
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-white/10 blur-2xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 right-24 size-56 rounded-full bg-amber-300/20 blur-2xl" />
+        <p className="relative text-sm text-teal-100">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+        <h1 id="hero-h" className="relative mt-1 font-display text-3xl font-bold tracking-tight">{firstName ? `Good to see you, ${firstName}` : "Overview"}</h1>
+        <p className="relative mt-1 max-w-2xl text-teal-50">Here&apos;s what&apos;s happening at {ctx.org.name}.</p>
+        <div className="relative mt-5 flex flex-wrap gap-2">
+          {quickActions.map((q) => (
+            <Link key={q.href} href={q.href} scroll={false} className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-2 text-sm font-medium text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-white/25 focus-visible:outline-white">
+              <q.icon className="size-4" aria-hidden /> {q.label}
+            </Link>
+          ))}
+        </div>
+      </section>
       {showChecklist ? <GettingStarted items={checklist} /> : null}
 
       <section aria-labelledby="kpis" className="mb-6">
         <h2 id="kpis" className="sr-only">Key numbers</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="Properties" value={propertyCount} href="/app/rentals" hint={propertyCount ? `${ownerCount} owner${ownerCount === 1 ? "" : "s"}` : "Add your first property"} />
-          <StatCard label="Units" value={unitAgg._count} href="/app/rentals/units" hint={unitAgg._count ? `${formatMoney(unitAgg._sum.marketRentCents ?? 0, { showCents: false })} / mo market rent` : "No units yet"} />
-          <StatCard label="Occupancy" value={unitAgg._count ? `${Math.round((occupied.size / unitAgg._count) * 100)}%` : "—"} hint={`${occupied.size} of ${unitAgg._count} units occupied`} href="/app/rentals/units" />
-          <StatCard label="Collected this month" value={formatMoney(collected._sum.amountCents ?? 0, { showCents: false })} hint={`${collected._count} payments · ${formatMoney(owed.reduce((s, b) => s + b, 0), { showCents: false })} outstanding`} href="/app/leasing" />
+          <StatCard icon={<Building2 />} label="Properties" value={propertyCount} href="/app/rentals" hint={propertyCount ? `${ownerCount} owner${ownerCount === 1 ? "" : "s"}` : "Add your first property"} />
+          <StatCard icon={<DoorOpen />} label="Units" value={unitAgg._count} href="/app/rentals/units" hint={unitAgg._count ? `${formatMoney(unitAgg._sum.marketRentCents ?? 0, { showCents: false })} / mo market rent` : "No units yet"} />
+          <StatCard icon={<PieChart />} label="Occupancy" value={unitAgg._count ? `${Math.round((occupied.size / unitAgg._count) * 100)}%` : "—"} hint={`${occupied.size} of ${unitAgg._count} units occupied`} href="/app/rentals/units" />
+          <StatCard icon={<CircleDollarSign />} label="Collected this month" value={formatMoney(collected._sum.amountCents ?? 0, { showCents: false })} hint={`${collected._count} payments · ${formatMoney(owed.reduce((s, b) => s + b, 0), { showCents: false })} outstanding`} href="/app/leasing" />
         </div>
       </section>
 

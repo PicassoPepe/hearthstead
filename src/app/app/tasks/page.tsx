@@ -1,3 +1,4 @@
+import { ListChecks as ListChecksIcon } from "lucide-react";
 import Link from "next/link";
 import { Columns3, List, Plus } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -26,7 +27,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   const q = (v: string, m: boolean) => `/app/tasks?view=${v}${m ? "&mine=1" : ""}`;
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<ListChecksIcon aria-hidden />}
         title={isVendor ? "Your work orders" : "Tasks"}
         description={isVendor ? "Work orders assigned to your company." : "Tasks, tenant requests, work orders and inspections."}
         actions={

@@ -1,3 +1,4 @@
+import { Megaphone as MegaphoneIcon } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -26,7 +27,7 @@ export default async function AnnouncementsPage() {
   const pn = new Map(props.map((p) => [p.id, p.name]));
   return (
     <>
-      <PageHeader eyebrow="Communications" title="Announcements" description="Send notices to tenants or owners by portal, email and text — now or on a schedule." />
+      <PageHeader icon={<MegaphoneIcon aria-hidden />} eyebrow="Communications" title="Announcements" description="Send notices to tenants or owners by portal, email and text — now or on a schedule." />
       {can(ctx.permissions, "communications", "edit") ? <div className="mb-6"><AnnouncementComposer properties={props} smsEnabled={usage.enabled} /></div> : null}
       <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
         <table className="w-full text-sm">

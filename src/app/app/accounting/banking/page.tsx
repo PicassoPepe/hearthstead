@@ -1,3 +1,4 @@
+import { Landmark as LandmarkIcon } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeftRight, Landmark } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -27,7 +28,7 @@ export default async function BankingPage() {
   const canEdit = can(ctx.permissions, "accounting", "edit");
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<LandmarkIcon aria-hidden />}
         eyebrow="Accounting"
         title="Banking"
         description="Bank balances come from the ledger. Sync the bank feed to match what actually cleared."

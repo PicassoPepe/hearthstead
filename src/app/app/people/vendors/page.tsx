@@ -1,3 +1,4 @@
+import { HardHat as HardHatIcon } from "lucide-react";
 import Link from "next/link";
 import { Plus, Wrench } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -24,7 +25,7 @@ export default async function VendorsPage() {
   const canEdit = can(ctx.permissions, "people", "edit");
   return (
     <>
-      <PageHeader title="Vendors" description="Contractors and service companies, their trades, compliance and open work." actions={canEdit ? <Button asChild><Link href="/app/new/vendor" scroll={false}><Plus aria-hidden /> Add vendor</Link></Button> : null} />
+      <PageHeader icon={<HardHatIcon aria-hidden />} title="Vendors" description="Contractors and service companies, their trades, compliance and open work." actions={canEdit ? <Button asChild><Link href="/app/new/vendor" scroll={false}><Plus aria-hidden /> Add vendor</Link></Button> : null} />
       {vendors.length === 0 ? (
         <EmptyState icon={<Wrench />} title="Add your vendors" description="Plumbers, electricians, cleaners — assign them work orders, email the details, and turn their invoices into bills." action={canEdit ? <Button asChild><Link href="/app/new/vendor" scroll={false}><Plus aria-hidden /> Add vendor</Link></Button> : undefined} />
       ) : (

@@ -1,3 +1,4 @@
+import { Briefcase as BriefcaseIcon } from "lucide-react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireContext } from "@/server/context";
@@ -17,7 +18,7 @@ export default async function OwnersPage() {
   const canEdit = can(ctx.permissions, "people", "edit");
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<BriefcaseIcon aria-hidden />}
         title="Owners"
         description="Property owners, their ownership shares, and (from Phase 8) their portal access."
         actions={canEdit ? <Button asChild><Link href="/app/new/owner" scroll={false}><Plus aria-hidden /> Add owner</Link></Button> : null}

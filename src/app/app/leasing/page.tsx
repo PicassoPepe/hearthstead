@@ -1,3 +1,4 @@
+import { FileSignature as FileSignatureIcon } from "lucide-react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import type { Prisma } from "@prisma/client";
@@ -33,7 +34,7 @@ export default async function LeasingPage({ searchParams }: { searchParams: Prom
   const canEdit = can(ctx.permissions, "leasing", "edit");
   return (
     <>
-      <PageHeader
+      <PageHeader icon={<FileSignatureIcon aria-hidden />}
         title="Leases"
         description="Every lease, its rent and its balance."
         actions={

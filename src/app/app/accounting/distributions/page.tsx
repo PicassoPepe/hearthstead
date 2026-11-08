@@ -1,3 +1,4 @@
+import { HandCoins as HandCoinsIcon } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -24,7 +25,7 @@ export default async function DistributionsPage() {
   const month = toISODate(new Date()).slice(0, 7);
   return (
     <>
-      <PageHeader eyebrow="Accounting" title="Owner distributions" description="Available cash = cash in the bank and undeposited − prepaid rent − open bills − reserve. Security deposits are never distributed." />
+      <PageHeader icon={<HandCoinsIcon aria-hidden />} eyebrow="Accounting" title="Owner distributions" description="Available cash = cash in the bank and undeposited − prepaid rent − open bills − reserve. Security deposits are never distributed." />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard label="Available to distribute" value={formatMoney(rows.reduce((s, r) => s + r.availableCents, 0))} hint={`${rows.filter((r) => r.availableCents > 0).length} properties`} />
         <StatCard label="Distributed this month" value={formatMoney(history.filter((h) => h.kind === "DISTRIBUTION" && toISODate(h.date).startsWith(month)).reduce((s, h) => s + h.amountCents, 0))} />
