@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.*
+!.env.example
+.deedwood
+storage
+test-results
+playwright-report
+coverage
+.git

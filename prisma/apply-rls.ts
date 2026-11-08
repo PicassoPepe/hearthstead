@@ -21,6 +21,12 @@ async function main(): Promise<void> {
     }
   }
   for (const s of statements) await db.$executeRawUnsafe(s);
+  // Hosted installs give the app's database role its own password (see scripts/serve.mjs).
+  const pw = process.env.APP_DB_PASSWORD;
+  if (pw) {
+    if (!/^[A-Za-z0-9_-]{16,}$/.test(pw)) throw new Error("APP_DB_PASSWORD must be 16+ letters, digits, - or _");
+    await db.$executeRawUnsafe(`ALTER ROLE deedwood_app PASSWORD '${pw}'`);
+  }
   await db.$disconnect();
   console.log(`RLS applied (${statements.length} statements).`);
 }
