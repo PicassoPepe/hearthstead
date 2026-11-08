@@ -90,6 +90,7 @@ test.describe("tenant portal (mobile)", () => {
     await expect(page.getByText("Under review")).toBeVisible();
 
     const staff = await browser.newPage();
+    await staff.setViewportSize({ width: 1280, height: 900 }); // staff work at desktop width (phones get cards)
     await signIn(staff, "admin@example.com", "/app/people/tenants");
     await staff.getByRole("textbox", { name: "Search Tenants" }).fill("tenant@example.com");
     await staff.getByRole("row").nth(1).getByRole("link").first().click();

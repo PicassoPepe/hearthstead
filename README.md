@@ -69,6 +69,7 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 | `The token '&&' is not a valid statement separator` | Windows PowerShell 5 — run each command on its own line. |
 | Page says you have no organization | Reset the demo data: `pnpm db:seed`. |
 | Want a clean slate | `pnpm db:reset` (drops everything, migrates, reseeds). |
+| Dev server restarts with "approaching the used memory threshold" | It runs with a 6 GB heap cap by default; on a big machine raise it with `NODE_OPTIONS=--max-old-space-size=8192` (see `scripts/next-dev.mjs`). |
 
 ### Scripts
 
@@ -76,7 +77,7 @@ Magic-link emails are captured by the mock email provider — open **http://loca
 | --- | --- |
 | `pnpm dev` | One-command dev environment (cross-platform, `scripts/dev.mjs`) |
 | `pnpm test` | Vitest: unit + integration (integration needs Postgres) |
-| `pnpm test:e2e` | Playwright end-to-end, incl. axe accessibility checks (reseeds first) |
+| `pnpm test:e2e` | Playwright end-to-end, incl. axe accessibility checks (reseeds first). Uses the server on :3000 if one is running. For the steadiest run, test a production build: `pnpm build`, then start it with `ENABLE_DEV_TOOLS=1` (`pnpm start`) and run `pnpm test:e2e`. `ENABLE_DEV_TOOLS` turns on the outbox/SMS simulator/webhook sink in production — never set it on a public deployment. |
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | ESLint, `tsc --noEmit`, Prettier |
 | `pnpm db:migrate` | `prisma migrate deploy` + apply row-level security |
 | `pnpm db:seed` / `pnpm db:reset` | Reseed demo data / drop everything and reseed |
