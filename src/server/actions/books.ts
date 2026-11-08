@@ -281,3 +281,83 @@ export async function emailOwnerStatementsNow(): Promise<ActionResult<{ sent: nu
     return { sent };
   });
 }
+
+// ─── Year-end close ───────────────────────────────────────────────────────
+
+export async function closeYearAction(year: number): Promise<ActionResult<{ netIncomeCents: number }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "delete");
+    const { closeYear } = await import("@/server/accounting/close");
+    const { orgToday } = await import("@/server/leasing/queries");
+    const r = await closeYear(ctx.db, year, await orgToday(ctx));
+    done();
+    return { netIncomeCents: r.netIncomeCents };
+  }, `${year} closed`);
+}
+
+export async function reopenYearAction(year: number): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "delete");
+    const { reopenYear } = await import("@/server/accounting/close");
+    await reopenYear(ctx.db, year);
+    done();
+  }, `${year} reopened`);
+}
+
+// ─── Budgets ──────────────────────────────────────────────────────────────
+
+export async function createBudgetAction(v: { name: string; year: number; propertyId: string | null; start: "BLANK" | "LAST_YEAR"; adjustPct?: number }): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "edit");
+    if (v.propertyId && ctx.membership.propertyScope.length && !ctx.membership.propertyScope.includes(v.propertyId)) throw new Error("Forbidden");
+    const { createBudget } = await import("@/server/accounting/budgets");
+    const b = await createBudget(ctx, v);
+    done();
+    return { id: b.id };
+  }, "Budget created");
+}
+
+export async function saveBudgetAction(id: string, amounts: Record<string, number[]>, name?: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "edit");
+    const { saveBudgetAmounts } = await import("@/server/accounting/budgets");
+    await saveBudgetAmounts(ctx.db, id, amounts, name);
+    done();
+  }, "Budget saved");
+}
+
+export async function deleteBudgetAction(id: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "delete");
+    await ctx.db.budget.update({ where: { id }, data: { deletedAt: new Date() } });
+    done();
+  }, "Budget deleted");
+}
+
+// ─── Utility billback (RUBS) ──────────────────────────────────────────────
+
+type BillbackIn = import("@/server/accounting/billback").BillbackInput;
+async function billbackCtx(v: BillbackIn) {
+  const ctx = await requirePermission("accounting", "edit");
+  const scope = ctx.membership.propertyScope;
+  if (scope.length && !scope.includes(v.propertyId)) throw new Error("Forbidden");
+  return ctx;
+}
+
+export async function previewBillbackAction(v: BillbackIn) {
+  return runAction(async () => {
+    const ctx = await billbackCtx(v);
+    const { previewBillback } = await import("@/server/accounting/billback");
+    return previewBillback(ctx.db, v);
+  });
+}
+
+export async function postBillbackAction(v: BillbackIn): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    const ctx = await billbackCtx(v);
+    const { postBillback } = await import("@/server/accounting/billback");
+    const b = await postBillback(ctx.db, v);
+    revalidatePath("/app", "layout");
+    return { id: b.id };
+  }, "Billback posted to the lease ledgers");
+}

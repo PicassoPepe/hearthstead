@@ -54,7 +54,8 @@ export async function incomeExpense(ctx: Ctx, opts: { from: string; to: string; 
   const out: Amounts = new Map();
   if (opts.basis === "ACCRUAL") {
     const lines = await ctx.db.journalLine.findMany({
-      where: { accountId: { in: [...ie.keys()] }, journalEntry: { date: { gte: from, lte: to } }, ...propWhere(opts.propertyIds) },
+      // Year-end closing entries move balances to retained earnings; they aren't income or expense.
+      where: { accountId: { in: [...ie.keys()] }, journalEntry: { date: { gte: from, lte: to }, source: { not: "YEAR_END_CLOSE" } }, ...propWhere(opts.propertyIds) },
       select: { accountId: true, propertyId: true, debitCents: true, creditCents: true, journalEntry: { select: { date: true } } },
     });
     for (const l of lines) add(out, l.accountId, opts.col(l.journalEntry.date, l.propertyId), sign(l.accountId, l.debitCents, l.creditCents));
@@ -652,9 +653,10 @@ async function ownerStatement(ctx: Ctx, p: ReportParams): Promise<ReportResult> 
   };
 }
 
-async function vendor1099(ctx: Ctx, p: ReportParams): Promise<ReportResult> {
-  const from = parseISODate(`${p.year}-01-01`);
-  const to = parseISODate(`${p.year}-12-31`);
+/** Amount paid to each vendor in a calendar year (bill payments + vendor expenses), for 1099s. */
+export async function vendorPayments(ctx: Ctx, year: number | string) {
+  const from = parseISODate(`${year}-01-01`);
+  const to = parseISODate(`${year}-12-31`);
   const [vendors, pays, expenses] = await Promise.all([
     ctx.db.vendor.findMany({ orderBy: { name: "asc" } }),
     ctx.db.billPayment.findMany({ where: { voidedAt: null, date: { gte: from, lte: to } }, select: { billId: true, amountCents: true } }),
@@ -664,6 +666,11 @@ async function vendor1099(ctx: Ctx, p: ReportParams): Promise<ReportResult> {
   const paid = new Map<string, number>();
   for (const x of pays) { const v = bills.find((b) => b.id === x.billId)?.vendorId; if (v) paid.set(v, (paid.get(v) ?? 0) + x.amountCents); }
   for (const e of expenses) paid.set(e.vendorId!, (paid.get(e.vendorId!) ?? 0) + e.totalCents);
+  return { vendors, paid };
+}
+
+async function vendor1099(ctx: Ctx, p: ReportParams): Promise<ReportResult> {
+  const { vendors, paid } = await vendorPayments(ctx, p.year);
   const rows: ReportRow[] = [];
   let need = 0;
   let total = 0;

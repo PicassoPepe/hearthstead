@@ -20,7 +20,13 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
   if (!d) notFound();
   return (
     <>
-      <PageHeader eyebrow={<Link href="/app/reports" className="hover:underline">← Reports</Link>} title={d.report.title} description={d.meta.description} />
+      <PageHeader eyebrow={<Link href="/app/reports" className="hover:underline">← Reports</Link>} title={d.report.title} description={d.meta.description}
+        actions={key === "vendor-1099" ? (
+          <div className="flex flex-wrap gap-2">
+            <a className="inline-flex h-9 items-center rounded-lg border border-border-strong bg-surface px-3 text-sm font-medium shadow-sm hover:bg-surface-muted" href={`/api/exports/1099?year=${d.params.year}&format=iris`}>Download e-file CSV</a>
+            <a className="inline-flex h-9 items-center rounded-lg border border-border-strong bg-surface px-3 text-sm font-medium shadow-sm hover:bg-surface-muted" href={`/api/exports/1099?year=${d.params.year}&format=copies`} target="_blank" rel="noopener">Print recipient copies</a>
+          </div>
+        ) : undefined} />
       <ReportViewer meta={d.meta} params={d.params} report={d.report} options={d.options} today={d.today} />
     </>
   );

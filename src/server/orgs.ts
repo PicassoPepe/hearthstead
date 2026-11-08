@@ -68,7 +68,7 @@ const PURGE_ORDER = [
   "PaymentApplication", "LateFeeRun", "RecurringChargeRun", "RecurringCharge", "LeaseTransaction",
   "JournalLine", "JournalEntry", "LeaseTenant", "LeaseUnit", "Lease", "Tenant",
   "PropertyOwnership", "Unit", "Property", "Portfolio", "Owner", "BankAccount", "Account",
-  "KeyItem", "StatementSend", "RentReminder", "Notification", "Note", "Attachment", "Setting", "AuditLog", "EmailMessage", "Membership", "Role",
+  "UtilityBillback", "Budget", "KeyItem", "StatementSend", "RentReminder", "Notification", "Note", "Attachment", "Setting", "AuditLog", "EmailMessage", "Membership", "Role",
 ] as const;
 
 export async function purgeOrganizations(db: PrismaClient, orgIds: string[]): Promise<void> {

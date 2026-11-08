@@ -45,6 +45,8 @@ model Organization {
   isSandbox          Boolean   @default(false)
   /// Support staff may access the workspace until this time (toggle in Settings → Security).
   supportAccessUntil DateTime?
+  /// Year-end close: no journal entries may be dated on or before this day.
+  booksClosedThrough DateTime? @db.Date
 }
 
 model User {
@@ -1939,4 +1941,47 @@ model KeyItem {
 
   @@index([organizationId, propertyId])
   @@index([organizationId, leaseId])
+}
+
+// ─── Budgets ───────────────────────────────────────────────────────────────
+
+model Budget {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  year           Int
+  /// null = whole company
+  propertyId     String?
+  /// { [accountId]: [jan..dec cents] } for income and expense accounts (natural sign: positive).
+  amounts        Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+  deletedAt      DateTime?
+
+  @@index([organizationId, year])
+}
+
+/// Utility billback (RUBS): a property's utility bill for a month, allocated to occupied leases.
+model UtilityBillback {
+  id               String   @id @default(cuid())
+  organizationId   String
+  propertyId       String
+  /// YYYY-MM
+  period           String
+  expenseAccountId String
+  incomeAccountId  String
+  label            String
+  /// SQFT | OCCUPANTS | EQUAL | SQFT_OCCUPANTS
+  method           String
+  recoveryPct      Int      @default(100)
+  billCents        Int
+  totalCents       Int
+  /// [{ leaseId, label, weight, amountCents, transactionId }]
+  lines            Json     @default("[]")
+  createdAt        DateTime @default(now())
+  createdById      String?
+
+  @@unique([propertyId, period, expenseAccountId])
+  @@index([organizationId, period])
 }
