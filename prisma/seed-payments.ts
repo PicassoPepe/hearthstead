@@ -18,7 +18,7 @@ export async function seedPayments(adminUrl: string, appUrl: string, orgId: stri
   await db.setting.create({ data: { organizationId: orgId, scope: "ORG", scopeId: orgId, key: "tenantPortal.allowPartialPayments", value: true } });
 
   // Demo tenant login: the primary tenant on a residential lease that owes money.
-  const leases = await db.lease.findMany({ where: { status: "ACTIVE", property: { type: { notIn: ["COMMERCIAL_OFFICE", "COMMERCIAL_RETAIL", "COMMERCIAL_INDUSTRIAL"] } } }, include: { tenants: { where: { role: "PRIMARY" }, include: { tenant: true } } }, orderBy: { startDate: "asc" } });
+  const leases = await db.lease.findMany({ where: { status: "ACTIVE", property: { type: { notIn: ["COMMERCIAL_OFFICE", "COMMERCIAL_RETAIL", "COMMERCIAL_INDUSTRIAL"] } } }, include: { tenants: { where: { role: "PRIMARY" }, include: { tenant: true } } }, orderBy: [{ startDate: "asc" }, { createdAt: "asc" }, { id: "asc" }] });
   let demoLeaseId: string | null = null;
   for (const l of leases) {
     const b = await db.tx((tx) => M.leaseBalance(tx, l.id));
