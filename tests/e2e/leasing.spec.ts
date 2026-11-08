@@ -177,7 +177,8 @@ test.describe("accounting", () => {
   test("tenants list and search", async ({ page }) => {
     await page.goto("/app/people/tenants");
     await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
-    await page.waitForLoadState("networkidle"); // hydrated before opening the palette
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500); // let the streamed page segment hydrate before the palette hides it from AT
     await page.keyboard.press("ControlOrMeta+k");
     await page.getByPlaceholder("Search or type a command…").fill("Elena");
     await page.getByRole("option", { name: /Elena Kim/ }).click();
