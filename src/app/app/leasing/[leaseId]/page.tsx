@@ -199,7 +199,7 @@ export default async function LeasePage({ params, searchParams }: { params: Prom
           />
           <Card className="p-4 text-sm">
             <AutopayStatus ctx={ctx} leaseId={lease.id} />
-            <p className="mt-1 text-muted-foreground">Raise rent for many leases at once in <a className="font-medium text-primary hover:underline" href="/app/leasing/rent-increase">Rent increases</a>, or offer a renewal from <a className="font-medium text-primary hover:underline" href="/app/leasing/renewals">Renewals</a>.</p>
+            <p className="mt-1 text-muted-foreground">Raise rent for many leases at once in <Link className="font-medium text-primary hover:underline" href="/app/leasing/rent-increase">Rent increases</Link>, or offer a renewal from <Link className="font-medium text-primary hover:underline" href="/app/leasing/renewals">Renewals</Link>.</p>
           </Card>
         </div>
       ) : tab === "tenants" ? (

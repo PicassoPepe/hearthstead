@@ -26,6 +26,7 @@ import { seedComms } from "./seed-comms";
 import { seedFunnel } from "./seed-funnel";
 import { seedPlatform, DEMO_API_KEY } from "./seed-platform";
 import { seedImages } from "./seed-images";
+import { seedOps } from "./seed-ops";
 import { todayIn } from "../src/lib/dates";
 
 const db = new PrismaClient();
@@ -128,6 +129,9 @@ async function main(): Promise<void> {
   const images = await seedImages(process.env.DATABASE_URL!, orgId, users["admin@example.com"]!);
   await db.organization.update({ where: { id: orgId }, data: { logoUrl: images.logoUrl } });
 
+  // Daily operations: keys, fobs, parking and storage.
+  const ops = await seedOps(process.env.DATABASE_URL!, orgId, users["admin@example.com"]!, todayIn("America/Chicago"));
+
   // Admin lands in Maple & Main by default.
   await db.user.update({ where: { id: users["admin@example.com"] }, data: { lastOrgId: orgId } });
 
@@ -142,6 +146,7 @@ async function main(): Promise<void> {
   console.log(`  Communications: ${comms.conversations} conversations, ${comms.announcements} announcements. Owner portal: owner@example.com (Grace Harmon).`);
   console.log(`  Leasing funnel: ${funnel.published} published listings (${funnel.listings} total), ${funnel.prospects} prospects, ${funnel.applications} applications. Public page: /l/maple-main`);
   console.log(`  Platform: demo API key ${DEMO_API_KEY} · 2 workflows · ${platform.proposed} agent proposals waiting in AI → Agents.`);
+  console.log(`  Operations: ${ops.keys} keys & spaces tracked at Maple Court (Rentals → Keys & spaces). Calendar: /app/calendar`);
   console.log(`  Payments: ${payments.payments} online payments, ${payments.autopays} autopays. Tenant portal: tenant@example.com (${payments.demoTenant}).`);
 }
 

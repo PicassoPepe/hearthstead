@@ -128,3 +128,21 @@ describe("recurring charges & rent increases", () => {
     expect((await db.recurringCharge.findFirstOrThrow({ where: { id: p.id } })).endDate?.toISOString().slice(0, 10)).toBe("2027-03-31");
   });
 });
+
+describe("keys & spaces", () => {
+  it("assigning a paid parking space bills the lease; returning it stops billing", async () => {
+    const K = await import("@/server/rentals/keys");
+    const { id } = await K.saveKeyItem(db, null, { kind: "PARKING", label: "P1", propertyId, monthlyFeeCents: 5_000 });
+    await expect(K.saveKeyItem(db, null, { kind: "PARKING", label: "P1", propertyId })).rejects.toThrow(/already used/);
+    await K.assignKeyItem(db, id, { leaseId, date: "2027-04-01", billFee: true });
+    let k = await db.keyItem.findFirstOrThrow({ where: { id } });
+    expect(k).toMatchObject({ status: "ASSIGNED", leaseId, holderName: "Remy Renter" });
+    const rc = await db.recurringCharge.findFirstOrThrow({ where: { id: k.recurringChargeId! } });
+    expect(rc).toMatchObject({ description: "Parking P1", amountCents: 5_000 });
+    await expect(K.assignKeyItem(db, id, { leaseId, date: "2027-04-01", billFee: true })).rejects.toThrow(/Already assigned/);
+    await K.returnKeyItem(db, id, { date: "2027-05-15" });
+    k = await db.keyItem.findFirstOrThrow({ where: { id } });
+    expect(k).toMatchObject({ status: "AVAILABLE", leaseId: null });
+    expect((await db.recurringCharge.findFirstOrThrow({ where: { id: rc.id } })).endDate?.toISOString().slice(0, 10)).toBe("2027-05-15");
+  });
+});

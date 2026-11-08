@@ -28,6 +28,7 @@ export const NAV_MAIN: NavSection[] = [
       { label: "Properties", href: "/app/rentals", phase: 2 },
       { label: "Units", href: "/app/rentals/units", phase: 2 },
       { label: "Listings", href: "/app/rentals/listings", phase: 9 },
+      { label: "Keys & spaces", href: "/app/rentals/keys", keywords: ["parking", "storage", "fob", "mailbox"] },
       { label: "Portfolios", href: "/app/rentals/portfolios", phase: 2 },
     ],
   },

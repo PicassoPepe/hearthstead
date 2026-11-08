@@ -1908,3 +1908,32 @@ model StatementSend {
   @@unique([ownerId, period])
   @@index([organizationId, period])
 }
+
+// ─── Keys, fobs, parking & storage ─────────────────────────────────────────
+
+model KeyItem {
+  id              String    @id @default(cuid())
+  organizationId  String
+  /// KEY | FOB | REMOTE | PARKING | STORAGE | MAILBOX | OTHER
+  kind            String
+  /// e.g. "Front door #2", "P12", "Locker B4"
+  label           String
+  propertyId      String
+  unitId          String?
+  /// AVAILABLE | ASSIGNED | LOST | RETIRED
+  status          String    @default("AVAILABLE")
+  leaseId         String?
+  holderName      String?
+  assignedAt      DateTime?
+  /// Monthly fee for spaces (parking/storage) — billed through a recurring charge when assigned.
+  monthlyFeeCents Int       @default(0)
+  recurringChargeId String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     String?
+  deletedAt       DateTime?
+
+  @@index([organizationId, propertyId])
+  @@index([organizationId, leaseId])
+}
