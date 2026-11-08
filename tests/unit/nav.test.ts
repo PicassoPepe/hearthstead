@@ -22,8 +22,11 @@ describe("sectionForPath", () => {
 describe("navigation config", () => {
   it("has the required top-level items in order", () => {
     expect(NAV_MAIN.map((n) => n.label)).toEqual([
-      "Overview", "Rentals", "Leasing", "People", "Accounting", "Tasks", "Communications", "Reports", "Notes", "Files", "Workflows", "AI Assistant",
+      "Overview", "Calendar", "Rentals", "Leasing", "People", "Accounting", "Tasks", "Invoices", "Communications", "Reports", "Notes", "Files", "Workflows", "AI Assistant",
     ]);
+  });
+  it("vendor-only items are hidden from staff", () => {
+    expect(NAV_MAIN.filter((n) => n.vendorOnly).map((n) => n.href)).toEqual(["/app/invoices"]);
   });
   it("create menu kinds are unique and resolvable", () => {
     const kinds = CREATE_MENU.flatMap((g) => g.items.map((i) => i.kind));
