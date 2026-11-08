@@ -1,3 +1,4 @@
+import { devToolsEnabled } from "@/lib/dev-tools";
 import { NextResponse } from "next/server";
 import { receiveInboundSms } from "@/server/comms/service";
 import { verifyTwilioSignature } from "@/adapters/sms";
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   if (token) {
     const url = `${process.env.AUTH_URL ?? new URL(req.url).origin}/api/webhooks/sms`;
     if (!(await verifyTwilioSignature(url, params, req.headers.get("x-twilio-signature"), token))) return NextResponse.json({ error: "Bad signature" }, { status: 403 });
-  } else if (process.env.NODE_ENV === "production") {
+  } else if (!devToolsEnabled()) {
     return NextResponse.json({ error: "SMS webhook not configured" }, { status: 503 });
   }
   if (params.From && params.Body !== undefined) await receiveInboundSms({ from: params.From, body: params.Body, externalId: params.MessageSid ?? "" });

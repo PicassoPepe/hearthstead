@@ -1,3 +1,4 @@
+import { devToolsEnabled } from "@/lib/dev-tools";
 import { notFound, redirect } from "next/navigation";
 import { adminDb } from "@/server/db";
 import { receiveInboundSms } from "@/server/comms/service";
@@ -7,14 +8,14 @@ export const metadata = { title: "Dev SMS" };
 
 async function simulate(form: FormData) {
   "use server";
-  if (process.env.NODE_ENV === "production") return;
+  if (!devToolsEnabled()) return;
   await receiveInboundSms({ from: String(form.get("from") ?? ""), body: String(form.get("body") ?? ""), externalId: `SMdev${Date.now()}` });
   redirect("/dev/sms");
 }
 
 /** Development-only: texts sent by the mock SmsProvider, and a form to simulate a reply. */
 export default async function DevSms() {
-  if (process.env.NODE_ENV === "production") notFound();
+  if (!devToolsEnabled()) notFound();
   const msgs = await adminDb.message.findMany({ where: { channel: "SMS" }, orderBy: { createdAt: "desc" }, take: 40, include: { conversation: { select: { phone: true } } } });
   return (
     <main className="portal-density mx-auto max-w-3xl p-6">

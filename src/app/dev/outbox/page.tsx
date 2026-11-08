@@ -1,3 +1,4 @@
+import { devToolsEnabled } from "@/lib/dev-tools";
 import { notFound } from "next/navigation";
 import { adminDb } from "@/server/db";
 
@@ -6,7 +7,7 @@ export const metadata = { title: "Dev outbox" };
 
 /** Development-only view of emails captured by the MockEmailProvider. */
 export default async function Outbox() {
-  if (process.env.NODE_ENV === "production") notFound();
+  if (!devToolsEnabled()) notFound();
   const messages = await adminDb.emailMessage.findMany({ orderBy: { createdAt: "desc" }, take: 30 });
   return (
     <main className="portal-density mx-auto max-w-4xl p-6">

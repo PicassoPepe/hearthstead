@@ -1,3 +1,4 @@
+import { devToolsEnabled } from "@/lib/dev-tools";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import type { ScopedDb } from "@/server/dal";
 import { UserFacingError } from "@/server/action-result";
@@ -67,7 +68,7 @@ export async function deliverDue(db: ScopedDb, eventId?: string, now = new Date(
     let error: string | null = null;
     try {
       const url = new URL(d.endpoint.url);
-      if (process.env.NODE_ENV === "production" && url.protocol !== "https:") throw new Error("Webhook URLs must use https");
+      if (!devToolsEnabled() && url.protocol !== "https:") throw new Error("Webhook URLs must use https");
       const res = await fetcher(d.endpoint.url, { method: "POST", headers: { "content-type": "application/json", "user-agent": "Hearthstead-Webhooks/1.0", "hearthstead-event": d.event, "hearthstead-delivery": d.id, "hearthstead-signature": signPayload(d.endpoint.secret, body) }, body });
       status = res.status;
       if (!res.ok) error = `HTTP ${res.status}`;
@@ -90,7 +91,7 @@ export async function saveWebhookEndpoint(db: ScopedDb, id: string | null, v: { 
   let u: URL;
   try { u = new URL(v.url); } catch { throw new UserFacingError("Enter a full URL, like https://example.com/hooks", { url: "Invalid URL" }); }
   if (!["https:", "http:"].includes(u.protocol)) throw new UserFacingError("Use an https URL", { url: "https only" });
-  if (process.env.NODE_ENV === "production" && u.protocol !== "https:") throw new UserFacingError("Use an https URL", { url: "https only" });
+  if (!devToolsEnabled() && u.protocol !== "https:") throw new UserFacingError("Use an https URL", { url: "https only" });
   const events = v.events.filter((e): e is EventType => (EVENT_TYPES as readonly string[]).includes(e));
   if (!events.length) throw new UserFacingError("Choose at least one event", { events: "Choose events" });
   const data = { url: v.url, description: v.description || null, events, active: v.active };
