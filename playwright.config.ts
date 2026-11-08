@@ -8,7 +8,8 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   timeout: 60_000,
-  expect: { timeout: 10_000 },
+  // The dev server compiles routes on first use; give assertions room for that.
+  expect: { timeout: 20_000 },
   globalSetup: "./tests/e2e/global-setup.ts",
   use: { baseURL: `http://localhost:${PORT}`, trace: "off", ...devices["Desktop Chrome"] },
   webServer: {
