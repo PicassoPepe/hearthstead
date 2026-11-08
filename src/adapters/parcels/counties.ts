@@ -22,24 +22,19 @@ export type CountySource = {
   links: (parcelId: string | null) => { label: string; url: string }[];
 };
 
-/** Links shared by every Kentucky county. */
-const kyLinks = (county: string, extra: { label: string; url: string }[] = []) => (parcelId: string | null) => [
-  ...extra,
-  { label: `${county} PVA property search (qPublic)${parcelId ? ` — search parcel ${parcelId}` : ""}`, url: "https://qpublic.schneidercorp.com/" },
-  { label: "Kentucky GIS open data (KyGovMaps)", url: "https://opengisdata.ky.gov/" },
-];
-
 export const COUNTIES: CountySource[] = [
   {
-    fips: "21231",
-    name: "Wayne County, KY",
+    // Louisville / Jefferson County — LOJIC (Louisville/Jefferson County Information Consortium), official.
+    // Outlines and parcel IDs only; owner names and values are on the Jefferson County PVA site.
+    fips: "21111",
+    name: "Jefferson County, KY",
     state: "KY",
-    // "Wayne County Land Parcels" (ArcGIS Online, 2024).
-    arcgisItemId: "8709730aa2774a58aa41568f2febbb69",
-    links: kyLinks("Wayne County", [
-      { label: "Wayne County PVA (assessments, Monticello)", url: "https://waynecounty.ky.gov/eo/Pages/pva.aspx" },
-      { label: "Wayne County parcel map (ArcGIS)", url: "https://www.arcgis.com/home/item.html?id=8709730aa2774a58aa41568f2febbb69" },
-    ]),
+    layerUrl: "https://gis.lojic.org/maps/rest/services/LojicSolutions/OpenDataPVA/MapServer/1",
+    fields: { parcelId: "PARCELID" },
+    links: (parcelId) => [
+      { label: `Jefferson County PVA property search${parcelId ? ` — parcel ${parcelId}` : ""}`, url: "https://jeffersonpva.ky.gov/property-search/" },
+      { label: "LOJIC open data (official parcel map)", url: "https://data.lojic.org/" },
+    ],
   },
 ];
 

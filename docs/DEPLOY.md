@@ -45,6 +45,12 @@ Optional, so DeedWood can really send emails (sign-in links, invites, reminders,
 Without email set up, everything still works with email + password sign-in; emails just aren't
 delivered.
 
+Optional, for land records (parcel maps and owner of record) outside Louisville/Jefferson County:
+
+| Name | Value |
+| --- | --- |
+| `REGRID_TOKEN` | Your Regrid API token (regrid.com/api — paid, per parcel; each property is looked up once and refreshed every 90 days) |
+
 ## 5. Keep uploaded files
 
 Photos, logos and documents need a place that survives updates: **Settings → Volumes → Add

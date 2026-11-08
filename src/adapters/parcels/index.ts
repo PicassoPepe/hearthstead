@@ -67,6 +67,39 @@ export async function geocode(q: ParcelQuery): Promise<Geocode | null> {
   return { latitude: m.coordinates.y, longitude: m.coordinates.x, countyFips: county?.GEOID ?? null, countyName: county ? `${county.NAME}, ${q.state.toUpperCase()}` : null, matchedAddress: m.matchedAddress };
 }
 
+// ─── Kentucky: rooftop points from the statewide 911 address layer ────────
+
+const KY_911 = "https://kygisserver.ky.gov/arcgis/rest/services/WGS84WM_Services/Ky_911_Site_Structure_Address_Points_WGS84WM/MapServer/0";
+const DIRS: Record<string, string> = { N: "NORTH", S: "SOUTH", E: "EAST", W: "WEST", NORTH: "NORTH", SOUTH: "SOUTH", EAST: "EAST", WEST: "WEST" };
+const TYPES = new Set(["ST", "STREET", "AVE", "AVENUE", "RD", "ROAD", "DR", "DRIVE", "LN", "LANE", "CT", "COURT", "BLVD", "BOULEVARD", "HWY", "HIGHWAY", "PIKE", "PK", "WAY", "PL", "PLACE", "CIR", "CIRCLE", "TER", "TERRACE", "TRL", "TRAIL", "PKWY", "PARKWAY", "LOOP", "RUN", "ROW", "SQ"]);
+
+/** "527 W Jefferson St" → { number: 527, name: "JEFFERSON" } (directions and street types dropped). */
+export function parseStreet(line: string) {
+  const parts = line.toUpperCase().replace(/[.,#]/g, " ").split(/\s+/).filter(Boolean);
+  const number = Number(parts.shift());
+  if (!Number.isInteger(number)) return null;
+  const unit = parts.findIndex((w) => /^(APT|APARTMENT|UNIT|STE|SUITE|LOT|BLDG|FL)$/.test(w));
+  if (unit > 0) parts.splice(unit);
+  if (parts.length > 1 && DIRS[parts[0]!]) parts.shift();
+  while (parts.length > 1 && (TYPES.has(parts.at(-1)!) || DIRS[parts.at(-1)!])) parts.pop();
+  const name = parts.join(" ").replace(/'/g, "''");
+  return name ? { number, name } : null;
+}
+
+/** Move a Census street-centerline point onto the building, using Kentucky's 911 site points (within ~2 km). */
+async function refineKentucky(q: ParcelQuery, g: Geocode): Promise<Geocode> {
+  const st = parseStreet(q.addressLine1);
+  if (!st) return g;
+  const where = `Add_Number=${st.number} AND UPPER(St_Name)='${st.name}'`;
+  const res = await fetcher(`${KY_911}/query?${new URLSearchParams({ where, outFields: "Lat,Long,Post_Code", returnGeometry: "false", resultRecordCount: "20", f: "json" })}`).catch(() => null);
+  if (!res?.ok) return g;
+  const body = (await res.json()) as { features?: { attributes: { Lat: number; Long: number } }[] };
+  const near = (body.features ?? []).map((f) => f.attributes).filter((a) => typeof a.Lat === "number" && typeof a.Long === "number")
+    .map((a) => ({ ...a, d: Math.hypot((a.Lat - g.latitude) * 111, (a.Long - g.longitude) * 89) }))
+    .filter((a) => a.d < 2).sort((x, y) => x.d - y.d)[0];
+  return near ? { ...g, latitude: near.Lat, longitude: near.Long } : g;
+}
+
 // ─── Field mapping for county layers ──────────────────────────────────────
 
 const num = (v: unknown) => {
@@ -202,8 +235,10 @@ export async function lookupParcel(q: ParcelQuery): Promise<ParcelResult> {
   const mode = parcelProviderName();
   if (mode === "off") return empty("off", { message: "Land-record lookups are turned off (PARCELS_PROVIDER=off)." });
   if (mode === "mock") return mockLookup(q);
-  const g = await geocode(q);
+  let g = await geocode(q);
   if (!g) return empty("geocoder", { message: "The US Census geocoder couldn't match this address. Check the street address and ZIP." });
+  if (g.countyFips?.startsWith("21")) g = await refineKentucky(q, g); // Kentucky
+
   const county = g.countyFips ? countyByFips(g.countyFips) : null;
   if (county) return countyLookup(county, g, q);
   const token = process.env.REGRID_TOKEN;

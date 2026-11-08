@@ -296,12 +296,19 @@ Decisions made without asking, per the brief. Each can be changed later.
   directly on their public ArcGIS parcel layer (free); other counties use Regrid when
   `REGRID_TOKEN` is set (paid, per record); otherwise the page says the county isn't connected yet.
   `PARCELS_PROVIDER=mock` gives deterministic sample parcels (demo data, tests); `off` disables it.
-- Kentucky has no free statewide parcel file, so Kentucky is added county by county. Wayne County
-  (FIPS 21231, ArcGIS item `8709730aa2774a58aa41568f2febbb69`) is registered first. Column names are
-  detected automatically (PIDN/PIN/PARCEL, OWNER, ACRES, DEED_BOOK/PAGE, LEGAL…); a county entry can
-  map columns explicitly. **The Wayne County layer's public access and column names were not
-  verified from the build environment (its network blocks arcgis.com)** — check the first real
-  lookup, then adjust `fields` if a value lands in the wrong place.
+- Kentucky addresses are placed on the building with the statewide **Kentucky 911 site/structure
+  address points** (kygisserver.ky.gov) when one is within 2 km of the Census point — the Census
+  geocoder interpolates along the street centerline, which otherwise lands in the road right-of-way.
+- **Free county coverage in Kentucky is thin.** A survey of every public ArcGIS layer inside Kentucky
+  (Nov 2026) found only one official, current county parcel layer with outlines: Jefferson County
+  (LOJIC — outlines and parcel IDs, no owner names). Other hits were stale (Shelby 2017), unofficial
+  (a 2023 sanitation-district snapshot for Northern Kentucky), missing owner names (Warren), or in
+  neighboring states. Kentucky's open-data portal has parcels only for Webster County. Most PVA
+  offices publish through qPublic/Schneider, which doesn't allow automated access. **Wayne County, KY
+  has no public parcel layer** (a "Wayne County Land Parcels" layer on ArcGIS Online is Wayne County,
+  Michigan). So for statewide Kentucky coverage — including Wayne County — set `REGRID_TOKEN`;
+  Jefferson County stays free. Add more free counties to `counties.ts` as they publish official
+  layers.
 - Records are stored (`ParcelRecord`, one per property) and refreshed every 90 days by the nightly
   job, so paid lookups happen rarely. New properties are looked up in the background when created.
   If a refresh fails, the last good data stays and the error is shown.

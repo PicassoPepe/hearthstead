@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { lookupParcel, mapAttributes, mockLookup, setParcelFetcher } from "@/adapters/parcels";
+import { lookupParcel, mapAttributes, mockLookup, parseStreet, setParcelFetcher } from "@/adapters/parcels";
 import { COUNTIES, countyByFips } from "@/adapters/parcels/counties";
 import { ownersMatch } from "@/server/rentals/land-records";
 
 const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
 const square = { type: "Polygon" as const, coordinates: [[[-84.851, 36.829], [-84.849, 36.829], [-84.849, 36.831], [-84.851, 36.831], [-84.851, 36.829]]] };
-const q = { addressLine1: "101 N Main St", city: "Monticello", state: "KY", postalCode: "42633" };
-const census = (fips: string | null) => ok({ result: { addressMatches: fips === null ? [] : [{ matchedAddress: "101 N MAIN ST, MONTICELLO, KY, 42633", coordinates: { x: -84.85, y: 36.83 }, geographies: { Counties: [{ GEOID: fips, NAME: fips === "21231" ? "Wayne County" : "Other County" }] } }] } });
+const q = { addressLine1: "527 W Jefferson St", city: "Louisville", state: "KY", postalCode: "40202" };
+const census = (fips: string | null) => ok({ result: { addressMatches: fips === null ? [] : [{ matchedAddress: "527 W JEFFERSON ST, LOUISVILLE, KY, 40202", coordinates: { x: -85.7591, y: 38.2541 }, geographies: { Counties: [{ GEOID: fips, NAME: fips === "21111" ? "Jefferson County" : "Other County" }] } }] } });
+/** Kentucky 911 rooftop point for the same address (a few metres from the street centerline). */
+const ky911 = ok({ features: [{ attributes: { Lat: 38.25457441, Long: -85.75940809, Post_Code: "40202" } }] });
 
 describe("county attribute mapping", () => {
   it("detects common PVA column names", () => {
@@ -32,25 +34,35 @@ describe("lookup chain", () => {
   beforeEach(() => { process.env.PARCELS_PROVIDER = "auto"; delete process.env.REGRID_TOKEN; });
   afterEach(() => { process.env = { ...saved }; });
 
-  it("Wayne County, KY: Census geocoder → county ArcGIS layer (free)", async () => {
+  it("Jefferson County, KY: Census geocoder → Kentucky 911 rooftop point → official LOJIC parcel layer (free)", async () => {
     const calls: string[] = [];
     setParcelFetcher(async (url) => {
       calls.push(url);
-      if (url.includes("geocoding.geo.census.gov")) return census("21231");
-      if (url.includes("/sharing/rest/content/items/")) return ok({ url: "https://services.example.com/arcgis/rest/services/Wayne_Parcels/FeatureServer" });
-      if (url.includes("/FeatureServer/0/query")) return ok({ features: [{ properties: { PIDN: "072-00-00-012.00", OWNER: "DOE JANE", ACRES: 0.42 }, geometry: square }] });
+      if (url.includes("geocoding.geo.census.gov")) return census("21111");
+      if (url.includes("Ky_911_Site_Structure_Address_Points")) return ky911;
+      if (url.startsWith("https://gis.lojic.org/") && url.includes("/MapServer/1/query")) return ok({ features: [{ properties: { PARCELID: "014E00010000", PIN: 123 }, geometry: square }] });
       throw new Error(`unexpected ${url}`);
     });
     const r = await lookupParcel(q);
-    expect(r).toMatchObject({ source: "county:21231", status: "LOOKED_UP", parcelId: "072-00-00-012.00", ownerName: "DOE JANE", acres: 0.42, countyName: "Wayne County, KY" });
+    expect(r).toMatchObject({ source: "county:21111", status: "LOOKED_UP", parcelId: "014E00010000", countyName: "Jefferson County, KY", latitude: 38.25457441 });
     expect(r.geometry?.type).toBe("Polygon");
-    expect(calls.find((c) => c.includes("/query?"))).toContain("geometry=-84.85%2C36.83");
-    expect(r.links.some((l) => l.label.includes("Wayne County PVA"))).toBe(true);
+    expect(calls.find((c) => c.includes("Ky_911"))).toContain("Add_Number%3D527");
+    // The parcel is queried at the rooftop point, not the street centerline.
+    expect(calls.find((c) => c.includes("lojic") && c.includes("/query?"))).toContain("geometry=-85.75940809%2C38.25457441");
+    expect(r.links.some((l) => l.label.includes("Jefferson County PVA"))).toBe(true);
+  });
+
+  it("parses street numbers and names for the 911 lookup", () => {
+    expect(parseStreet("527 W Jefferson St")).toEqual({ number: 527, name: "JEFFERSON" });
+    expect(parseStreet("1632 Jones Mill Road")).toEqual({ number: 1632, name: "JONES MILL" });
+    expect(parseStreet("12 O'Hara Dr Apt 4")).toEqual({ number: 12, name: "O''HARA" });
+    expect(parseStreet("Main St")).toBeNull();
   });
 
   it("other counties use Regrid when a token is set, else say so", async () => {
     setParcelFetcher(async (url) => {
-      if (url.includes("geocoding")) return census("21001");
+      if (url.includes("geocoding")) return census("21231");
+      if (url.includes("Ky_911")) return ok({ features: [] });
       if (url.includes("app.regrid.com/api/v2/parcels/point")) return ok({ parcels: { features: [{ properties: { path: "/us/ky/adair/123", fields: { parcelnumb: "R-9", owner: "ROE RICHARD", ll_gisacre: 2.1, parval: 120000, saledate: "2021-03-01", saleprice: 150000 } }, geometry: square }] } });
       throw new Error(`unexpected ${url}`);
     });
@@ -68,7 +80,7 @@ describe("lookup chain", () => {
     process.env.PARCELS_PROVIDER = "mock";
     const a = await lookupParcel(q);
     expect(a).toEqual(await lookupParcel(q)); // deterministic
-    expect(a.countyName).toMatch(/Wayne County, KY/);
+    expect(a.countyName).toMatch(/\(sample\)/);
     process.env.PARCELS_PROVIDER = "off";
     expect((await lookupParcel(q)).status).toBe("NOT_FOUND");
   });
@@ -86,6 +98,7 @@ describe("county registry", () => {
       expect(Boolean(c.arcgisItemId || c.layerUrl)).toBe(true);
       expect(c.links("1").length).toBeGreaterThan(0);
     }
-    expect(countyByFips("21231")?.name).toBe("Wayne County, KY");
+    expect(countyByFips("21111")?.name).toBe("Jefferson County, KY");
+    expect(countyByFips("21231")).toBeNull(); // Wayne County, KY has no public parcel layer — Regrid covers it
   });
 });
