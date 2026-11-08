@@ -17,10 +17,11 @@ export type NavSection = {
 
 export type IconName =
   | "overview" | "rentals" | "leasing" | "people" | "accounting" | "tasks" | "communications"
-  | "reports" | "notes" | "files" | "workflows" | "ai" | "settings" | "help";
+  | "reports" | "notes" | "files" | "workflows" | "ai" | "settings" | "help" | "calendar";
 
 export const NAV_MAIN: NavSection[] = [
   { id: "overview", label: "Overview", href: "/app/overview", icon: "overview" },
+  { id: "calendar", label: "Calendar", href: "/app/calendar", icon: "calendar" },
   {
     id: "rentals", label: "Rentals", href: "/app/rentals", icon: "rentals", module: "rentals", phase: 2,
     children: [

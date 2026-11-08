@@ -63,7 +63,7 @@ describe("notifications", () => {
     expect(n.items.map((i) => i.title)).toEqual(expect.arrayContaining([expect.stringMatching(/^URGENT request #\d+/), "New message from Remy Renter"]));
     // An action by the user themselves doesn't notify them.
     const before = n.items.length;
-    await createTask(db, { title: "Self-made request", type: "TENANT_REQUEST", propertyId, tenantId }, { userId: O.userId, name: "User", kind: "USER" });
+    await createTask(db, { title: "Self-made request", type: "TENANT_REQUEST", propertyId, tenantId }, { userId: O.userId, name: "User", kind: "STAFF" });
     expect((await listNotifications(db, O.userId)).items.length).toBe(before);
   });
 });

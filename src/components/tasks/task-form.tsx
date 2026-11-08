@@ -15,7 +15,7 @@ import type { TaskFormOptions } from "@/server/maintenance/queries";
 type Kind = "TASK" | "WORK_ORDER" | "INSPECTION" | "OWNER_REQUEST" | "TENANT_REQUEST";
 
 /** New task / work order / inspection. Opens as a modal route or a full page. */
-export function TaskForm({ options, defaultType = "TASK", preset = {} }: { options: TaskFormOptions; defaultType?: Kind; preset?: { propertyId?: string; unitId?: string; parentTaskId?: string; leaseId?: string } }) {
+export function TaskForm({ options, defaultType = "TASK", preset = {} }: { options: TaskFormOptions; defaultType?: Kind; preset?: { propertyId?: string; unitId?: string; parentTaskId?: string; leaseId?: string; dueDate?: string; type?: Kind } }) {
   const router = useRouter();
   const modal = useCreateModal();
   const [type, setType] = React.useState<Kind>(defaultType);
@@ -23,7 +23,7 @@ export function TaskForm({ options, defaultType = "TASK", preset = {} }: { optio
   const [description, setDescription] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [priority, setPriority] = React.useState<(typeof PRIORITIES)[number]>("NORMAL");
-  const [dueDate, setDueDate] = React.useState("");
+  const [dueDate, setDueDate] = React.useState(preset.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(preset.dueDate) ? preset.dueDate : "");
   const presetProp = preset.propertyId ?? options.properties.find((p) => p.units.some((u) => u.id === preset.unitId))?.id ?? "";
   const [propertyId, setPropertyId] = React.useState(presetProp);
   const [unitId, setUnitId] = React.useState(preset.unitId ?? "");

@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Building2, FileSignature, Users, Landmark, ListChecks, MessagesSquare,
-  BarChart3, StickyNote, FolderOpen, Workflow, Sparkles, Settings, LifeBuoy, type LucideIcon,
+  BarChart3, StickyNote, FolderOpen, Workflow, Sparkles, Settings, LifeBuoy, CalendarDays, type LucideIcon,
 } from "lucide-react";
 import type { IconName } from "@/lib/nav";
 
@@ -19,4 +19,5 @@ export const NAV_ICONS: Record<IconName, LucideIcon> = {
   ai: Sparkles,
   settings: Settings,
   help: LifeBuoy,
+  calendar: CalendarDays,
 };
