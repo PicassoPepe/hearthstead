@@ -25,6 +25,7 @@ import { seedAccounting } from "./seed-accounting";
 import { seedComms } from "./seed-comms";
 import { seedFunnel } from "./seed-funnel";
 import { seedPlatform, DEMO_API_KEY } from "./seed-platform";
+import { seedImages } from "./seed-images";
 import { todayIn } from "../src/lib/dates";
 
 const db = new PrismaClient();
@@ -122,6 +123,10 @@ async function main(): Promise<void> {
 
   // Phase 10: demo API key, webhook endpoint, workflows, agents.
   const platform = await seedPlatform(process.env.DATABASE_URL!, orgId, users);
+
+  // Property photos + logo (procedural illustrations — no binary assets in the repo).
+  const images = await seedImages(process.env.DATABASE_URL!, orgId, users["admin@example.com"]!);
+  await db.organization.update({ where: { id: orgId }, data: { logoUrl: images.logoUrl } });
 
   // Admin lands in Maple & Main by default.
   await db.user.update({ where: { id: users["admin@example.com"] }, data: { lastOrgId: orgId } });

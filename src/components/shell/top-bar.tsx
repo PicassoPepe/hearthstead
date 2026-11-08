@@ -79,7 +79,7 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="flex items-center gap-2 rounded-lg p-1 pr-2 hover:bg-surface-muted" aria-label={`Account menu for ${shell.user.name ?? shell.user.email}`}>
-              <Avatar name={shell.user.name ?? shell.user.email} />
+              <Avatar name={shell.user.name ?? shell.user.email} src={shell.userImage} />
               <span className="hidden max-w-36 text-left lg:block">
                 <span className="block truncate text-[13px] font-medium leading-tight">{shell.user.name ?? shell.user.email}</span>
                 <span className="block truncate text-xs leading-tight text-muted-foreground">{shell.org.name}</span>

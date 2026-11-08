@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Lock, MessageSquare, Sparkles, Globe } from "lucide-react";
+import { Camera, Lock, MessageSquare, Sparkles, Globe, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, NativeSelect, Textarea } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CONDITIONS, PRIORITIES, PRIORITY_LABEL, STATUS_LABEL, TASK_STATUSES } from "@/lib/maintenance";
-import { billFromWorkOrder, commentAction, saveInspectionItemAction, setTaskStatusAction, summarizeInspectionAction, updateTaskAction } from "@/server/actions/maintenance";
+import { addInspectionPhotosAction, removeInspectionPhotoAction, billFromWorkOrder, commentAction, saveInspectionItemAction, setTaskStatusAction, summarizeInspectionAction, updateTaskAction } from "@/server/actions/maintenance";
 import { cn } from "@/lib/utils";
 
 /** Status select with optimistic update and rollback on error. */
@@ -164,7 +164,7 @@ export function ActivityFeed({ taskId, items, canComment, canPublic }: { taskId:
   );
 }
 
-type Item = { id: string; room: string; item: string; condition: string | null; note: string | null };
+type Item = { id: string; room: string; item: string; condition: string | null; note: string | null; photos: string[] };
 
 /** Room-by-room checklist: condition (radio group, not color-only) + note per item. Saves on change. */
 export function InspectionChecklist({ taskId, items, summary, canEdit, canAi }: { taskId: string; items: Item[]; summary: string | null; canEdit: boolean; canAi: boolean }) {
@@ -222,12 +222,57 @@ export function InspectionChecklist({ taskId, items, summary, canEdit, canAi }: 
                     ))}
                   </fieldset>
                   <Input aria-label={`Note for ${i.item}`} placeholder="Note" disabled={!canEdit} value={s.note} onChange={(e) => setState((x) => ({ ...x, [i.id]: { ...x[i.id]!, note: e.target.value } }))} onBlur={(e) => e.target.value !== (i.note ?? "") && save(i.id, { note: e.target.value })} />
+                  <ItemPhotos taskId={taskId} item={i} canEdit={canEdit} />
                 </li>
               );
             })}
           </ul>
         </section>
       ))}
+    </div>
+  );
+}
+
+/** Photos for one checklist item: camera/upload on phones (capture), thumbnails, remove. */
+function ItemPhotos({ taskId, item, canEdit }: { taskId: string; item: Item; canEdit: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = React.useState(false);
+  const id = React.useId();
+  if (!canEdit && !item.photos.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 md:col-span-3">
+      {item.photos.map((p, n) => (
+        <span key={p} className="group relative">
+          <a href={`/api/files/${p}`} target="_blank" rel="noopener" aria-label={`${item.item} photo ${n + 1}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/api/files/${p}`} alt="" className="size-14 rounded-md border border-border object-cover" />
+          </a>
+          {canEdit ? (
+            <button type="button" aria-label={`Remove ${item.item} photo ${n + 1}`} className="absolute -right-1.5 -top-1.5 rounded-full bg-surface p-0.5 shadow ring-1 ring-border" onClick={async () => {
+              const r = await removeInspectionPhotoAction(taskId, item.id, p);
+              if (!r.ok) return void toast.error(r.error);
+              router.refresh();
+            }}><Trash2 className="size-3.5" aria-hidden /></button>
+          ) : null}
+        </span>
+      ))}
+      {canEdit ? (
+        <label htmlFor={id} className={cn("inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-2.5 text-xs font-medium text-muted-foreground hover:bg-surface-muted focus-within:ring-2 focus-within:ring-ring", busy && "pointer-events-none opacity-60")}>
+          <Camera className="size-4" aria-hidden /> {busy ? "Uploading…" : "Add photo"}<span className="sr-only"> for {item.item}</span>
+          <input id={id} type="file" accept="image/*" capture="environment" multiple className="sr-only" onChange={async (e) => {
+            const files = [...(e.target.files ?? [])];
+            e.target.value = "";
+            if (!files.length) return;
+            const fd = new FormData();
+            for (const f of files) fd.append("files", f);
+            setBusy(true);
+            const r = await addInspectionPhotosAction(taskId, item.id, fd);
+            setBusy(false);
+            if (!r.ok) return void toast.error(r.error);
+            router.refresh();
+          }} />
+        </label>
+      ) : null}
     </div>
   );
 }

@@ -28,7 +28,10 @@ export default async function OwnerProperties() {
           const o2 = p.units.filter((u) => occ.has(u.id)).length;
           return (
             <li key={p.id}>
-              <Card className="p-4">
+              <Card className="overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {p.photoUrl ? <img src={p.photoUrl} alt="" className="h-40 w-full object-cover" /> : null}
+                <div className="p-4">
                 <h2 className="font-semibold">{p.name}</h2>
                 <p className="text-sm text-muted-foreground">{p.addressLine1}, {p.city} · you own {pct / 100}%</p>
                 <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
@@ -37,6 +40,7 @@ export default async function OwnerProperties() {
                   <div><dt className="text-muted-foreground">Net YTD</dt><dd className="font-semibold tabular">{formatMoney(inc - exp, { showCents: false })}</dd></div>
                 </dl>
                 <p className="mt-2 text-xs text-muted-foreground">Property totals. Your share of net: {formatMoney(Math.round((inc - exp) * (pct / 10_000)), { showCents: false })}</p>
+                </div>
               </Card>
             </li>
           );

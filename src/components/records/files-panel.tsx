@@ -12,7 +12,7 @@ export type FileView = { id: string; name: string; contentType: string; size: st
 const fmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 /** Keyboard-accessible dropzone: a real file input behind a styled label, plus drag & drop. */
-export function FileDropzone({ onFiles, busy, accept }: { onFiles: (files: File[]) => void; busy?: boolean; accept?: string }) {
+export function FileDropzone({ onFiles, busy, accept, hint, label = "files" }: { onFiles: (files: File[]) => void; busy?: boolean; accept?: string; hint?: string; label?: string }) {
   const [over, setOver] = React.useState(false);
   const id = React.useId();
   return (
@@ -29,7 +29,7 @@ export function FileDropzone({ onFiles, busy, accept }: { onFiles: (files: File[
     >
       <UploadCloud className="mx-auto mb-2 size-6 text-muted-foreground" aria-hidden />
       <p className="text-sm">
-        Drag files here, or{" "}
+        Drag {label} here, or{" "}
         <label htmlFor={id} className="cursor-pointer font-semibold text-primary underline-offset-4 hover:underline focus-within:underline">
           browse
           <input
@@ -47,7 +47,7 @@ export function FileDropzone({ onFiles, busy, accept }: { onFiles: (files: File[
           />
         </label>
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">PDF, images, Word, Excel or CSV · up to 10 MB each</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint ?? "PDF, images, Word, Excel or CSV · up to 10 MB each"}</p>
       {busy ? <p role="status" className="mt-2 text-xs font-medium">Uploading…</p> : null}
     </div>
   );

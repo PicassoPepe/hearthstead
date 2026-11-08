@@ -19,8 +19,9 @@ import { FilesPanel } from "@/components/records/files-panel";
 import { UnitForm } from "@/components/rentals/unit-form";
 import { formatMoney } from "@/lib/money";
 import { formatBaths } from "@/lib/rentals";
+import { PhotoGallery } from "@/components/images/photo-gallery";
 
-const TABS = ["overview", "leases", "listing", "transactions", "tasks", "notes", "files"] as const;
+const TABS = ["overview", "photos", "leases", "listing", "transactions", "tasks", "notes", "files"] as const;
 type Tab = (typeof TABS)[number];
 
 export async function generateMetadata({ params }: { params: Promise<{ unitId: string }> }) {
@@ -47,6 +48,7 @@ export default async function UnitPage({ params, searchParams }: { params: Promi
       <EntityHeader
         breadcrumb={<><Link href="/app/rentals" className="hover:underline">Properties</Link> / <Link href={`/app/rentals/${u.propertyId}`} className="hover:underline">{u.property.name}</Link> / {u.name}</>}
         title={`${u.property.name} · ${u.name}`}
+        image={u.photos[0] ? `/api/images/${u.photos[0]}` : u.property.photoUrl}
         status={<StatusBadge status={isOccupied ? "OCCUPIED" : "VACANT"} />}
         actions={!isOccupied && can(ctx.permissions, "leasing", "edit") ? <Button asChild><Link href={`/app/new/lease?unitId=${u.id}`} scroll={false}><Plus aria-hidden /> New lease</Link></Button> : null}
         subtitle={u.amenities.length ? u.amenities.join(" · ") : undefined}
@@ -62,6 +64,7 @@ export default async function UnitPage({ params, searchParams }: { params: Promi
         active={tab}
         tabs={[
           { id: "overview", label: "Overview" },
+          { id: "photos", label: "Photos", count: u.photos.length },
           { id: "leases", label: "Leases", count: leases.length },
           { id: "listing", label: "Listing" },
           { id: "tasks", label: "Tasks" },
@@ -83,17 +86,42 @@ export default async function UnitPage({ params, searchParams }: { params: Promi
             )}
           </CardContent>
         </Card>
+      ) : tab === "photos" ? (
+        <PhotoGallery kind="unit" id={u.id} photos={u.photos} inherited={u.property.photos} canEdit={canEdit} />
       ) : tab === "notes" ? (
         <NotesPanel entityType="Unit" entityId={u.id} notes={await notesFor(ctx, "Unit", u.id)} canEdit={canEdit} />
       ) : tab === "files" ? (
         <FilesPanel entityType="Unit" entityId={u.id} files={await filesFor(ctx, "Unit", u.id)} canEdit={canEdit} />
       ) : tab === "listing" ? (
-        <EmptyState icon={<Megaphone />} title="Listings arrive in Phase 9" description="Photos, description (with an AI writer), syndication and showings for this unit." />
+        <UnitListing ctx={ctx} unitId={u.id} canEdit={can(ctx.permissions, "leasing", "edit")} />
       ) : tab === "leases" || tab === "transactions" ? (
         <LeasesTable rows={leases} tab={`unit-${u.id}`} canEdit={can(ctx.permissions, "leasing", "edit")} />
       ) : (
         <EntityTasks ctx={ctx} where={{ unitId: u.id }} newHref={`/app/new/task?unitId=${u.id}`} tableId="unit-tasks" />
       )}
     </>
+  );
+}
+
+async function UnitListing({ ctx, unitId, canEdit }: { ctx: Awaited<ReturnType<typeof requireContext>>; unitId: string; canEdit: boolean }) {
+  const l = await ctx.db.listing.findFirst({ where: { unitId, status: { in: ["DRAFT", "PUBLISHED"] } }, orderBy: { createdAt: "desc" } });
+  if (!l)
+    return (
+      <EmptyState
+        icon={<Megaphone />}
+        title="Not listed"
+        description="Create a listing to advertise this unit on your public site and syndication feed. Its photos come from this unit (or the property)."
+        action={canEdit ? <Button asChild><Link href={`/app/rentals/listings?new=${unitId}`}>Create listing</Link></Button> : undefined}
+      />
+    );
+  return (
+    <Card className="max-w-3xl">
+      <CardHeader><CardTitle>{l.title}</CardTitle></CardHeader>
+      <CardContent className="grid gap-2 text-sm">
+        <p><Badge tone={l.status === "PUBLISHED" ? "success" : "neutral"}>{l.status === "PUBLISHED" ? "Published" : "Draft"}</Badge> · {formatMoney(l.rentCents)}/mo</p>
+        <p className="line-clamp-3 text-muted-foreground">{l.description}</p>
+        <p><Link href="/app/rentals/listings" className="font-medium text-primary underline">Manage listings</Link></p>
+      </CardContent>
+    </Card>
   );
 }

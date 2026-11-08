@@ -1,12 +1,13 @@
 import Link from "next/link";
+import { OrgMark } from "@/components/patterns/org-mark";
 
 /** Minimal branded shell for public pages (listings, apply, sign). */
-export function PublicShell({ org, brand, children, home }: { org: { name: string; phone: string | null; email: string | null; slug: string }; brand: string; children: React.ReactNode; home?: boolean }) {
+export function PublicShell({ org, brand, children, home }: { org: { name: string; phone: string | null; email: string | null; slug: string; logoUrl?: string | null }; brand: string; children: React.ReactNode; home?: boolean }) {
   return (
     <div className="portal-density min-h-dvh bg-background" style={{ ["--primary" as string]: brand, ["--ring" as string]: brand }}>
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-          <span aria-hidden className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-white" style={{ background: brand }}>{org.name.slice(0, 1)}</span>
+          <OrgMark name={org.name} logoUrl={org.logoUrl} brand={brand} />
           {home ? <span className="font-semibold">{org.name}</span> : <Link href={`/l/${org.slug}`} className="font-semibold hover:underline">{org.name}</Link>}
           <span className="ml-auto text-sm text-muted-foreground">{org.phone ? <a className="hover:underline" href={`tel:${org.phone}`}>{org.phone}</a> : null}</span>
         </div>

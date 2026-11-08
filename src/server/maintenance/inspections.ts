@@ -3,6 +3,32 @@ import { UserFacingError } from "@/server/action-result";
 import { audit } from "@/server/audit";
 import { getLlmProvider } from "@/adapters/llm";
 import { addActivity, type TaskActor } from "./tasks";
+import { storeAttachment } from "@/server/records/service";
+import { IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/server/images/service";
+
+/** Attach photos to a checklist item (private attachments linked to the inspection task). */
+export async function addInspectionPhotos(db: ScopedDb, itemId: string, files: File[]) {
+  const item = await db.inspectionItem.findFirst({ where: { id: itemId } });
+  if (!item) throw new UserFacingError("Item not found");
+  if (!files.length) throw new UserFacingError("Choose a photo");
+  if (item.photos.length + files.length > 12) throw new UserFacingError("Up to 12 photos per item");
+  const ids: string[] = [];
+  for (const f of files) {
+    if (!IMAGE_TYPES.has(f.type)) throw new UserFacingError(`${f.name}: use a JPG, PNG, WebP or GIF image`);
+    if (f.size > MAX_IMAGE_BYTES) throw new UserFacingError(`${f.name} is larger than 8 MB`);
+    const a = await storeAttachment(db, { name: f.name, type: f.type, bytes: new Uint8Array(await f.arrayBuffer()) }, { type: "Task", id: item.taskId }, "InspectionPhoto");
+    ids.push(a.id);
+  }
+  await db.inspectionItem.update({ where: { id: itemId }, data: { photos: [...item.photos, ...ids] } });
+  return ids;
+}
+
+export async function removeInspectionPhoto(db: ScopedDb, itemId: string, photoId: string) {
+  const item = await db.inspectionItem.findFirst({ where: { id: itemId } });
+  if (!item || !item.photos.includes(photoId)) throw new UserFacingError("Photo not found");
+  await db.inspectionItem.update({ where: { id: itemId }, data: { photos: item.photos.filter((p) => p !== photoId) } });
+  await db.attachment.updateMany({ where: { id: photoId }, data: { deletedAt: new Date() } });
+}
 
 const CONDITIONS = ["GOOD", "FAIR", "POOR", "DAMAGED", "NA"];
 

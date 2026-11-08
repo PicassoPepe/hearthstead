@@ -9,7 +9,9 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
   return <div aria-hidden className={cn("skeleton", className)} {...props} />;
 }
 
-export function Avatar({ name, className }: { name: string | null | undefined; className?: string }) {
+export function Avatar({ name, className, src }: { name: string | null | undefined; className?: string; src?: string | null }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  if (src) return <img src={src} alt="" className={cn("inline-block size-8 shrink-0 rounded-full object-cover", className)} />;
   return (
     <span aria-hidden className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground", className)}>
       {initials(name)}

@@ -24,8 +24,9 @@ import { PROPERTY_TYPE_META, formatAddress, formatPercentBps, ownerDisplayName }
 import { balancesBy, listLeases } from "@/server/leasing/queries";
 import { LeasesTable } from "@/components/leasing/leases-table";
 import { formatDate } from "@/lib/dates";
+import { PhotoGallery } from "@/components/images/photo-gallery";
 
-const TABS = ["overview", "units", "leases", "owners", "transactions", "tasks", "notes", "files", "settings"] as const;
+const TABS = ["overview", "photos", "units", "leases", "owners", "transactions", "tasks", "notes", "files", "settings"] as const;
 type Tab = (typeof TABS)[number];
 
 export async function generateMetadata({ params }: { params: Promise<{ propertyId: string }> }) {
@@ -56,7 +57,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
   const [units, noteCount, fileCount, leases, balances] = await Promise.all([
     listUnits(ctx, p.id),
     ctx.db.note.count({ where: { entityType: "Property", entityId: p.id } }),
-    ctx.db.attachment.count({ where: { entityType: "Property", entityId: p.id } }),
+    ctx.db.attachment.count({ where: { entityType: "Property", entityId: p.id, public: false } }),
     listLeases(ctx, { propertyId: p.id }),
     balancesBy(ctx, "propertyId", [p.id]),
   ]);
@@ -72,6 +73,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
       <EntityHeader
         breadcrumb={<><Link href="/app/rentals" className="hover:underline">Properties</Link> / {p.name}</>}
         title={p.name}
+        image={p.photoUrl}
         status={<Badge tone="primary">{meta.label}</Badge>}
         subtitle={formatAddress(p)}
         stats={[
@@ -106,6 +108,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
         active={tab}
         tabs={[
           { id: "overview", label: "Overview" },
+          { id: "photos", label: "Photos", count: p.photos.length },
           { id: "units", label: "Units", count: units.length },
           { id: "leases", label: "Leases", count: leases.filter((l) => l.status === "ACTIVE" || l.status === "EVICTION").length },
           { id: "owners", label: "Owners", count: p.ownerships.length },
@@ -160,6 +163,8 @@ export default async function PropertyPage({ params, searchParams }: { params: P
             <UnitsTable rows={units} showProperty={false} canEdit={canEdit && !meta.singleUnit} canDelete={can(ctx.permissions, "rentals", "delete")} propertyId={p.id} />
           </div>
         </div>
+      ) : tab === "photos" ? (
+        <PhotoGallery kind="property" id={p.id} photos={p.photos} canEdit={canEdit} />
       ) : tab === "units" ? (
         <UnitsTable rows={units} showProperty={false} canEdit={canEdit && !meta.singleUnit} canDelete={can(ctx.permissions, "rentals", "delete")} propertyId={p.id} />
       ) : tab === "owners" ? (

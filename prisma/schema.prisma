@@ -1064,6 +1064,8 @@ model InspectionItem {
   /// GOOD | FAIR | POOR | DAMAGED | NA
   condition      String?
   note           String?
+  /// Attachment ids (private; served by /api/files/[id])
+  photos         String[] @default([])
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

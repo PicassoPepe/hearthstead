@@ -1,3 +1,4 @@
+import { OrgMark } from "@/components/patterns/org-mark";
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { requirePortal } from "@/server/portal/context";
@@ -23,9 +24,7 @@ export default async function TenantPortalLayout({ children }: { children: React
       ) : null}
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <span aria-hidden className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-white" style={{ background: brand }}>
-            {ctx.org.name.slice(0, 1)}
-          </span>
+          <OrgMark name={ctx.org.name} logoUrl={ctx.org.logoUrl} brand={brand} />
           <div className="min-w-0 flex-1">
             <div className="truncate font-semibold leading-tight">{ctx.org.name}</div>
             <div className="truncate text-sm text-muted-foreground">{ctx.lease?.label ?? "Resident portal"}</div>

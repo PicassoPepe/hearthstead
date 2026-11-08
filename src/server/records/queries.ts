@@ -21,7 +21,7 @@ export async function notesFor(ctx: AppContext, entityType: string, entityId: st
 
 export async function filesFor(ctx: AppContext, entityType?: string, entityId?: string): Promise<FileView[]> {
   const files = await ctx.db.attachment.findMany({
-    where: entityType ? { entityType, entityId } : {},
+    where: { public: false, ...(entityType ? { entityType, entityId } : {}) },
     orderBy: { createdAt: "desc" },
     take: 500,
   });

@@ -15,11 +15,11 @@ import { describeListingAction, saveListingAction, setListingStatusAction } from
 export type UnitOption = { id: string; label: string; marketRentCents: number };
 export type ListingDraft = { id?: string; unitId: string; title: string; description: string; rentCents: number | null; depositCents: number | null; availableOn: string; leaseTermMonths: number; petPolicy: string; syndicate: boolean };
 
-export function ListingEditor({ units, initial, trigger }: { units: UnitOption[]; initial?: ListingDraft; trigger: React.ReactNode }) {
+export function ListingEditor({ units, initial, trigger, defaultUnitId }: { units: UnitOption[]; initial?: ListingDraft; trigger: React.ReactNode; defaultUnitId?: string }) {
   const router = useRouter();
   const blank: ListingDraft = { unitId: "", title: "", description: "", rentCents: null, depositCents: null, availableOn: "", leaseTermMonths: 12, petPolicy: "Cats and small dogs welcome", syndicate: true };
-  const [open, setOpen] = React.useState(false);
-  const [f, setF] = React.useState<ListingDraft>(initial ?? blank);
+  const [open, setOpen] = React.useState(Boolean(defaultUnitId));
+  const [f, setF] = React.useState<ListingDraft>(initial ?? (defaultUnitId ? { ...blank, unitId: defaultUnitId, rentCents: units.find((u) => u.id === defaultUnitId)?.marketRentCents ?? null } : blank));
   const [busy, setBusy] = React.useState("");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const set = (p: Partial<ListingDraft>) => setF({ ...f, ...p });

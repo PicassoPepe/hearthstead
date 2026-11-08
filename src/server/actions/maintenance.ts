@@ -8,7 +8,7 @@ import { can, canAccessProperty, PermissionError } from "@/server/permissions";
 import * as T from "@/server/maintenance/tasks";
 import { archiveVendor, saveVendor } from "@/server/maintenance/vendors";
 import { createBill } from "@/server/maintenance/bills";
-import { saveInspectionItem, summarizeInspection } from "@/server/maintenance/inspections";
+import { addInspectionPhotos, removeInspectionPhoto, saveInspectionItem, summarizeInspection } from "@/server/maintenance/inspections";
 import { setSetting } from "@/server/settings/service";
 import { audit } from "@/server/audit";
 import { TASK_STATUSES, type TaskInput, type VendorInput } from "@/lib/maintenance";
@@ -97,6 +97,25 @@ export async function saveInspectionItemAction(taskId: string, itemId: string, p
     await saveInspectionItem(ctx.db, itemId, patch);
     revalidatePath(`/app/tasks/${taskId}`);
   });
+}
+
+export async function addInspectionPhotosAction(taskId: string, itemId: string, form: FormData): Promise<ActionResult<{ ids: string[] }>> {
+  return runAction(async () => {
+    const { ctx } = await taskWriter(taskId);
+    if (!(await ctx.db.inspectionItem.findFirst({ where: { id: itemId, taskId } }))) throw new UserFacingError("Item not found");
+    const ids = await addInspectionPhotos(ctx.db, itemId, form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0));
+    revalidatePath(`/app/tasks/${taskId}`);
+    return { ids };
+  }, "Photo added");
+}
+
+export async function removeInspectionPhotoAction(taskId: string, itemId: string, photoId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { ctx } = await taskWriter(taskId);
+    if (!(await ctx.db.inspectionItem.findFirst({ where: { id: itemId, taskId } }))) throw new UserFacingError("Item not found");
+    await removeInspectionPhoto(ctx.db, itemId, photoId);
+    revalidatePath(`/app/tasks/${taskId}`);
+  }, "Photo removed");
 }
 
 export async function summarizeInspectionAction(taskId: string): Promise<ActionResult<{ summary: string }>> {

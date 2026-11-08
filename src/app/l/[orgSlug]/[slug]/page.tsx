@@ -4,6 +4,7 @@ import { publishedListings } from "@/server/public/listings";
 import { PublicShell } from "@/components/funnel/public-shell";
 import { RequestShowing } from "@/components/funnel/request-showing";
 import { Button } from "@/components/ui/button";
+import { PhotoStrip } from "@/components/images/photo-gallery";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
 
@@ -40,6 +41,7 @@ export default async function PublicListing({ params }: { params: Promise<{ orgS
       <p className="text-sm"><Link href={`/l/${orgSlug}`} className="text-primary hover:underline">← All homes</Link></p>
       <div className="mt-3 grid gap-8 lg:grid-cols-[1fr_340px]">
         <article>
+          <PhotoStrip urls={l.photos} className="mb-6" />
           <h1 className="text-3xl font-semibold tracking-tight">{l.title}</h1>
           <p className="mt-1 text-muted-foreground">{l.property.addressLine1}, {l.property.city}, {l.property.state} {l.property.postalCode}</p>
           <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">

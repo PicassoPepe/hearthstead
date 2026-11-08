@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireContext } from "@/server/context";
@@ -50,7 +51,7 @@ export default async function InspectionReport({ params }: { params: Promise<{ t
                 <tr key={i.id} className="border-b border-border/60">
                   <td className="py-1.5">{i.item}</td>
                   <td className={`py-1.5 font-medium ${i.condition === "DAMAGED" || i.condition === "POOR" ? "text-danger" : ""}`}>{label(i.condition)}</td>
-                  <td className="py-1.5">{i.note ?? ""}</td>
+                  <td className="py-1.5">{i.note ?? ""}{i.photos.length ? <span className="mt-1 flex flex-wrap gap-1">{i.photos.map((p) => <img key={p} src={`/api/files/${p}`} alt={`${i.item} photo`} className="h-20 w-28 rounded object-cover" />)}</span> : null}</td>
                 </tr>
               ))}
             </tbody>

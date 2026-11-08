@@ -3,6 +3,7 @@ import { can } from "@/server/permissions";
 import { auth } from "@/server/auth";
 import { adminDb } from "@/server/db";
 import { PageHeader } from "@/components/patterns/page-header";
+import { AvatarPicker } from "@/components/images/branding-images";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sessions, SupportAccess, TwoFactor } from "@/components/platform/security";
 
@@ -25,7 +26,11 @@ export default async function SecurityPage() {
   ]);
   return (
     <div className="grid max-w-3xl gap-4">
-      <PageHeader eyebrow="Settings" title="Security" description="Two-factor authentication, where you're signed in, and support access." />
+      <PageHeader eyebrow="Settings" title="Account & security" description="Your profile photo, two-factor authentication, where you're signed in, and support access." />
+      <Card>
+        <CardHeader><div><CardTitle>Profile photo</CardTitle><CardDescription>{user.name} · {user.email}</CardDescription></div></CardHeader>
+        <CardContent><AvatarPicker current={user.image} /></CardContent>
+      </Card>
       <Card>
         <CardHeader><div><CardTitle>Two-factor authentication</CardTitle><CardDescription>Protect your account with a code from an authenticator app (TOTP).</CardDescription></div></CardHeader>
         <CardContent><TwoFactor enabled={user.twoFactorEnabled} /></CardContent>

@@ -2,6 +2,7 @@ import "server-only";
 import { adminDb } from "@/server/db";
 import { forOrg } from "@/server/dal/for-org";
 import { accessibleBrand } from "@/server/portal/queries";
+import { photoUrls } from "@/server/images/service";
 
 /** Public listing lookups: org by slug (system lookup), then everything through the org-scoped client. */
 export async function publicOrg(orgSlug: string) {
@@ -19,7 +20,7 @@ export async function publishedListings(orgSlug: string) {
     ...o,
     listings: listings.map((l) => {
       const u = units.find((x) => x.id === l.unitId)!;
-      return { ...l, unit: u, property: u.property };
+      return { ...l, unit: u, property: u.property, photos: photoUrls(u.photos, u.property.photos) };
     }),
   };
 }

@@ -23,7 +23,11 @@ export default async function PublicListings({ params }: { params: Promise<{ org
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {d.listings.map((l) => (
           <li key={l.id} className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
-            <div aria-hidden className="flex h-36 items-end bg-gradient-to-br from-primary/80 to-primary/40 p-3 text-white"><span className="rounded bg-black/30 px-2 py-0.5 text-sm font-semibold">{formatMoney(l.rentCents, { showCents: false })}/mo</span></div>
+            <div className="relative flex h-44 items-end bg-gradient-to-br from-primary/80 to-primary/40 p-3 text-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {l.photos[0] ? <img src={l.photos[0]} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" /> : null}
+              <span className="relative rounded bg-black/55 px-2 py-0.5 text-sm font-semibold">{formatMoney(l.rentCents, { showCents: false })}/mo</span>
+            </div>
             <div className="p-4">
               <h2 className="font-semibold"><Link href={`/l/${d.org.slug}/${l.slug}`} className="hover:underline">{l.title}</Link></h2>
               <p className="text-sm text-muted-foreground">{l.property.addressLine1}, {l.property.city}</p>

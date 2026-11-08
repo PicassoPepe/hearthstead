@@ -8,6 +8,7 @@ export function EntityHeader({
   stats,
   actions,
   breadcrumb,
+  image,
 }: {
   title: string;
   subtitle?: React.ReactNode;
@@ -15,17 +16,25 @@ export function EntityHeader({
   stats?: { label: string; value: React.ReactNode }[];
   actions?: React.ReactNode;
   breadcrumb?: React.ReactNode;
+  /** Optional cover photo URL shown as a thumbnail beside the title. */
+  image?: string | null;
 }) {
   return (
     <header className="mb-6 rounded-card border border-border bg-surface p-5 shadow-card">
       {breadcrumb ? <nav aria-label="Breadcrumb" className="mb-2 text-[13px] text-muted-foreground">{breadcrumb}</nav> : null}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-start gap-4">
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt="" className="hidden size-16 shrink-0 rounded-lg border border-border object-cover sm:block" />
+          ) : null}
+          <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate text-xl font-semibold tracking-tight">{title}</h1>
             {status}
           </div>
           {subtitle ? <div className="mt-1 text-sm text-muted-foreground">{subtitle}</div> : null}
+          </div>
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>

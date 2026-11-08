@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { Megaphone as MegaphoneIcon } from "lucide-react";
 import Link from "next/link";
 import { ExternalLink, Plus, Rss } from "lucide-react";
@@ -14,17 +15,19 @@ import { formatDate, toISODate } from "@/lib/dates";
 
 export const metadata = { title: "Listings" };
 
-export default async function ListingsPage() {
+export default async function ListingsPage({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
+  const preset = (await searchParams).new;
   const ctx = await requireContext();
   if (!can(ctx.permissions, "rentals", "view")) return <Forbidden what="listings" />;
   const [listings, units, occ, org, leads] = await Promise.all([
     ctx.db.listing.findMany({ where: { deletedAt: null }, orderBy: [{ status: "asc" }, { updatedAt: "desc" }] }),
-    ctx.db.unit.findMany({ where: { deletedAt: null, property: { deletedAt: null } }, orderBy: [{ property: { name: "asc" } }, { name: "asc" }], include: { property: { select: { name: true } } } }),
+    ctx.db.unit.findMany({ where: { deletedAt: null, property: { deletedAt: null } }, orderBy: [{ property: { name: "asc" } }, { name: "asc" }], include: { property: { select: { name: true, photos: true } } } }),
     occupiedUnitIds(ctx),
     ctx.db.organization.findFirstOrThrow({ where: { id: ctx.org.id } }),
     ctx.db.prospect.groupBy({ by: ["listingId"], _count: true }),
   ]);
   const unitLabel = new Map(units.map((u) => [u.id, `${u.property.name} · ${u.name}`]));
+  const cover = new Map(units.map((u) => [u.id, u.photos[0] ?? u.property.photos[0] ?? null]));
   const listed = new Set(listings.filter((l) => l.status !== "UNLISTED").map((l) => l.unitId));
   const vacant = units.filter((u) => !occ.has(u.id) && !listed.has(u.id)).map((u) => ({ id: u.id, label: `${u.property.name} · ${u.name}`, marketRentCents: u.marketRentCents }));
   const canEdit = can(ctx.permissions, "rentals", "edit");
@@ -38,7 +41,7 @@ export default async function ListingsPage() {
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="secondary"><a href={`/l/${org.slug}`} target="_blank" rel="noreferrer"><ExternalLink aria-hidden /> Public page</a></Button>
             <Button asChild variant="secondary"><a href={`/api/listings/feed/${org.slug}`} target="_blank" rel="noreferrer"><Rss aria-hidden /> Feed</a></Button>
-            {canEdit ? <ListingEditor units={vacant} trigger={<Button><Plus aria-hidden /> New listing</Button>} /> : null}
+            {canEdit ? <ListingEditor units={vacant} defaultUnitId={preset && vacant.some((v) => v.id === preset) ? preset : undefined} trigger={<Button><Plus aria-hidden /> New listing</Button>} /> : null}
           </div>
         }
       />
@@ -49,7 +52,7 @@ export default async function ListingsPage() {
           <tbody>
             {listings.map((l) => (
               <tr key={l.id} className="border-t border-border">
-                <td className="px-3 py-2"><div className="font-medium">{l.title}</div>{l.status === "PUBLISHED" ? <a className="text-xs text-primary hover:underline" href={`/l/${org.slug}/${l.slug}`} target="_blank" rel="noreferrer">/l/{org.slug}/{l.slug}</a> : l.unlistedReason ? <span className="text-xs text-muted-foreground">{l.unlistedReason}</span> : null}</td>
+                <td className="px-3 py-2"><div className="flex items-center gap-3">{cover.get(l.unitId) ? <img src={`/api/images/${cover.get(l.unitId)}`} alt="" className="size-10 shrink-0 rounded-md object-cover" /> : <span aria-hidden className="size-10 shrink-0 rounded-md bg-surface-muted" />}<div><div className="font-medium">{l.title}</div>{l.status === "PUBLISHED" ? <a className="text-xs text-primary hover:underline" href={`/l/${org.slug}/${l.slug}`} target="_blank" rel="noreferrer">/l/{org.slug}/{l.slug}</a> : l.unlistedReason ? <span className="text-xs text-muted-foreground">{l.unlistedReason}</span> : null}</div></div></td>
                 <td className="px-3 py-2">{unitLabel.get(l.unitId)}</td>
                 <td className="px-3 py-2 tabular">{formatMoney(l.rentCents)}</td>
                 <td className="px-3 py-2">{l.availableOn ? formatDate(l.availableOn) : "Now"}</td>
