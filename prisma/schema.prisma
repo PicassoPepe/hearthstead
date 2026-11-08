@@ -1985,3 +1985,51 @@ model UtilityBillback {
   @@unique([propertyId, period, expenseAccountId])
   @@index([organizationId, period])
 }
+
+// ─── Vendor invoices & owner approvals ────────────────────────────────────
+
+/// Submitted by a vendor (Vendor role login); staff review turns it into a bill.
+model VendorInvoice {
+  id             String    @id @default(cuid())
+  organizationId String
+  vendorId       String
+  taskId         String?
+  propertyId     String?
+  invoiceNumber  String
+  invoiceDate    DateTime  @db.Date
+  amountCents    Int
+  description    String
+  attachmentId   String?
+  /// SUBMITTED | APPROVED | REJECTED
+  status         String    @default("SUBMITTED")
+  billId         String?
+  reviewNote     String?
+  reviewedAt     DateTime?
+  reviewedById   String?
+  createdAt      DateTime  @default(now())
+  createdById    String?
+
+  @@index([organizationId, status])
+  @@index([vendorId])
+}
+
+/// Owner sign-off on a large expense (bill) before it can be paid.
+model OwnerApproval {
+  id             String    @id @default(cuid())
+  organizationId String
+  propertyId     String
+  /// BILL
+  kind           String    @default("BILL")
+  entityId       String
+  title          String
+  amountCents    Int
+  /// PENDING | APPROVED | DECLINED
+  status         String    @default("PENDING")
+  note           String?
+  decidedAt      DateTime?
+  decidedByName  String?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId, status])
+  @@index([entityId])
+}

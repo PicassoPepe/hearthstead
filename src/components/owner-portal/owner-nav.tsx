@@ -10,6 +10,7 @@ const TOP = [
   { href: "/portal/owner/properties", label: "Properties" },
   { href: "/portal/owner/statements", label: "Statements" },
   { href: "/portal/owner/payments", label: "Distributions" },
+  { href: "/portal/owner/approvals", label: "Approvals" },
   { href: "/portal/owner/requests", label: "Requests" },
   { href: "/portal/owner/documents", label: "Documents" },
   { href: "/portal/owner/messages", label: "Messages" },
@@ -19,7 +20,7 @@ const BOTTOM = [
   { href: "/portal/owner/properties", label: "Properties", icon: Building2 },
   { href: "/portal/owner/statements", label: "Statements", icon: FileText },
   { href: "/portal/owner/messages", label: "Messages", icon: MessageSquare },
-  { href: "/portal/owner/payments", label: "More", icon: MoreHorizontal, also: ["/portal/owner/requests", "/portal/owner/documents"] },
+  { href: "/portal/owner/payments", label: "More", icon: MoreHorizontal, also: ["/portal/owner/requests", "/portal/owner/documents", "/portal/owner/approvals"] },
 ];
 
 export function OwnerNav({ variant, showReports }: { variant: "top" | "bottom"; showReports: boolean }) {

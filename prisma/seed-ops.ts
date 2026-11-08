@@ -28,6 +28,23 @@ export async function seedOps(appUrl: string, orgId: string, adminId: string, to
   const lostFob = await add("FOB", "Lobby fob #14", { assignTo: leases[1]?.id });
   await returnKeyItem(db, lostFob, { date: day, lost: true });
   await add("FOB", "Lobby fob #15");
+
+  // Owner approval: Grace asks to approve anything over $1,500 at Cedar Duplex; one roof bill waits.
+  const { setSetting } = await import("../src/server/settings/service");
+  const { createBill } = await import("../src/server/maintenance/bills");
+  const cedar = await db.property.findFirst({ where: { name: "Cedar Duplex" } });
+  const roofer = await db.vendor.findFirst({ where: { trades: { has: "ROOFING" } } }) ?? (await db.vendor.findFirstOrThrow({ where: { name: "Ace Plumbing" } }));
+  const repairs = await db.account.findFirstOrThrow({ where: { systemKey: "REPAIRS" } });
+  if (cedar) {
+    await setSetting(db, "ownerPortal.approvalThresholdCents", "PROPERTY", cedar.id, 150_000);
+    await createBill(db, { vendorId: roofer.id, billNumber: "R-2207", billDate: day, dueDate: day, memo: "Gutter replacement (front and rear)", lines: [{ accountId: repairs.id, amountCents: 248_000, propertyId: cedar.id }] });
+  }
+  // A vendor invoice from Ace Plumbing (vendor@example.com) waiting for review.
+  const ace = await db.vendor.findFirstOrThrow({ where: { name: "Ace Plumbing" } });
+  const { submitVendorInvoice } = await import("../src/server/accounting/vendor-invoices");
+  const wo = await db.task.findFirst({ where: { vendorId: ace.id, billId: null } });
+  const vdb = createScopedClient(app, { orgId, userId: ace.userId });
+  await submitVendorInvoice(vdb, ace.id, { invoiceNumber: "ACE-1043", invoiceDate: day, amountCents: 38_500, description: wo ? `Labor and parts — ${wo.title}` : "Service call and parts", taskId: wo?.id ?? null }, null);
   await app.$disconnect();
   return { keys: n };
 }

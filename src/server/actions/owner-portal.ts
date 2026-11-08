@@ -39,3 +39,13 @@ export async function submitOwnerRequest(raw: z.input<typeof requestSchema>): Pr
     return { number: t.number };
   }, "Request sent");
 }
+
+/** Owner approves or declines a large expense on one of their properties. */
+export async function decideOwnerApproval(id: string, decision: "APPROVED" | "DECLINED", note?: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await owner();
+    const { decideApproval } = await import("@/server/accounting/approvals");
+    await decideApproval(ctx.db, id, { name: ctx.owner.name, propertyIds: ctx.propertyIds }, decision, note);
+    revalidatePath("/portal/owner", "layout");
+  }, decision === "APPROVED" ? "Approved — thanks!" : "Declined — your manager has been told");
+}

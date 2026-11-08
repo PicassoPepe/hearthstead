@@ -12,6 +12,7 @@ export type ShellData = {
   orgName: string;
   orgLogoUrl: string | null;
   userImage: string | null;
+  roleKey?: string | null;
   unreadNotifications: number;
 };
 

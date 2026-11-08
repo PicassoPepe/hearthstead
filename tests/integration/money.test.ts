@@ -113,3 +113,32 @@ describe("1099 export", () => {
     expect(csv).toContain("ENTER FULL TIN (ends 6789),Pipe Pros,1 Pipe Rd,Chicago,IL,60602,1200.00,Yes,");
   });
 });
+
+describe("vendor invoices → bills → owner approval", () => {
+  it("vendor submits, staff approves into a bill that needs owner sign-off before payment", async () => {
+    const { setSetting } = await import("@/server/settings/service");
+    const VI = await import("@/server/accounting/vendor-invoices");
+    const { decideApproval } = await import("@/server/accounting/approvals");
+    const { payBill } = await import("@/server/accounting/payables");
+    const owner = await db.owner.create({ data: { organizationId: O.orgId, firstName: "Opal", lastName: "Owner", email: `opal-${O.orgId}@t.local` } });
+    await db.propertyOwnership.create({ data: { organizationId: O.orgId, propertyId, ownerId: owner.id, percentBps: 10_000 } });
+    await setSetting(db, "ownerPortal.approvalThresholdCents", "PROPERTY", propertyId, 100_000);
+    const vendor = await db.vendor.create({ data: { organizationId: O.orgId, name: "Roof Co", userId: O.userId } });
+    const task = await db.task.create({ data: { organizationId: O.orgId, number: 9001, title: "Patch roof", type: "WORK_ORDER", propertyId, vendorId: vendor.id } });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "inv.pdf", { type: "application/pdf" });
+    const inv = await VI.submitVendorInvoice(db, vendor.id, { invoiceNumber: "R-1", invoiceDate: "2026-11-02", amountCents: 250_000, description: "Roof patch", taskId: task.id }, pdf);
+    await expect(VI.submitVendorInvoice(db, vendor.id, { invoiceNumber: "R-1", invoiceDate: "2026-11-02", amountCents: 1, description: "dup" }, null)).rejects.toThrow(/already submitted|already invoiced/);
+    const repairs = (await db.account.findFirstOrThrow({ where: { systemKey: "REPAIRS" } })).id;
+    const bill = await VI.approveVendorInvoice(db, inv.id, { accountId: repairs, dueDate: "2026-11-30" });
+    expect((await db.task.findFirstOrThrow({ where: { id: task.id } })).billId).toBe(bill.id);
+    const approval = await db.ownerApproval.findFirstOrThrow({ where: { entityId: bill.id } });
+    expect(approval).toMatchObject({ status: "PENDING", amountCents: 250_000 });
+    expect(await admin.emailMessage.count({ where: { to: `opal-${O.orgId}@t.local`, subject: { startsWith: "Approval needed" } } })).toBe(1);
+    const cash = (await db.account.findFirstOrThrow({ where: { systemKey: "OPERATING_CASH" } })).id;
+    await expect(payBill(db, { billId: bill.id, date: "2026-11-05", bankAccountId: cash })).rejects.toThrow(/waiting for the owner/);
+    await expect(decideApproval(db, approval.id, { name: "Stranger", propertyIds: [] }, "APPROVED")).rejects.toThrow(/not found/);
+    await decideApproval(db, approval.id, { name: "Opal Owner", propertyIds: [propertyId] }, "APPROVED");
+    await payBill(db, { billId: bill.id, date: "2026-11-05", bankAccountId: cash });
+    expect((await db.bill.findFirstOrThrow({ where: { id: bill.id } })).status).toBe("PAID");
+  });
+});

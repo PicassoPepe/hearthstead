@@ -57,6 +57,8 @@ export async function payBillInTx(tx: ScopedTx, a: Actor, input: PayBillInput) {
   const bill = await tx.bill.findFirst({ where: { id: input.billId }, include: { vendor: true } });
   if (!bill) throw new UserFacingError("Bill not found");
   if (bill.status === "VOID") throw new UserFacingError("This bill was voided");
+  const { assertBillApproved } = await import("./approvals");
+  await assertBillApproved(tx, bill.id);
   const open = await billOpenCents(tx, bill.id);
   if (open <= 0) throw new UserFacingError(`Bill ${bill.billNumber ? `#${bill.billNumber} ` : ""}is already paid`);
   const amount = input.amountCents ?? open;

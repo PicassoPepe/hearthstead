@@ -17,6 +17,7 @@ export default async function StaffLayout({ children, modal }: { children: React
         org: { id: ctx.org.id, name: ctx.org.name, slug: ctx.org.slug, sandbox: ctx.org.sandbox },
         orgs: ctx.orgs,
         roleName: ctx.membership.roleName,
+        roleKey: ctx.membership.roleKey ?? null,
         permissions: ctx.permissions,
         sidebarCollapsed: ctx.user.preferences.sidebarCollapsed === true,
         orgName: ctx.org.name,

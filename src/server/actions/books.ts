@@ -361,3 +361,41 @@ export async function postBillbackAction(v: BillbackIn): Promise<ActionResult<{ 
     return { id: b.id };
   }, "Billback posted to the lease ledgers");
 }
+
+// ─── Vendor invoices ──────────────────────────────────────────────────────
+
+/** Vendor login submits an invoice (FormData: invoiceNumber, invoiceDate, amountCents, description, taskId?, file?). */
+export async function submitVendorInvoiceAction(form: FormData): Promise<ActionResult> {
+  return runAction(async () => {
+    const { requireContext } = await import("@/server/context");
+    const ctx = await requireContext();
+    const VI = await import("@/server/accounting/vendor-invoices");
+    const vendor = await VI.vendorForUser(ctx.db, ctx.user.id);
+    if (!vendor) throw new Error("Only vendor logins can submit invoices");
+    const f = form.get("file");
+    await VI.submitVendorInvoice(ctx.db, vendor.id, {
+      invoiceNumber: String(form.get("invoiceNumber") ?? ""), invoiceDate: String(form.get("invoiceDate") ?? ""), amountCents: Number(form.get("amountCents") ?? 0),
+      description: String(form.get("description") ?? ""), taskId: String(form.get("taskId") ?? "") || null,
+    }, f instanceof File ? f : null);
+    revalidatePath("/app", "layout");
+  }, "Invoice submitted");
+}
+
+export async function approveVendorInvoiceAction(id: string, v: { accountId: string; propertyId?: string | null; dueDate: string }): Promise<ActionResult<{ billId: string }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "edit");
+    const { approveVendorInvoice } = await import("@/server/accounting/vendor-invoices");
+    const b = await approveVendorInvoice(ctx.db, id, v);
+    done();
+    return { billId: b.id };
+  }, "Invoice approved — bill created");
+}
+
+export async function rejectVendorInvoiceAction(id: string, note: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "edit");
+    const { rejectVendorInvoice } = await import("@/server/accounting/vendor-invoices");
+    await rejectVendorInvoice(ctx.db, id, note);
+    done();
+  }, "Returned to the vendor");
+}

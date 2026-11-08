@@ -13,11 +13,13 @@ export type NavSection = {
   module?: Module;
   children?: NavLeaf[];
   phase?: number;
+  /** Shown only to vendor logins. */
+  vendorOnly?: boolean;
 };
 
 export type IconName =
   | "overview" | "rentals" | "leasing" | "people" | "accounting" | "tasks" | "communications"
-  | "reports" | "notes" | "files" | "workflows" | "ai" | "settings" | "help" | "calendar";
+  | "reports" | "notes" | "files" | "workflows" | "ai" | "settings" | "help" | "calendar" | "invoices";
 
 export const NAV_MAIN: NavSection[] = [
   { id: "overview", label: "Overview", href: "/app/overview", icon: "overview" },
@@ -71,6 +73,7 @@ export const NAV_MAIN: NavSection[] = [
     ],
   },
   { id: "tasks", label: "Tasks", href: "/app/tasks", icon: "tasks", module: "tasks", phase: 5 },
+  { id: "invoices", label: "Invoices", href: "/app/invoices", icon: "invoices", module: "tasks", vendorOnly: true },
   {
     id: "communications", label: "Communications", href: "/app/communications", icon: "communications", module: "communications", phase: 8,
     children: [

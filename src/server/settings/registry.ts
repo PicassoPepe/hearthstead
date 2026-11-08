@@ -164,6 +164,11 @@ export const SETTINGS = {
     key: "ownerPortal.showReports", group: "ownerPortal", label: "Owners can run reports",
     schema: z.boolean(), default: true, scopes: ORG_PROP, input: { kind: "boolean" },
   }),
+  "ownerPortal.approvalThresholdCents": def({
+    key: "ownerPortal.approvalThresholdCents", group: "ownerPortal", label: "Owner approval for bills over",
+    help: "Bills at or above this amount for a property need an owner to approve them in the owner portal before they can be paid. $0 turns this off.",
+    schema: z.number().int().min(0).max(100_000_000), default: 0, scopes: ORG_PROP, input: { kind: "money" },
+  }),
   "ownerPortal.emailMonthlyStatements": def({
     key: "ownerPortal.emailMonthlyStatements", group: "ownerPortal", label: "Email owners their monthly statement",
     help: "On the 1st, each owner with an email gets last month's statement (cash basis) with a link to the portal.",

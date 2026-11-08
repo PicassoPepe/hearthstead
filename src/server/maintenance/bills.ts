@@ -67,5 +67,7 @@ export async function createBill(db: ScopedDb, input: BillInput, actor?: TaskAct
   });
   if (input.taskId && actor) await addActivity(db, input.taskId, actor, "BILL", `Vendor invoice ${input.billNumber ? `#${input.billNumber} ` : ""}entered as a bill for $${(total / 100).toFixed(2)}`);
   await audit(db, { action: "bill.created", entityType: "Bill", entityId: bill.id, after: { vendor: vendor.name, total, taskId: input.taskId } });
+  const { requestApprovalsForBill } = await import("@/server/accounting/approvals");
+  await requestApprovalsForBill(db, bill.id);
   return { id: bill.id };
 }

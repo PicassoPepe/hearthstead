@@ -26,7 +26,7 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
   const [collapsedPref, setCollapsedPref] = React.useState(shell.sidebarCollapsed);
   const collapsed = forceExpanded ? false : collapsedPref;
 
-  const visible = (s: NavSection) => !s.module || can(shell.permissions, s.module, "view");
+  const visible = (s: NavSection) => (!s.vendorOnly || shell.roleKey === "VENDOR") && (!s.module || can(shell.permissions, s.module, "view"));
   const main = NAV_MAIN.filter(visible);
   const bottom = NAV_BOTTOM.filter((s) => s.id !== "settings" || can(shell.permissions, "settings", "view") || can(shell.permissions, "users", "view"));
 

@@ -16,9 +16,10 @@ export default async function OwnerHome() {
   const o = await requireOwnerPortal();
   const [h, news, unread] = await Promise.all([ownerHome(o), portalAnnouncements(o.db, { ownerId: o.owner.id }, 3), unreadPortalCount(o.db, { ownerId: o.owner.id })]);
   const first = o.owner.name.split(" ")[0];
-  const [requests, sent] = await Promise.all([
+  const [requests, sent, approvals] = await Promise.all([
     o.db.task.count({ where: { ownerId: o.owner.id } }),
     o.db.message.count({ where: { direction: "IN", conversation: { ownerId: o.owner.id } } }),
+    o.db.ownerApproval.aggregate({ where: { status: "PENDING", propertyId: { in: o.propertyIds } }, _count: true, _sum: { amountCents: true } }),
   ]);
   const max = Math.max(1, ...h.trend.flatMap((t) => [t.income, t.expenses]));
   return (
@@ -41,6 +42,12 @@ export default async function OwnerHome() {
           <Card key={l as string} className="p-4"><dt className="text-sm text-muted-foreground">{l}</dt><dd className="mt-1 text-2xl font-semibold tabular" data-testid={`owner-${String(l).toLowerCase().replace(/ /g, "-")}`}>{formatMoney(v as number, { showCents: false })}</dd></Card>
         ))}
       </dl>
+      {approvals._count ? (
+        <Card className="flex flex-wrap items-center justify-between gap-3 border-warning/50 bg-warning-soft/40 p-4">
+          <span className="text-sm"><span className="font-semibold">{approvals._count} expense{approvals._count === 1 ? "" : "s"} ({formatMoney(approvals._sum.amountCents ?? 0)})</span> waiting for your approval</span>
+          <Button asChild size="sm"><Link href="/portal/owner/approvals">Review</Link></Button>
+        </Card>
+      ) : null}
       {unread ? (
         <Card className="flex items-center justify-between gap-3 border-primary/40 p-4">
           <span className="text-sm"><span className="font-semibold">{unread} new message{unread === 1 ? "" : "s"}</span> from {o.org.name}</span>

@@ -78,7 +78,7 @@ export function CommandPalette() {
     router.push(href);
   };
 
-  const nav = [...NAV_MAIN, ...NAV_BOTTOM].filter((s) => !s.module || can(shell.permissions, s.module, "view"));
+  const nav = [...NAV_MAIN, ...NAV_BOTTOM].filter((s) => (!s.vendorOnly || shell.roleKey === "VENDOR") && (!s.module || can(shell.permissions, s.module, "view")));
   const grouped = results.reduce<Record<string, SearchResult[]>>((acc, r) => {
     (acc[r.group] ??= []).push(r);
     return acc;
