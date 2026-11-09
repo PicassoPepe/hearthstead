@@ -100,6 +100,17 @@ automatically, and a license you turn off becomes read-only. Offline they keep w
 license date plus a 14-day grace period. Without a license, a computer install has a 30-day trial,
 then becomes read-only (nothing is deleted). Prices live in Owner console → **Plans & prices**.
 
+## 9. Company websites (optional addresses)
+
+Every company's website works right away at `https://<your address>/s/<company web name>`.
+
+- **Nicer addresses** like `maple-main.yourdomain.com`: point a wildcard DNS record
+  (`*.yourdomain.com` → CNAME to your Railway address), add the wildcard domain in Railway →
+  Settings → Domains, and set `SITES_ROOT_DOMAIN=yourdomain.com`.
+- **A company's own domain** (e.g. `www.maplemain.com`): they enter it in *Your website → Look &
+  settings*, add a CNAME at their domain company pointing to your DeedWood address, and you add the
+  same domain in Railway → Settings → Domains (Railway issues the certificate).
+
 ## Updates
 
 Every time new code lands on GitHub, Railway rebuilds and redeploys automatically. Your data stays

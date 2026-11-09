@@ -374,3 +374,21 @@ Decisions made without asking, per the brief. Each can be changed later.
   Settings are refused server-side in `requirePermission`; viewing and exporting still work). The
   unit limit is checked when adding properties/units. Daily check-in (only if
   `LICENSE_CHECKIN_URL` is set) installs renewals and applies revocations and update notices.
+
+## Company websites (ship plan, Phase 3A)
+
+- Content is block JSON validated by Zod (`src/lib/site/blocks.ts`); all text renders as plain
+  text, so there is no HTML/XSS surface. Image ids must look like attachment ids; button targets
+  are a fixed list. Each section has an on/off switch that never deletes content.
+- Draft → Publish (every publish is a `WebsiteVersion`; History restores one) → visitors see the
+  published copy. `live=false` hides the site without deleting it. Staff of the company can preview
+  the draft at `/s/<slug>?preview=1` (shown in the editor's iframe; `/s/*` allows same-origin
+  framing, everything else still denies framing).
+- Addresses: `/s/<slug>` always; `<slug>.SITES_ROOT_DOMAIN` and custom domains are rewritten by
+  the middleware (custom domains resolved through `/api/sites/resolve`, cached 5 minutes).
+- Available homes come from published listings via the org-scoped client (RLS isolation tested).
+- Contact/tour forms: honeypot + per-address rate limit; messages create or update a Prospect
+  (source WEBSITE) and notify leasing staff. Turnstile/hCaptcha can be added later.
+- Theme colors are adjusted automatically to keep AA contrast; Equal Housing footer is fixed.
+- Not yet: plan-gating of site features (needs billing, Phase 2c), multi-page sites/blog posts,
+  Lighthouse CI.

@@ -11,7 +11,12 @@ const nextConfig: NextConfig = {
   eslint: { ignoreDuringBuilds: true },
   experimental: { serverActions: { bodySizeLimit: "25mb" } },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders(process.env.NODE_ENV !== "production") }];
+    const dev = process.env.NODE_ENV !== "production";
+    return [
+      // Company websites may appear in the staff editor's preview (same site only) and load Plausible.
+      { source: "/s/:path*", headers: securityHeaders(dev, true) },
+      { source: "/:path((?!s/).*)", headers: securityHeaders(dev) },
+    ];
   },
 };
 

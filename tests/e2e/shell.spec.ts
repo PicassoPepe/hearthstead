@@ -17,6 +17,7 @@ test("two-level sidebar swaps to a section submenu and back", async ({ page }) =
 test("sidebar collapses to icons and remembers it", async ({ page }) => {
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
+  await page.waitForLoadState("networkidle"); // the preference is saved in the background
   await page.reload();
   await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
   await page.getByRole("button", { name: "Expand sidebar" }).click();
