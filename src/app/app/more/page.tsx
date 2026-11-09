@@ -1,4 +1,4 @@
-import { Bot, FolderOpen, LifeBuoy, Settings, StickyNote, Workflow } from "lucide-react";
+import { Globe, Bot, FolderOpen, LifeBuoy, Settings, StickyNote, Workflow } from "lucide-react";
 import { requireContext } from "@/server/context";
 import { PageHeader } from "@/components/patterns/page-header";
 import { BigActions, PageHelp } from "@/components/patterns/big-actions";
@@ -13,6 +13,7 @@ export default async function MorePage() {
       <PageHeader icon={<MoreHorizontal aria-hidden />} title="More tools" />
       <PageHelp>Extra tools you won&apos;t need every day.</PageHelp>
       <BigActions items={[
+        { href: "/app/website", label: "Your website", hint: "A public website with your available homes, news, tours and resident logins.", icon: Globe },
         { href: "/app/files", label: "Files & documents", hint: "Leases, photos and papers. Import from a spreadsheet.", icon: FolderOpen },
         { href: "/app/notes", label: "Notes", hint: "Notes you've written about properties and people.", icon: StickyNote },
         { href: "/app/ai", label: "AI helper", hint: "Ask a question like “who owes rent?” in plain words.", icon: Bot },

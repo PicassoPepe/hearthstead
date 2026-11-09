@@ -86,6 +86,7 @@ export const NAV_MAIN: NavSection[] = [
     id: "more", label: "More", href: "/app/more", icon: "more",
     children: [
       { label: "More tools", href: "/app/more" },
+      { label: "Your website", href: "/app/website", keywords: ["website", "site builder", "homepage", "vacancies", "web page"] },
       { label: "Files & documents", href: "/app/files", phase: 2, keywords: ["files", "import", "templates", "signatures"] },
       { label: "Notes", href: "/app/notes", phase: 2 },
       { label: "AI helper", href: "/app/ai", phase: 10, keywords: ["ai assistant", "agents"] },

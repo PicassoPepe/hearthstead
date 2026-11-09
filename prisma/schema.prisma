@@ -2307,3 +2307,34 @@ model Entitlement {
 
   @@index([orgId, featureKey])
 }
+
+/// A company's public website (block content as checked JSON — never raw HTML).
+model Website {
+  id             String    @id @default(cuid())
+  organizationId String    @unique
+  /// What staff are editing.
+  draft          Json
+  /// What visitors see (null until first publish).
+  published      Json?
+  publishedAt    DateTime?
+  /// Visitors can see the site (switch off to take it down without losing it).
+  live           Boolean   @default(true)
+  /// Optional own domain, e.g. www.example.com (see docs/DEPLOY.md for DNS steps).
+  customDomain   String?   @unique
+  template       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?
+}
+
+/// Every publish is kept so a past version can be restored.
+model WebsiteVersion {
+  id             String   @id @default(cuid())
+  organizationId String
+  content        Json
+  note           String?
+  publishedAt    DateTime @default(now())
+  publishedById  String?
+
+  @@index([organizationId, publishedAt])
+}

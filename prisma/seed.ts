@@ -27,6 +27,7 @@ import { seedFunnel } from "./seed-funnel";
 import { seedPlatform, DEMO_API_KEY } from "./seed-platform";
 import { seedImages } from "./seed-images";
 import { seedOps } from "./seed-ops";
+import { seedWebsite } from "./seed-website";
 import { todayIn } from "../src/lib/dates";
 
 const db = new PrismaClient();
@@ -131,6 +132,9 @@ async function main(): Promise<void> {
 
   // Daily operations: keys, fobs, parking and storage.
   const ops = await seedOps(process.env.DATABASE_URL!, orgId, users["admin@example.com"]!, todayIn("America/Chicago"));
+
+  // Public website (Modern Apartments design), published.
+  await seedWebsite(process.env.DATABASE_URL!, orgId, users["admin@example.com"]!);
 
   // Admin lands in Maple & Main by default.
   await db.user.update({ where: { id: users["admin@example.com"] }, data: { lastOrgId: orgId } });
