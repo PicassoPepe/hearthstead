@@ -90,11 +90,14 @@ test.describe("as admin", () => {
     await expect(page.getByTestId("lease-balance")).toHaveText("$0.00");
     await expect(page.getByText("Void reason: Key was found")).toBeVisible();
 
-    await page.getByRole("button", { name: "Actions for Payment" }).first().click();
+    // The returned payment comes back as owed, plus the $35 NSF fee.
+    const payRow = page.getByRole("row").filter({ has: page.getByRole("button", { name: "Actions for Payment" }) }).first();
+    const amount = Number(/\$([\d,]+\.\d{2})/.exec((await payRow.textContent()) ?? "")![1]!.replace(/,/g, ""));
+    await payRow.getByRole("button", { name: "Actions for Payment" }).click();
     await page.getByRole("menuitem", { name: "Mark as returned (NSF)" }).click();
     await page.getByRole("dialog", { name: "Mark payment as returned" }).getByRole("button", { name: "Mark as returned" }).click();
     await expect(page.getByText("Payment marked as returned")).toBeVisible();
-    await expect(page.getByTestId("lease-balance")).toHaveText("$2,735.00");
+    await expect(page.getByTestId("lease-balance")).toHaveText(`$${(amount + 35).toLocaleString("en-US", { minimumFractionDigits: 2 })}`);
     await expect(page.getByRole("cell", { name: "NSF fee", exact: true })).toBeVisible();
   });
 
