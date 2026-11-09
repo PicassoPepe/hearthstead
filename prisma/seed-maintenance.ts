@@ -1,4 +1,5 @@
-import { PrismaClient, type TaskStatus } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
+import type { TaskStatus } from "@prisma/client";
 import { createScopedClient } from "../src/server/dal";
 import { createTask, setTaskStatus, commentOnTask, updateTask } from "../src/server/maintenance/tasks";
 import { saveVendor } from "../src/server/maintenance/vendors";
@@ -8,7 +9,7 @@ import { addDays, toISODate } from "../src/lib/dates";
 
 /** Phase 5 demo data: vendors, auto-assign rules, ~25 tasks across every status, a bill and an inspection. */
 export async function seedMaintenance(appUrl: string, orgId: string, users: Record<string, string>, today: Date) {
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const app = createNodePrisma(appUrl);
   const admin = users["admin@example.com"]!;
   const pm = users["pm@example.com"]!;
   const maint = users["maint@example.com"]!;

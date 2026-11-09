@@ -11,6 +11,7 @@
  *   - optionally loads demo data the first time (SEED_DEMO=1),
  *   - starts the background jobs and the web server on $PORT.
  */
+import { createNodePrisma } from "../prisma/node-client.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -52,8 +53,7 @@ run(["node_modules/tsx/dist/cli.mjs", "prisma/apply-rls.ts"], "Row-level securit
 run(["node_modules/tsx/dist/cli.mjs", "prisma/backfill.ts"], "Backfill");
 
 if (env.SEED_DEMO === "1") {
-  const { PrismaClient } = (await import("@prisma/client")).default;
-  const db = new PrismaClient({ datasources: { db: { url: env.DATABASE_ADMIN_URL } } });
+  const db = createNodePrisma(env.DATABASE_ADMIN_URL);
   const orgs = await db.organization.count();
   await db.$disconnect();
   if (orgs === 0) {

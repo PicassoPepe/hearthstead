@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { createScopedClient } from "../src/server/dal";
 import { createBill, createExpense, createVendorCredit, payBill, saveRecurringBill } from "../src/server/accounting/payables";
 import { completeReconciliation, createDeposit, createTransfer, reconciliationWorkspace, startReconciliation, syncBankFeed, undepositedPayments, bankBalance, categorizeBankTransaction } from "../src/server/accounting/banking";
@@ -11,7 +11,7 @@ import { addDays, addMonths, endOfMonth, periodOf, startOfMonth, toISODate } fro
  * a synced bank feed and a completed reconciliation for last month.
  */
 export async function seedAccounting(appUrl: string, orgId: string, adminUserId: string, today: Date) {
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const app = createNodePrisma(appUrl);
   const db = createScopedClient(app, { orgId, userId: adminUserId });
   const key = async (k: string) => (await db.account.findFirstOrThrow({ where: { systemKey: k } })).id;
   const named = async (n: string) => (await db.account.findFirstOrThrow({ where: { name: n } })).id;

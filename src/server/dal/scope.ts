@@ -1,20 +1,15 @@
-import { Prisma } from "@prisma/client";
+import { MODEL_META, type ModelMeta } from "./model-meta.generated";
 
 /**
  * Pure helpers that rewrite Prisma query args so every query is pinned to one organization.
  * This is the application-level half of tenant isolation; Postgres RLS is the other half.
+ *
+ * Model metadata used to come from Prisma.dmmf. That getter throws on Workers
+ * ("Prisma.dmmf is not available when running in edge runtimes"), so the map is generated
+ * on Node and checked in. See scripts/gen-model-meta.mjs.
  */
 
-type ModelMeta = { orgField: "organizationId" | "id" | null; softDelete: boolean };
-
-const META: Record<string, ModelMeta> = Object.fromEntries(
-  Prisma.dmmf.datamodel.models.map((m) => {
-    const names = new Set(m.fields.map((f) => f.name));
-    const orgField: ModelMeta["orgField"] =
-      m.name === "Organization" ? "id" : names.has("organizationId") ? "organizationId" : null;
-    return [m.name, { orgField, softDelete: names.has("deletedAt") }];
-  }),
-);
+const META: Record<string, ModelMeta> = MODEL_META;
 
 export function modelMeta(model: string): ModelMeta {
   return META[model] ?? { orgField: null, softDelete: false };

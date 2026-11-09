@@ -5,6 +5,7 @@
  * database is kept (renamed deedwood_before_utf8_<date>) and a copy of the data is saved in
  * .deedwood/, so nothing can be lost. Run by scripts/start.mjs after the database is migrated.
  */
+import { createNodePrisma } from "./node-client.mjs";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -32,7 +33,7 @@ function step(args: string[], env: NodeJS.ProcessEnv, label: string) {
 
 export async function convertToUtf8(adminUrl: string, opts: { dataDir: string; now?: Date }): Promise<"already-utf8" | "converted"> {
   const oldName = new URL(adminUrl).pathname.slice(1);
-  const db = new PrismaClient({ datasources: { db: { url: adminUrl } } });
+  const db = createNodePrisma(adminUrl);
   try {
     if ((await encodingOf(db)) === "UTF8") return "already-utf8";
     say("Upgrading your database so it can store any character (one time — about a minute)…");
@@ -52,7 +53,7 @@ export async function convertToUtf8(adminUrl: string, opts: { dataDir: string; n
     step([resolve("node_modules/tsx/dist/cli.mjs"), "prisma/apply-rls.ts"], env, "Securing the new database");
 
     // 3. Copy the data in and check every table arrived.
-    const target = new PrismaClient({ datasources: { db: { url: newUrl } } });
+    const target = createNodePrisma(newUrl);
     try {
       await restoreBackup(target, backup);
       for (const t of await listTables(target)) {
@@ -66,7 +67,7 @@ export async function convertToUtf8(adminUrl: string, opts: { dataDir: string; n
     await db.$disconnect();
 
     // 4. Swap names (from the maintenance database, with nobody connected to the old one).
-    const sys = new PrismaClient({ datasources: { db: { url: withDatabase(adminUrl, "postgres") } } });
+    const sys = createNodePrisma(withDatabase(adminUrl, "postgres"));
     try {
       await sys.$executeRawUnsafe(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('${oldName}', '${NEW}') AND pid <> pg_backend_pid()`);
       await sys.$executeRawUnsafe(`ALTER DATABASE "${oldName}" RENAME TO "${oldName}_before_utf8_${stamp}"`);

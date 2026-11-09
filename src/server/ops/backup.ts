@@ -17,14 +17,15 @@ const keyFrom = (k: string) => createHash("sha256").update(`deedwood-backup:${k}
 type Db = Pick<PrismaClient, "$queryRawUnsafe" | "$executeRawUnsafe" | "$transaction">;
 
 export async function listTables(db: Db): Promise<string[]> {
-  const rows = (await db.$queryRawUnsafe(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations' ORDER BY table_name`)) as { table_name: string }[];
+  // Cast name columns to text. The pg driver adapter cannot decode Postgres's `name` type.
+  const rows = (await db.$queryRawUnsafe(`SELECT table_name::text AS table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations' ORDER BY table_name`)) as { table_name: string }[];
   return rows.map((r) => r.table_name);
 }
 
 /** Tables ordered so a table comes after the tables its foreign keys point to. */
 export async function insertOrder(db: Db, tables: string[]): Promise<string[]> {
   const fks = (await db.$queryRawUnsafe(`
-    SELECT tc.table_name AS child, ccu.table_name AS parent
+    SELECT tc.table_name::text AS child, ccu.table_name::text AS parent
     FROM information_schema.table_constraints tc
     JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name AND tc.table_schema = ccu.table_schema
     WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'`)) as { child: string; parent: string }[];

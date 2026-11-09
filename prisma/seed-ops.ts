@@ -1,11 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { createScopedClient } from "../src/server/dal";
 import { assignKeyItem, saveKeyItem, returnKeyItem } from "../src/server/rentals/keys";
 import { toISODate } from "../src/lib/dates";
 
 /** Daily-operations demo data: keys, fobs, parking and storage at Maple Court. */
 export async function seedOps(appUrl: string, orgId: string, adminId: string, today: Date) {
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const app = createNodePrisma(appUrl);
   const db = createScopedClient(app, { orgId, userId: adminId });
   const maple = await db.property.findFirstOrThrow({ where: { name: "Maple Court" } });
   const leases = await db.lease.findMany({ where: { propertyId: maple.id, status: "ACTIVE" }, orderBy: { startDate: "asc" }, take: 4 });

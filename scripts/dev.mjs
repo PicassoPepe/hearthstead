@@ -7,6 +7,7 @@
  *   4. seed demo data on first run
  *   5. start Next.js
  */
+import { createNodePrisma } from "../prisma/node-client.mjs";
 import { spawnSync, spawn } from "node:child_process";
 import { copyFileSync, existsSync } from "node:fs";
 import { connect } from "node:net";
@@ -63,8 +64,7 @@ must("pnpm -s prisma migrate deploy");
 must("pnpm -s tsx prisma/apply-rls.ts");
 must("pnpm -s tsx prisma/backfill.ts");
 
-const { PrismaClient } = (await import("@prisma/client")).default;
-const db = new PrismaClient();
+const db = createNodePrisma();
 const orgs = await db.organization.count().catch(() => 0);
 await db.$disconnect();
 if (orgs === 0) {

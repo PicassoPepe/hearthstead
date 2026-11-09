@@ -4,15 +4,15 @@
  *   pnpm db:restore --latest --yes      put the newest backup back (REPLACES everything)
  *   pnpm db:restore --file path.dwb --yes
  */
+import { createNodePrisma } from "../prisma/node-client.mjs";
 import { existsSync, readFileSync } from "node:fs";
 import { loadEnvFile } from "node:process";
-import { PrismaClient } from "@prisma/client";
 import { runBackup, readBackup } from "../src/server/ops/backup-job";
 import { decodeBackup, restoreBackup } from "../src/server/ops/backup";
 
 if (existsSync(".env")) loadEnvFile(".env");
 const args = process.argv.slice(2);
-const db = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL } } });
+const db = createNodePrisma(process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL);
 
 async function main() {
   if (args[0] === "restore") {

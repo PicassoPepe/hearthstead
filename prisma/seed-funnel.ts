@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { createScopedClient } from "../src/server/dal";
 import * as L from "../src/server/funnel/listings";
 import * as A from "../src/server/funnel/applications";
@@ -11,7 +11,7 @@ import { addDays, toISODate } from "../src/lib/dates";
  * prospects and showings; applications in every state; a renewal offer out for signature.
  */
 export async function seedFunnel(appUrl: string, orgId: string, users: Record<string, string>, today: Date) {
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const app = createNodePrisma(appUrl);
   const pm = users["pm@example.com"]!;
   const db = createScopedClient(app, { orgId, userId: pm });
   await ensureDefaultTemplates(db);

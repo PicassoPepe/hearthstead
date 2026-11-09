@@ -1,8 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "../../prisma/node-client.mjs";
 import { provisionOrganization, purgeOrganizations } from "@/server/orgs";
 
-export const admin = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
-export const app = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+export const admin = createNodePrisma(process.env.DATABASE_ADMIN_URL);
+export const app = createNodePrisma(process.env.DATABASE_URL);
 
 export async function makeOrg(label: string) {
   const tag = `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

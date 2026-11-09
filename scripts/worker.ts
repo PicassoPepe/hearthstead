@@ -2,17 +2,17 @@
  * Background worker (BullMQ on Redis). Schedules the nightly accounting job at 02:15 every day
  * and a minutely job that sends scheduled announcements, and processes both. Run with `pnpm worker`. For a one-off run without Redis: `pnpm jobs:nightly`.
  */
+import { createNodePrisma } from "../prisma/node-client.mjs";
 import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
-import { PrismaClient } from "@prisma/client";
 import { loadEnvFile } from "node:process";
 import { existsSync } from "node:fs";
 import { runMinutelyForAllOrgs, runNightlyForAllOrgs } from "../src/server/jobs/runner";
 
 if (existsSync(".env")) loadEnvFile(".env");
 const connection = new IORedis(process.env.REDIS_URL ?? "redis://localhost:6379", { maxRetriesPerRequest: null });
-const admin = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
-const app = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+const admin = createNodePrisma(process.env.DATABASE_ADMIN_URL);
+const app = createNodePrisma(process.env.DATABASE_URL);
 
 const queue = new Queue("accounting", { connection });
 

@@ -1,5 +1,5 @@
 /** Verify ledger invariants for every org: entries balance, A/R == open charges, prepaid == unapplied. */
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "../prisma/node-client.mjs";
 import { loadEnvFile } from "node:process";
 import { existsSync } from "node:fs";
 import { createScopedClient } from "../src/server/dal";
@@ -7,8 +7,8 @@ import * as M from "../src/server/leasing/money";
 import { billOpenCents } from "../src/server/accounting/payables";
 
 if (existsSync(".env")) loadEnvFile(".env");
-const admin = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
-const app = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+const admin = createNodePrisma(process.env.DATABASE_ADMIN_URL);
+const app = createNodePrisma(process.env.DATABASE_URL);
 
 async function main() {
   let problems = 0;

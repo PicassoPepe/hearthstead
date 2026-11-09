@@ -11,6 +11,7 @@
  *   run with --rotate and --secret=<the PLATFORM_BREAK_GLASS_SECRET set in the host's settings>.
  * - Never contains or prints a password.
  */
+import { createNodePrisma } from "../prisma/node-client.mjs";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
@@ -51,7 +52,7 @@ export async function seedPlatformOwner(db: PrismaClient, o: { email: string | u
 
 async function main() {
   const args = process.argv.slice(2);
-  const db = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL } } });
+  const db = createNodePrisma(process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL);
   try {
     const r = await seedPlatformOwner(db, {
       email: process.env.PLATFORM_OWNER_EMAIL,

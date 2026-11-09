@@ -1,10 +1,10 @@
 /** Idempotent data backfills, run after every migration (pnpm db:migrate / pnpm dev). */
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { provisionChart } from "../src/server/accounting/chart";
 import { ensurePlanCatalog } from "../src/server/billing/catalog";
 
 async function main(): Promise<void> {
-  const db = new PrismaClient();
+  const db = createNodePrisma();
   // Phase 2: every organization gets the default chart of accounts.
   const orgs = await db.organization.findMany({ select: { id: true } });
   for (const o of orgs) await provisionChart(db, o.id);

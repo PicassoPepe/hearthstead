@@ -31,6 +31,7 @@
     "LLM_FALLBACK": "groq",
     "SMS_PROVIDER": "mock",
     "AUTH_TRUST_HOST": "true",
-    "PAYMENTS_ENABLED": ""
+    "PAYMENTS_ENABLED": "",
+    "DEEDWOOD_RUNTIME": "cloudflare"
   }
 }

@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { createScopedClient } from "../src/server/dal";
 import { createLeaseInTx, endLease, runRecurringForLease, setEviction } from "../src/server/leasing/leases";
 import { assessLateFees, lateFeePolicy } from "../src/server/leasing/late-fees";
@@ -34,7 +34,7 @@ const COMPANIES: Record<string, string> = {
 type Profile = "ONTIME" | "LATE" | "PARTIAL" | "NSF" | "EVICTION";
 
 export async function seedLeasing(appUrl: string, orgId: string, userId: string, today: Date) {
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const app = createNodePrisma(appUrl);
   const db = createScopedClient(app, { orgId, userId });
   const r = rng(7);
   const pick = <T,>(xs: readonly T[]) => xs[Math.floor(r() * xs.length)]!;

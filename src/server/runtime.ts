@@ -5,6 +5,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
  * reaches for Wrangler when a dev binding is actually requested.
  */
 export function onCloudflareWorkers(): boolean {
+  if (process.env.DEEDWOOD_RUNTIME === "cloudflare") return true;
   return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
 }
 

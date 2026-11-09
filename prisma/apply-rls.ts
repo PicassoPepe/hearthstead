@@ -8,9 +8,9 @@
  * and must not ALTER its password. The pooled URL in DATABASE_URL is the only place that
  * password lives.
  */
+import { createNodePrisma } from "./node-client.mjs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PrismaClient } from "@prisma/client";
 
 export const LOCAL_APP_PASSWORD = "deedwood_app";
 
@@ -54,7 +54,7 @@ export function statementsFor(sql: string, production: boolean): string[] {
 }
 
 async function main(): Promise<void> {
-  const db = new PrismaClient();
+  const db = createNodePrisma();
   const production = productionRls();
   const sql = readFileSync(join(__dirname, "rls.sql"), "utf8");
   const statements = statementsFor(sql, production);
