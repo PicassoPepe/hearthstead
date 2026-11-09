@@ -1,5 +1,6 @@
 "use server";
 
+import { cookieOptions } from "@/lib/cookies";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -30,7 +31,7 @@ const refresh = () => revalidatePath("/portal", "layout");
 
 export async function selectLease(leaseId: string): Promise<void> {
   const ctx = await getPortalContext();
-  if (ctx?.leases.some((l) => l.id === leaseId)) (await cookies()).set(PORTAL_LEASE_COOKIE, leaseId, { httpOnly: true, sameSite: "lax", path: "/portal" });
+  if (ctx?.leases.some((l) => l.id === leaseId)) (await cookies()).set(PORTAL_LEASE_COOKIE, leaseId, cookieOptions({ path: "/portal" }));
   refresh();
 }
 

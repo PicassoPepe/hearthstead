@@ -1,5 +1,6 @@
 "use server";
 
+import { cookieOptions } from "@/lib/cookies";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -48,7 +49,7 @@ export async function previewPortalAs(tenantId: string): Promise<void> {
   const ctx = await requirePermission("people", "view");
   const t = await ctx.db.tenant.findFirst({ where: { id: tenantId } });
   if (!t) throw new UserFacingError("Tenant not found");
-  (await cookies()).set(PREVIEW_COOKIE, tenantId, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 });
+  (await cookies()).set(PREVIEW_COOKIE, tenantId, cookieOptions({ maxAge: 60 * 60 }));
   await audit(ctx.db, { action: "tenant.portal_previewed", entityType: "Tenant", entityId: tenantId });
   redirect("/portal/tenant");
 }

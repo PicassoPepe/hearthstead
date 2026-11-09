@@ -323,3 +323,21 @@ Decisions made without asking, per the brief. Each can be changed later.
   says so.
 - Map tiles: OpenStreetMap (street) and Esri World Imagery (satellite), loaded by the viewer's
   browser with attribution. High-traffic hosted installs should use a tile provider account.
+
+## Security hardening (ship plan, Phase 1)
+
+- **Cookies** go through `src/lib/cookies.ts`: httpOnly, SameSite=Lax, and `secure` whenever
+  `AUTH_URL` is https (or in production without an AUTH_URL). The one-click local install runs on
+  `http://127.0.0.1`, where a secure cookie would be dropped, so it stays non-secure there.
+- **Headers** (`src/lib/security-headers.ts`, applied in `next.config.ts`): CSP with
+  `frame-ancestors 'none'`, HSTS, nosniff, DENY framing, strict referrer, a narrow Permissions-Policy.
+  `script-src` still allows `'unsafe-inline'` for Next's bootstrap scripts; moving to nonces is a
+  later tightening. Allowed outside hosts: OpenStreetMap/Esri map tiles and Stripe.js.
+- **Sign-in limits** (`src/server/auth/rate-limit.ts`): enforced inside the password provider, so
+  they also cover direct calls to Auth.js. Per-address limits apply only when the address is known
+  (behind the hosting proxy); the per-account lockout always applies. Redis when `REDIS_URL` is set,
+  otherwise in-process memory.
+- **CSRF:** Server Actions rely on Next's built-in Origin/Host check; `tests/e2e/security.spec.ts`
+  proves a cross-site post is refused. No separate token system.
+- **SecurityEvent** is a platform-level table (not company-scoped); the app's database role has no
+  access to it. Failed sign-ins store a SHA-256 of the email, not the email.

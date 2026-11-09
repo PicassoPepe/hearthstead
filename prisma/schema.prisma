@@ -2082,3 +2082,20 @@ model ParcelRecord {
 
   @@index([organizationId, fetchedAt])
 }
+
+/// Platform-level security events (failed sign-ins, lockouts…). Not tied to a company and not
+/// readable by the app's database role — only the platform (admin connection) writes and reads it.
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  /// LOGIN_FAILED | LOGIN_LOCKED | SIGNUP_LIMITED | MAGIC_LINK_LIMITED | TOTP_LIMITED
+  kind      String
+  /// SHA-256 of the lowercased email — never the email itself.
+  emailHash String?
+  userId    String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([emailHash, createdAt])
+}

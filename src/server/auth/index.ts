@@ -13,6 +13,9 @@ import { getEmailProvider } from "@/adapters";
 import { authConfig } from "./config";
 import { verifyPassword } from "./password";
 import { magicLinkEmail } from "@/server/emails";
+import * as RL from "./rate-limit";
+import { clientIp } from "./rate-limit";
+import { securityEvent } from "./security-events";
 
 // Our Prisma model is `AuthAccount` (because `Account` is the chart of accounts), so map the
 // adapter's `account` delegate onto it.
@@ -31,6 +34,14 @@ export class TwoFactorRequired extends CredentialsSignin {
 }
 export class TwoFactorInvalid extends CredentialsSignin {
   override code = "2fa_invalid";
+}
+/** Too many wrong passwords/codes for this account: locked for a while. */
+export class AccountLocked extends CredentialsSignin {
+  override code = "locked";
+}
+/** Too many sign-in attempts from this address. */
+export class TooManyAttempts extends CredentialsSignin {
+  override code = "rate_limited";
 }
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -70,13 +81,45 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "password",
       name: "Password",
       credentials: { email: { label: "Email" }, password: { label: "Password", type: "password" } },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
-        const user = await adminDb.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
+        const email = parsed.data.email.toLowerCase();
+        const ip = clientIp(request.headers);
+        const userAgent = request.headers.get("user-agent");
+        // Per-address limit (only when we know the address — e.g. behind the hosting proxy).
+        if (ip !== "local") {
+          try {
+            await RL.hit("loginIp", ip);
+          } catch {
+            await securityEvent("LOGIN_LIMITED", { email, ip, userAgent });
+            throw new TooManyAttempts();
+          }
+        }
+        // Per-account lockout after repeated wrong passwords or codes.
+        if (await RL.blocked("loginFailEmail", email)) {
+          await securityEvent("LOGIN_LOCKED", { email, ip, userAgent });
+          throw new AccountLocked();
+        }
+        const user = await adminDb.user.findUnique({ where: { email } });
         const ok = await verifyPassword(parsed.data.password, user?.passwordHash);
-        if (!user || !ok || user.deletedAt) return null;
-        if (user.twoFactorEnabled) await checkSecondFactor(user, parsed.data.code);
+        if (!user || !ok || user.deletedAt) {
+          await RL.fail("loginFailEmail", email);
+          await securityEvent("LOGIN_FAILED", { email, userId: user?.id, ip, userAgent });
+          return null;
+        }
+        if (user.twoFactorEnabled) {
+          try {
+            await checkSecondFactor(user, parsed.data.code);
+          } catch (e) {
+            if (e instanceof TwoFactorInvalid) {
+              await RL.fail("loginFailEmail", email);
+              await securityEvent("LOGIN_FAILED", { email, userId: user.id, ip, userAgent });
+            }
+            throw e;
+          }
+        }
+        await RL.clear("loginFailEmail", email);
         return { id: user.id, email: user.email, name: user.name };
       },
     }),

@@ -181,6 +181,7 @@ export async function start2faAction(): Promise<ActionResult<{ secret: string; u
 export async function confirm2faAction(code: string): Promise<ActionResult<{ recoveryCodes: string[] }>> {
   return runAction(async () => {
     const ctx = await requireContext();
+    await limitTotp(ctx.user.id);
     const u = await adminDb.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
     if (!u.totpSecret || u.twoFactorEnabled) throw new UserFacingError("Start setup first");
     if (!verifyTotp(u.totpSecret, code)) throw new UserFacingError("That code didn't match — check your device's time and try the newest code", { code: "Invalid code" });
@@ -194,6 +195,7 @@ export async function confirm2faAction(code: string): Promise<ActionResult<{ rec
 export async function disable2faAction(code: string): Promise<ActionResult> {
   return runAction(async () => {
     const ctx = await requireContext();
+    await limitTotp(ctx.user.id);
     const u = await adminDb.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
     if (!u.twoFactorEnabled || !u.totpSecret) throw new UserFacingError("Two-factor is off");
     if (!verifyTotp(u.totpSecret, code) && !u.recoveryCodeHashes.includes(sha(code.trim().toLowerCase()))) throw new UserFacingError("Enter a current code to turn two-factor off", { code: "Invalid code" });
@@ -223,4 +225,16 @@ export async function setSupportAccessAction(on: boolean): Promise<ActionResult>
     await audit(ctx.db, { action: on ? "org.support_access_granted" : "org.support_access_revoked", entityType: "Organization", entityId: ctx.org.id, after: { until } });
     done("/app/settings/security");
   }, on ? "Support access granted for 30 days" : "Support access turned off");
+}
+
+/** Two-factor codes in Settings → Security: a few tries per 15 minutes. */
+async function limitTotp(userId: string) {
+  const RL = await import("@/server/auth/rate-limit");
+  try {
+    await RL.hit("totpUser", userId);
+  } catch {
+    const { securityEvent } = await import("@/server/auth/security-events");
+    await securityEvent("TOTP_LIMITED", { userId });
+    throw new UserFacingError("Too many codes tried. Wait 15 minutes and try again.");
+  }
 }

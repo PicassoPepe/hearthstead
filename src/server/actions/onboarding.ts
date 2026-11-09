@@ -1,4 +1,5 @@
 "use server";
+import { cookieOptions } from "@/lib/cookies";
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -22,7 +23,7 @@ export async function exploreSampleData(): Promise<ActionResult<{ orgId: string 
       const role = await adminDb.role.findFirstOrThrow({ where: { organizationId: orgId, key: "ADMIN" } });
       await adminDb.membership.create({ data: { organizationId: orgId, userId: ctx.user.id, roleId: role.id, status: "ACTIVE", acceptedAt: new Date(), createdById: ctx.user.id } });
     }
-    (await cookies()).set(ORG_COOKIE, orgId, { httpOnly: true, sameSite: "lax", path: "/" });
+    (await cookies()).set(ORG_COOKIE, orgId, cookieOptions());
     await adminDb.user.update({ where: { id: ctx.user.id }, data: { lastOrgId: orgId } });
     revalidatePath("/app", "layout");
     return { orgId };
