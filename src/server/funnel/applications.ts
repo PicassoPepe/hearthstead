@@ -6,7 +6,7 @@ import type { ScopedDb } from "@/server/dal";
 import { UserFacingError } from "@/server/action-result";
 import { audit } from "@/server/audit";
 import { getEmailProvider } from "@/adapters";
-import { getPaymentsProvider, PaymentDeclinedError } from "@/adapters/payments";
+import { getPaymentsProvider, PaymentDeclinedError, type CardInput } from "@/adapters/payments";
 import { getScreeningProvider, type ScreeningResult } from "@/adapters/screening";
 import { postEntry } from "@/server/ledger/journal";
 import { getSettings } from "@/server/settings/service";
@@ -104,7 +104,7 @@ export function stepErrors(step: number, d: ApplicationData): Record<string, str
 }
 
 /** Pay the application fee by card (mock: 4242… succeeds, …0002 declines) and post it to the ledger. */
-export async function payApplicationFee(db: ScopedDb, id: string, card: { number: string; expMonth: number; expYear: number; cvc: string }) {
+export async function payApplicationFee(db: ScopedDb, id: string, card: CardInput) {
   if (!paymentsEnabled()) throw new UserFacingError("Paying the application fee online is coming soon — the property manager will collect it.");
   const a = await db.application.findFirst({ where: { id } });
   if (!a) throw new UserFacingError("Application not found");
@@ -112,6 +112,7 @@ export async function payApplicationFee(db: ScopedDb, id: string, card: { number
   const account = await db.processorAccount.findFirst({});
   if (!account?.chargesEnabled) throw new UserFacingError("Online payments aren't set up yet. Contact the office to pay the fee.");
   const provider = getPaymentsProvider();
+  if (provider.name !== "mock" && !("token" in card)) throw new UserFacingError("Card details must be entered in the secure card form.");
   let ref: string;
   try {
     const method = await provider.addCard(card);

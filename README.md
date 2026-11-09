@@ -132,7 +132,7 @@ Zillow doesn't offer a way for other apps to copy its photos, so DeedWood links 
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | Only for `PAYMENTS_PROVIDER=stripe` |
 | `SMS_PROVIDER` · `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | `mock` | Texting; `twilio` sends for real and verifies inbound webhooks |
 | `BANKFEED_PROVIDER` · `PLAID_CLIENT_ID` / `PLAID_SECRET` / `PLAID_ENV` | `mock` | Bank feeds |
-| `LLM_PROVIDER` · `ANTHROPIC_API_KEY` / `LLM_MODEL` | `mock` | AI features; `anthropic` uses Claude (default model `claude-sonnet-5-5`) |
+| `LLM_PROVIDER` · `LLM_FALLBACK` · `LLM_MODEL` | `mock` | AI features. Free: `cloudflare` (`CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_AI_TOKEN`), `groq` (`GROQ_API_KEY`), `openrouter` (`OPENROUTER_API_KEY`), `ollama` (`OLLAMA_URL`); paid: `anthropic` (`ANTHROPIC_API_KEY`). Falls back to the built-in helper when quotas run out. |
 | `ACCOUNTING_EXPORT_PROVIDER` · `QUICKBOOKS_CLIENT_ID` | `csv` | Ledger export format |
 | `API_RATE_LIMIT` | `120` | Public API requests per minute per key |
 
@@ -304,7 +304,7 @@ API keys. Select an implementation with its env var.
 | ESignProvider | `ESIGN_PROVIDER` | `builtin` (hashed one-time links, frozen + SHA-256-hashed document, audit certificate) | 9 ✅ |
 | ListingFeedProvider | `LISTINGFEED_PROVIDER` | `file` — `/api/listings/feed/<org-slug>` (XML, `?format=json`) | 9 ✅ |
 | AccountingExportProvider | `ACCOUNTING_EXPORT_PROVIDER` | `csv` (QuickBooks journal-import CSV), `quickbooks` (QBO JournalEntry payload; mock without credentials) | 10 ✅ |
-| LlmProvider | `LLM_PROVIDER` | `mock` (deterministic, incl. tool routing for the assistant), `anthropic` (`ANTHROPIC_API_KEY`, `LLM_MODEL`, default `claude-sonnet-5-5`; tool use for the assistant) | 5 ✅ · 10 ✅ |
+| LlmProvider | `LLM_PROVIDER` | `mock` (deterministic, incl. tool routing for the assistant); free OpenAI-compatible `cloudflare` / `groq` / `openrouter` / `ollama` (redacted text, tool calls, fallback chain + daily cap); `anthropic` (paid, `ANTHROPIC_API_KEY`) | 5 ✅ · 10 ✅ |
 
 **Swapping a mock for a real service:** set the env var (e.g. `EMAIL_PROVIDER=smtp`) and that
 provider's credentials. To add an implementation, implement the interface in

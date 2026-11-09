@@ -4,6 +4,7 @@ import { portalHome } from "@/server/portal/queries";
 import { Card } from "@/components/ui/card";
 import { MethodsList } from "@/components/portal/methods-list";
 import { AddMethodForm } from "@/components/portal/method-forms";
+import { paymentsClientKey } from "@/server/payments/service";
 
 export const metadata = { title: "Payment methods" };
 
@@ -16,7 +17,7 @@ export default async function MethodsPage() {
       <h1 className="text-2xl font-semibold tracking-tight">Payment methods</h1>
       <MethodsList methods={h?.methods ?? []} readOnly={ctx.preview} />
       <h2 className="font-semibold">Add a payment method</h2>
-      <Card className="p-4"><AddMethodForm disabled={ctx.preview} /></Card>
+      <Card className="p-4"><AddMethodForm disabled={ctx.preview} stripeKey={paymentsClientKey()} /></Card>
     </div>
   );
 }

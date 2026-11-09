@@ -482,6 +482,8 @@ model Attachment {
 model Tenant {
   id             String    @id @default(cuid())
   organizationId String
+  /// The tenant's customer id at the payment processor (Stripe cus_…), where saved cards/banks live.
+  paymentsCustomerRef String?
   kind           String    @default("PERSON") // PERSON | COMPANY
   firstName      String?
   lastName       String?

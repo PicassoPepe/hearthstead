@@ -2,6 +2,7 @@ import { requirePortal } from "@/server/portal/context";
 import { PAYMENTS_COMING_SOON } from "@/lib/payments-flag";
 import { portalHome } from "@/server/portal/queries";
 import { PayForm } from "@/components/portal/pay-form";
+import { paymentsClientKey } from "@/server/payments/service";
 import { Card } from "@/components/ui/card";
 import { DiscountCodeForm } from "@/components/portal/discount-code-form";
 
@@ -22,6 +23,7 @@ export default async function PayPage() {
           passThroughCard={h.settings.passThroughCard}
           passThroughAch={h.settings.passThroughAch}
           readOnly={ctx.preview}
+          stripeKey={paymentsClientKey()}
         />
       ) : (
         <Card className="p-6 text-muted-foreground" data-testid="payments-coming-soon">{h.paymentsComingSoon ? PAYMENTS_COMING_SOON : <>Online payments aren&apos;t available for your lease. Contact {ctx.org.name} for other ways to pay.</>}</Card>

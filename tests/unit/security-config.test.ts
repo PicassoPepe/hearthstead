@@ -39,7 +39,27 @@ describe("check-env", () => {
     const r = checkEnv({ ...good, ...patch });
     expect(r.errors.join(" ")).toMatch(msg);
   });
+  it("refuses online payments without the real processor and both Stripe keys", () => {
+    expect(checkEnv({ ...good, PAYMENTS_ENABLED: "1" }).errors.join(" ")).toMatch(/PAYMENTS_PROVIDER=stripe/);
+    expect(checkEnv({ ...good, PAYMENTS_ENABLED: "1", PAYMENTS_PROVIDER: "mock", STRIPE_SECRET_KEY: "sk_test_abc123", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_abc" }).errors.join(" ")).toMatch(/PAYMENTS_PROVIDER=stripe/);
+    expect(checkEnv({ ...good, PAYMENTS_ENABLED: "1", PAYMENTS_PROVIDER: "stripe", STRIPE_SECRET_KEY: "sk_test_abc123" }).errors.join(" ")).toMatch(/PUBLISHABLE_KEY/);
+    expect(checkEnv({ ...good, PAYMENTS_ENABLED: "1", PAYMENTS_PROVIDER: "stripe", STRIPE_SECRET_KEY: "sk_test_abc123", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_abc" }).errors.join(" ")).toMatch(/both be test keys/);
+    expect(checkEnv({ ...good, PAYMENTS_ENABLED: "1", PAYMENTS_PROVIDER: "stripe", STRIPE_SECRET_KEY: "sk_test_abc123", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_abc" }).errors).toEqual([]);
+    expect(checkEnv({ ...good, PAYMENTS_PROVIDER: "mock" }).errors).toEqual([]); // payments off: fine
+  });
   it("allows a live Stripe key only once approved", () => {
     expect(checkEnv({ ...good, STRIPE_SECRET_KEY: "sk_live_abc123", STRIPE_LIVE_APPROVED: "1" }).errors).toEqual([]);
+  });
+});
+
+import { paymentsEnabled } from "@/lib/payments-flag";
+describe("payments switch", () => {
+  it("in production, the test processor never takes real payments (except demos with dev tools on)", () => {
+    expect(paymentsEnabled({ PAYMENTS_ENABLED: "1", NODE_ENV: "production" })).toBe(false);
+    expect(paymentsEnabled({ PAYMENTS_ENABLED: "1", NODE_ENV: "production", PAYMENTS_PROVIDER: "mock" })).toBe(false);
+    expect(paymentsEnabled({ PAYMENTS_ENABLED: "1", NODE_ENV: "production", PAYMENTS_PROVIDER: "stripe" })).toBe(true);
+    expect(paymentsEnabled({ PAYMENTS_ENABLED: "1", NODE_ENV: "production", ENABLE_DEV_TOOLS: "1" })).toBe(true);
+    expect(paymentsEnabled({ PAYMENTS_ENABLED: "1", NODE_ENV: "development" })).toBe(true);
+    expect(paymentsEnabled({ NODE_ENV: "development", PAYMENTS_PROVIDER: "stripe" })).toBe(false);
   });
 });

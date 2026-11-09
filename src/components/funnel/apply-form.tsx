@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, NativeSelect, Textarea } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { loadStripe, STRIPE_APPEARANCE, type StripeElement, type StripeJs } from "@/lib/stripe-js";
 import { payApplicationFeeAction, saveApplicationStepAction, submitApplicationAction } from "@/server/actions/public";
 import type { ApplicationData } from "@/server/funnel/applications";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,7 @@ const STEPS = ["About you", "Where you live now", "Work & income", "A few more q
 type Section = keyof ApplicationData;
 
 /** Applicant stepper with autosave (debounced) and per-step validation from the server. */
-export function ApplyForm({ orgSlug, slug, initial, initialStep, fee, feePaid }: { orgSlug: string; slug: string; initial: ApplicationData; initialStep: number; fee: string | null; feePaid: boolean }) {
+export function ApplyForm({ orgSlug, slug, initial, initialStep, fee, feePaid, stripeKey }: { orgSlug: string; slug: string; initial: ApplicationData; initialStep: number; fee: string | null; feePaid: boolean; stripeKey?: string | null }) {
   const [data, setData] = React.useState<ApplicationData>(initial);
   const [step, setStep] = React.useState(Math.min(initialStep, 4));
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -113,7 +114,8 @@ export function ApplyForm({ orgSlug, slug, initial, initialStep, fee, feePaid }:
               paid ? <p className="rounded-lg bg-success-soft p-3 text-sm text-success-soft-foreground">✓ Application fee of {fee} paid.</p> : (
                 <fieldset className="grid gap-3 rounded-lg border border-border p-3">
                   <legend className="px-1 text-sm font-medium">Application fee — {fee}</legend>
-                  <Field label="Card number" error={errors.number}>{(a) => <Input {...a} inputMode="numeric" autoComplete="cc-number" value={card.number} onChange={(e) => setCard({ ...card, number: e.target.value })} placeholder="4242 4242 4242 4242" />}</Field>
+                  {stripeKey ? <SecureCardPay stripeKey={stripeKey} fee={fee} pay={(token) => payApplicationFeeAction(orgSlug, { token })} onPaid={() => { setPaid(true); toast.success(`Fee paid — ${fee}`); }} /> : <>
+                  <Field label="Card number" error={errors.number}>{(a) => <Input {...a} inputMode="numeric" autoComplete="cc-number" value={card.number} onChange={(e) => setCard({ ...card, number: e.target.value })} />}</Field>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Expiry (MM/YY)" error={errors.exp}>{(a) => <Input {...a} autoComplete="cc-exp" value={card.exp} onChange={(e) => setCard({ ...card, exp: e.target.value })} />}</Field>
                     <Field label="Security code">{(a) => <Input {...a} inputMode="numeric" autoComplete="cc-csc" value={card.cvc} onChange={(e) => setCard({ ...card, cvc: e.target.value })} />}</Field>
@@ -126,6 +128,7 @@ export function ApplyForm({ orgSlug, slug, initial, initialStep, fee, feePaid }:
                     setPaid(true);
                     toast.success(`Fee paid — ${fee}`);
                   }}>Pay {fee}</Button>
+                  </>}
                 </fieldset>
               )
             ) : null}
@@ -148,6 +151,45 @@ export function ApplyForm({ orgSlug, slug, initial, initialStep, fee, feePaid }:
           }}>Submit application</Button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Real payments: the card is typed into Stripe's own field; we only receive a one-time token. */
+function SecureCardPay({ stripeKey, fee, pay, onPaid }: { stripeKey: string; fee: string; pay: (token: string) => Promise<{ ok: boolean; error?: string }>; onPaid: () => void }) {
+  const box = React.useRef<HTMLDivElement>(null);
+  const ref = React.useRef<{ js: StripeJs; card: StripeElement } | null>(null);
+  const [ready, setReady] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string>();
+  React.useEffect(() => {
+    let live = true;
+    let card: StripeElement | null = null;
+    loadStripe(stripeKey).then((js) => {
+      if (!live || !box.current) return;
+      card = js.elements({ appearance: STRIPE_APPEARANCE }).create("card", { hidePostalCode: false });
+      card.mount(box.current);
+      ref.current = { js, card };
+      setReady(true);
+    }, (e: unknown) => setError(e instanceof Error ? e.message : "Couldn't load the secure card form."));
+    return () => { live = false; card?.destroy(); };
+  }, [stripeKey]);
+  return (
+    <div className="grid gap-3">
+      <div ref={box} className="rounded-lg border border-input bg-surface px-3 py-2.5" aria-label="Card details" />
+      {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+      <p className="text-xs text-muted-foreground">Your card goes straight to Stripe, our payment processor — we never see or store it.</p>
+      <Button type="button" variant="secondary" loading={busy} disabled={!ready} onClick={async () => {
+        if (!ref.current) return;
+        setBusy(true);
+        setError(undefined);
+        const r = await ref.current.js.createPaymentMethod({ type: "card", card: ref.current.card });
+        if (r.error || !r.paymentMethod) { setBusy(false); return setError(r.error?.message ?? "Check the card details."); }
+        const p = await pay(r.paymentMethod.id);
+        setBusy(false);
+        if (!p.ok) return setError(p.error);
+        onPaid();
+      }}>Pay {fee}</Button>
     </div>
   );
 }

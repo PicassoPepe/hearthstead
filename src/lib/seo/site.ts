@@ -5,7 +5,7 @@
  * - MARKETING_APP_URL: the app's address for "Sign in" / "Start free trial" when the marketing
  *   pages are exported as a static folder (Cloudflare Pages). Empty = same site.
  */
-export const siteUrl = () => (process.env.SITE_URL ?? process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+export const siteUrl = () => (process.env.SITE_URL || process.env.AUTH_URL || "http://localhost:3000").replace(/\/$/, "");
 export const appHref = (path: string) => `${(process.env.MARKETING_APP_URL ?? "").replace(/\/$/, "")}${path}`;
 export const BRAND = {
   name: "DeedWood",
@@ -16,4 +16,4 @@ export const BRAND = {
   email: process.env.CONTACT_EMAIL ?? null,
   region: "Kentucky, USA",
 } as const;
-export const PAYMENTS_LIVE = () => process.env.PAYMENTS_ENABLED === "1";
+export { paymentsEnabled as PAYMENTS_LIVE } from "@/lib/payments-flag";

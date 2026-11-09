@@ -2,6 +2,13 @@ import Link from "next/link";
 import { appHref, BRAND } from "@/lib/seo/site";
 
 /** Public marketing pages: simple header, generous spacing, the same low-eye-strain colors as the app. */
+/**
+ * Rendered when served, not at build time: canonical links, social previews, "Sign in" links and the
+ * contact email come from the server's live settings (SITE_URL, MARKETING_APP_URL, CONTACT_EMAIL),
+ * so a build made without them can never publish http://localhost:3000 links.
+ */
+export const dynamic = "force-dynamic";
+
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   const nav = [["Features", "/features"], ["Pricing", "/pricing"], ["Security", "/security"], ["About", "/about"]] as const;
   return (

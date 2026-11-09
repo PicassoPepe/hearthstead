@@ -1,7 +1,10 @@
 /**
- * LlmProvider adapter. Default: a deterministic mock (no keys). Set LLM_PROVIDER=anthropic and
- * ANTHROPIC_API_KEY to use Claude; LLM_MODEL picks the model (default claude-sonnet-5-5).
+ * LlmProvider adapter. Default: a deterministic built-in helper (no keys, no cost).
+ * LLM_PROVIDER = mock | cloudflare | groq | openrouter | ollama (free, see ./free.ts) | anthropic (paid).
+ * LLM_FALLBACK = comma list tried next (e.g. "groq,openrouter"); the built-in helper is always last.
+ * LLM_MODEL overrides the first provider's model.
  */
+import { FREE_PROVIDERS, freeConfig, OpenAiCompatibleProvider, ResilientLlm, type FreeName } from "./free";
 export type LlmMessage = { role: "user" | "assistant"; content: string };
 export type LlmRequest = { system?: string; messages: LlmMessage[]; maxTokens?: number; purpose: string };
 
@@ -20,7 +23,7 @@ export interface LlmProvider {
   chat(req: { system: string; turns: ChatTurn[]; tools: LlmTool[]; maxTokens?: number }): Promise<ChatResult>;
 }
 
-class MockLlmProvider implements LlmProvider {
+export class MockLlmProvider implements LlmProvider {
   readonly name = "mock";
   readonly model = "mock";
   /** Deterministic tool routing so the assistant is demoable offline. */
@@ -147,11 +150,25 @@ class AnthropicProvider implements LlmProvider {
 }
 
 let provider: LlmProvider | undefined;
+
+/** Build one named provider, or null when it isn't set up (missing key). */
+function make(name: string, model: string | undefined, env: Record<string, string | undefined>): LlmProvider | null {
+  if (name === "anthropic") return env.ANTHROPIC_API_KEY ? new AnthropicProvider(env.ANTHROPIC_API_KEY, model ?? "claude-sonnet-5-5") : null;
+  if ((FREE_PROVIDERS as readonly string[]).includes(name)) {
+    const c = freeConfig(name as FreeName, env, model);
+    return c ? new OpenAiCompatibleProvider(name as FreeName, c.model, c.url, c.key) : null;
+  }
+  return null;
+}
+
+export function buildLlmProvider(env: Record<string, string | undefined> = process.env): LlmProvider {
+  const names = [env.LLM_PROVIDER ?? "mock", ...(env.LLM_FALLBACK ?? "").split(",")].map((x) => x.trim().toLowerCase()).filter((x) => x && x !== "mock");
+  const chain = [...new Set(names)].map((n, i) => make(n, i === 0 ? env.LLM_MODEL || undefined : undefined, env)).filter((p): p is LlmProvider => p !== null);
+  const mock = new MockLlmProvider();
+  if (!chain.length) return mock;
+  return new ResilientLlm(chain, mock, { dailyLimit: Number(env.LLM_DAILY_LIMIT || 500), coolDownMs: 10 * 60_000 });
+}
+
 export function getLlmProvider(): LlmProvider {
-  if (provider) return provider;
-  provider =
-    process.env.LLM_PROVIDER === "anthropic" && process.env.ANTHROPIC_API_KEY
-      ? new AnthropicProvider(process.env.ANTHROPIC_API_KEY, process.env.LLM_MODEL ?? "claude-sonnet-5-5")
-      : new MockLlmProvider();
-  return provider;
+  return (provider ??= buildLlmProvider());
 }

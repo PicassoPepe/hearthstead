@@ -8,13 +8,90 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addBank, addCard } from "@/server/actions/portal";
+import { addBank, addCard, finishMethodSetup, startMethodSetup } from "@/server/actions/portal";
+import { loadStripe, STRIPE_APPEARANCE, type StripeElements, type StripeJs } from "@/lib/stripe-js";
 
 /**
- * Add a card or bank account. In mock mode details go to our server and only last-4 is kept;
- * with Stripe, Elements/Financial Connections tokenize on the client instead (see README).
+ * Add a card or bank account.
+ * - Real payments (`stripeKey` set): Stripe's secure Payment Element. Cards are typed and banks are
+ *   linked by signing in to the bank (Financial Connections) inside Stripe's fields; DeedWood only
+ *   ever receives the brand/bank name and last 4.
+ * - Test mode (the built-in "mock" processor): simple fields; only last 4 is kept.
  */
-export function AddMethodForm({ onAdded, disabled }: { onAdded?: (id: string) => void; disabled?: boolean }) {
+export function AddMethodForm({ onAdded, disabled, stripeKey }: { onAdded?: (id: string) => void; disabled?: boolean; stripeKey?: string | null }) {
+  if (stripeKey) return <SecureMethodForm stripeKey={stripeKey} onAdded={onAdded} disabled={disabled} />;
+  return <TestMethodForm onAdded={onAdded} disabled={disabled} />;
+}
+
+function SecureMethodForm({ stripeKey, onAdded, disabled }: { stripeKey: string; onAdded?: (id: string) => void; disabled?: boolean }) {
+  const router = useRouter();
+  const box = React.useRef<HTMLDivElement>(null);
+  const [state, setState] = React.useState<"loading" | "ready" | "error">("loading");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string>();
+  const stripe = React.useRef<{ js: StripeJs; elements: StripeElements } | null>(null);
+
+  const finish = React.useCallback(async (setupIntentId: string) => {
+    const r = await finishMethodSetup(setupIntentId);
+    if (!r.ok) { setError(r.error); return void toast.error(r.error); }
+    toast.success("Saved");
+    onAdded?.(r.data.id);
+    router.refresh();
+  }, [onAdded, router]);
+
+  React.useEffect(() => {
+    if (disabled) return;
+    let live = true;
+    let mounted: { destroy(): void } | null = null;
+    (async () => {
+      // Back from a bank's sign-in page that used a full redirect: finish saving.
+      const back = new URL(window.location.href).searchParams.get("setup_intent");
+      if (back) {
+        window.history.replaceState(null, "", window.location.pathname);
+        await finish(back);
+      }
+      const r = await startMethodSetup();
+      if (!live) return;
+      if (!r.ok) { setError(r.error); return setState("error"); }
+      try {
+        const js = await loadStripe(stripeKey);
+        if (!live || !box.current) return;
+        const elements = js.elements({ clientSecret: r.data.clientSecret, appearance: STRIPE_APPEARANCE });
+        const pe = elements.create("payment", { layout: "tabs" });
+        pe.mount(box.current);
+        mounted = pe;
+        stripe.current = { js, elements };
+        setState("ready");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Couldn't load the secure form.");
+        setState("error");
+      }
+    })();
+    return () => { live = false; mounted?.destroy(); };
+  }, [stripeKey, disabled, finish]);
+
+  return (
+    <form className="grid gap-3" data-testid="secure-method-form" onSubmit={async (e) => {
+      e.preventDefault();
+      if (!stripe.current) return;
+      setBusy(true);
+      setError(undefined);
+      const { js, elements } = stripe.current;
+      const r = await js.confirmSetup({ elements, redirect: "if_required", confirmParams: { return_url: window.location.href } });
+      if (r.error || !r.setupIntent) { setBusy(false); setError(r.error?.message ?? "That didn't work. Please try again."); return; }
+      await finish(r.setupIntent.id);
+      setBusy(false);
+    }}>
+      <div ref={box} className="min-h-24" />
+      {state === "loading" ? <p className="text-sm text-muted-foreground">Loading the secure form…</p> : null}
+      {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+      <p className="text-xs text-muted-foreground">Card and bank details go straight to Stripe, our payment processor — we never see or store them. Bank payments usually have no fee and take 2–3 business days to clear.</p>
+      <div><Button type="submit" loading={busy} disabled={disabled || state !== "ready"}>Save</Button></div>
+    </form>
+  );
+}
+
+function TestMethodForm({ onAdded, disabled }: { onAdded?: (id: string) => void; disabled?: boolean }) {
   const router = useRouter();
   const [card, setCard] = React.useState({ number: "", exp: "", cvc: "" });
   const [bank, setBank] = React.useState({ holderName: "", routingNumber: "", accountNumber: "" });

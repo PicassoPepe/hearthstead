@@ -31,5 +31,5 @@ export const ADAPTERS = [
   { name: "AccountingExportProvider", env: "ACCOUNTING_EXPORT_PROVIDER", implementations: ["csv", "quickbooks"], phase: 10 },
   { name: "InsuranceProvider", env: "INSURANCE_PROVIDER", implementations: ["mock"], phase: 4 },
   { name: "StorageProvider", env: "STORAGE_PROVIDER", implementations: ["local", "s3"], phase: 2 },
-  { name: "LlmProvider", env: "LLM_PROVIDER", implementations: ["mock", "anthropic"], phase: 10 },
+  { name: "LlmProvider", env: "LLM_PROVIDER", implementations: ["mock", "cloudflare", "groq", "openrouter", "ollama", "anthropic"], phase: 10 },
 ] as const;

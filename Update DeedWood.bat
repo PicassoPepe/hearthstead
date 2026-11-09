@@ -24,7 +24,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "if (Test-Path $dir) { Remove-Item $dir -Recurse -Force };" ^
   "Expand-Archive $zip $dir;" ^
   "$src = (Get-ChildItem $dir -Directory | Select-Object -First 1).FullName;" ^
-  "robocopy $src '.' /E /XD .git node_modules .next .deedwood /XF .env /NFL /NDL /NJH /NJS /NP | Out-Null;" ^
+  "robocopy $src '.' /MIR /XD .git node_modules .next .next-website .deedwood storage deploy test-results playwright-report /XF .env .env.local /NFL /NDL /NJH /NJS /NP | Out-Null;" ^
   "if ($LASTEXITCODE -ge 8) { throw 'Copying the new files failed' } else { exit 0 }"
 if errorlevel 1 (
   echo.

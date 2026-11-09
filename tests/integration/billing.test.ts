@@ -4,6 +4,7 @@ import { formEncode, setStripeFetcher, verifyStripeSignature } from "@/server/bi
 import { billingReadOnly, billingState, endComp, getSubscription, handleStripeEvent, hostedBillingNotice, startCheckout, stripeLine, TRIAL_DAYS } from "@/server/billing/subscription";
 import { compOrg, endCompOrg, type PlatformCtx } from "@/server/platform-admin/service";
 import { POST as webhook } from "@/app/api/webhooks/stripe/route";
+import { DEFAULT_PLANS, quote } from "@/lib/pricing";
 import { admin, app, cleanup, makeOrg } from "./helpers";
 
 const orgs: string[] = [];
@@ -54,7 +55,10 @@ describe("stripe prices", () => {
     expect(stripeLine("hosted_starter", "year", 10)).toEqual({ lookupKey: "starter_yearly", quantity: 1 });
     expect(stripeLine("hosted_growth", "month", 30)).toEqual({ lookupKey: "growth_unit_monthly", quantity: 40 }); // $99 min ÷ $2.50
     expect(stripeLine("hosted_growth", "month", 80)).toEqual({ lookupKey: "growth_unit_monthly", quantity: 80 });
-    expect(stripeLine("hosted_scale", "month", 120)).toEqual({ lookupKey: "scale_unit_monthly", quantity: 120 });
+    // Scale monthly uses the graduated price ($1.75/unit for 1–250, $1.50 above); Stripe applies the tiers.
+    expect(stripeLine("hosted_scale", "month", 120)).toEqual({ lookupKey: "scale_unit_monthly_tiered", quantity: 120 });
+    expect(stripeLine("hosted_scale", "month", 300)).toEqual({ lookupKey: "scale_unit_monthly_tiered", quantity: 300 });
+    expect(quote(DEFAULT_PLANS.find((x) => x.key === "hosted_scale")!, 300, "month")).toBe(250 * 175 + 50 * 150); // what Stripe's tiers charge for 300
     expect(stripeLine("hosted_scale", "month", 50).quantity).toBe(100); // $175 min ÷ $1.75
     // Yearly uses the graduated price; Stripe applies the tiers, quantity = units.
     expect(stripeLine("hosted_scale", "year", 101)).toEqual({ lookupKey: "scale_unit_yearly_tiered", quantity: 101 });

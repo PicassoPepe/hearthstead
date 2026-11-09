@@ -46,6 +46,7 @@ const bankSchema = z.object({
   accountNumber: z.string().regex(/^\d{4,17}$/, "Check the account number"),
 });
 
+/** Test mode only (the built-in "mock" processor): typed card details. Real cards use the secure form below. */
 export async function addCard(raw: z.input<typeof cardSchema>): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
     const ctx = await writer();
@@ -67,6 +68,24 @@ export async function addBank(raw: z.input<typeof bankSchema>): Promise<ActionRe
     refresh();
     return { id: pm.id };
   }, "Bank account verified");
+}
+
+/** Secure form, step 1: Stripe gives the browser a one-time key to collect a card or link a bank. */
+export async function startMethodSetup(): Promise<ActionResult<{ clientSecret: string }>> {
+  return runAction(async () => {
+    const ctx = await writer();
+    return { clientSecret: await P.startPaymentSetup(ctx.db, ctx.tenant.id) };
+  });
+}
+
+/** Secure form, step 2: save what the tenant entered (we only ever see the brand/bank and last 4). */
+export async function finishMethodSetup(setupIntentId: string): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    const ctx = await writer();
+    const pm = await P.savePaymentMethod(ctx.db, ctx.tenant.id, { type: "SETUP", setupIntentId: String(setupIntentId) });
+    refresh();
+    return { id: pm.id };
+  }, "Saved");
 }
 
 export async function removeMethod(id: string): Promise<ActionResult> {
