@@ -341,3 +341,19 @@ Decisions made without asking, per the brief. Each can be changed later.
   proves a cross-site post is refused. No separate token system.
 - **SecurityEvent** is a platform-level table (not company-scoped); the app's database role has no
   access to it. Failed sign-ins store a SHA-256 of the email, not the email.
+
+## Owner console (ship plan, Phase 2a)
+
+- `/admin` is a separate App Router tree. Access needs a `PlatformAdmin` row (never an org role),
+  two-factor on, and (optionally) an allowed IP. Risky actions (pause a company, reset someone's
+  two-factor, "view as") also ask for a fresh two-factor code.
+- Platform tables have no `organizationId` and the app role has no grants on them; `/admin` uses the
+  admin connection only. A test proves `deedwood_app` gets "permission denied".
+- "View as" stores an `Impersonation` row (reason, ≤ 60 minutes) and a cookie; the staff app then
+  runs as that member with `impersonatorId` on the database context, so every company audit row
+  records the owner. A banner stays visible with "Stop viewing".
+- Paused companies keep all data; staff see a "paused" page; server actions refuse.
+- Feature switches: company row → everyone row → built-in default. Wired today: `sms` (sending),
+  `ai` (AI helper page), `api` (public API). Others are available for new features to read.
+- The owner bootstrap is a script (`pnpm platform:owner`); there's no sign-up path to the role.
+  It prints an Auth.js-compatible one-time email sign-in link.

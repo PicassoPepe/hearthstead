@@ -1,7 +1,8 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { scopeArgs } from "./scope";
 
-export type OrgContext = { orgId: string; userId: string | null };
+/** `impersonatorId`: the platform owner acting as `userId` ("view as" from /admin) — recorded on every audit row. */
+export type OrgContext = { orgId: string; userId: string | null; impersonatorId?: string | null };
 
 function setContextSql(ctx: OrgContext) {
   return Prisma.sql`SELECT set_config('app.org_id', ${ctx.orgId}, true), set_config('app.user_id', ${ctx.userId ?? ""}, true)`;

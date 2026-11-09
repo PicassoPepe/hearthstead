@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireContext, requirePermission } from "@/server/context";
+import { getContext, requireContext, requirePermission } from "@/server/context";
 import { auth } from "@/server/auth";
 import { adminDb } from "@/server/db";
 import { runAction, UserFacingError, type ActionResult } from "@/server/action-result";
@@ -167,10 +167,17 @@ export async function decideAgentActionAction(id: string, approve: boolean): Pro
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
+/** The signed-in user (works for the platform owner too, who may not belong to any company). */
+async function signedInUserId() {
+  const s = await auth();
+  if (!s?.user?.id) throw new UserFacingError("Sign in first");
+  return s.user.id;
+}
+
 export async function start2faAction(): Promise<ActionResult<{ secret: string; uri: string }>> {
   return runAction(async () => {
-    const ctx = await requireContext();
-    const u = await adminDb.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
+    const userId = await signedInUserId();
+    const u = await adminDb.user.findUniqueOrThrow({ where: { id: userId } });
     if (u.twoFactorEnabled) throw new UserFacingError("Two-factor is already on");
     const secret = newTotpSecret();
     await adminDb.user.update({ where: { id: u.id }, data: { totpSecret: secret } });
@@ -180,14 +187,15 @@ export async function start2faAction(): Promise<ActionResult<{ secret: string; u
 
 export async function confirm2faAction(code: string): Promise<ActionResult<{ recoveryCodes: string[] }>> {
   return runAction(async () => {
-    const ctx = await requireContext();
-    await limitTotp(ctx.user.id);
-    const u = await adminDb.user.findUniqueOrThrow({ where: { id: ctx.user.id } });
+    const userId = await signedInUserId();
+    await limitTotp(userId);
+    const u = await adminDb.user.findUniqueOrThrow({ where: { id: userId } });
     if (!u.totpSecret || u.twoFactorEnabled) throw new UserFacingError("Start setup first");
     if (!verifyTotp(u.totpSecret, code)) throw new UserFacingError("That code didn't match — check your device's time and try the newest code", { code: "Invalid code" });
     const codes = newRecoveryCodes();
     await adminDb.user.update({ where: { id: u.id }, data: { twoFactorEnabled: true, recoveryCodeHashes: codes.map((c) => sha(c)) } });
-    await audit(ctx.db, { action: "user.2fa_enabled", entityType: "User", entityId: u.id });
+    const ctx = await getContext();
+    if (ctx) await audit(ctx.db, { action: "user.2fa_enabled", entityType: "User", entityId: u.id });
     return { recoveryCodes: codes };
   });
 }
@@ -237,4 +245,20 @@ async function limitTotp(userId: string) {
     await securityEvent("TOTP_LIMITED", { userId });
     throw new UserFacingError("Too many codes tried. Wait 15 minutes and try again.");
   }
+}
+
+/** Set a password (first time) or change it (needs the current one). Signs out other devices. */
+export async function changePasswordAction(current: string | null, next: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const userId = await signedInUserId();
+    const { hashPassword, verifyPassword, PASSWORD_MIN } = await import("@/server/auth/password");
+    const u = await adminDb.user.findUniqueOrThrow({ where: { id: userId } });
+    if (u.passwordHash && !(await verifyPassword(current ?? "", u.passwordHash))) throw new UserFacingError("Your current password isn't right", { current: "Doesn't match" });
+    if (next.length < PASSWORD_MIN) throw new UserFacingError(`Use at least ${PASSWORD_MIN} characters`, { next: "Too short" });
+    await adminDb.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(next) } });
+    const session = (await auth()) as { sid?: string } | null;
+    await adminDb.userSession.updateMany({ where: { userId, revokedAt: null, id: { not: session?.sid ?? "" } }, data: { revokedAt: new Date() } });
+    const ctx = await getContext();
+    if (ctx) await audit(ctx.db, { action: "user.password_changed", entityType: "User", entityId: userId });
+  }, "Password saved");
 }

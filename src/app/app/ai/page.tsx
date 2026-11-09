@@ -1,4 +1,5 @@
 import { Sparkles as SparklesIcon } from "lucide-react";
+import { flagEnabled } from "@/server/platform-admin/flags";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -15,6 +16,7 @@ export default async function AiPage({ searchParams }: { searchParams: Promise<{
   const tab = (await searchParams).tab === "agents" ? "agents" : "assistant";
   const ctx = await requireContext();
   if (!can(ctx.permissions, "ai", "view")) return <Forbidden what="the AI assistant" />;
+  if (!(await flagEnabled("ai", ctx.org.id))) return <p className="rounded-card border border-border bg-surface p-6 text-sm text-muted-foreground">The AI helper isn&apos;t available for your account right now. Contact DeedWood support.</p>;
   const llm = getLlmProvider();
   const [cfgs, actions, pending] = await Promise.all([
     tab === "agents" ? agentConfigs(ctx.db) : Promise.resolve([]),

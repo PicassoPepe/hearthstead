@@ -9,7 +9,7 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request }) {
       const p = request.nextUrl.pathname;
-      const isProtected = p.startsWith("/app") || p.startsWith("/portal") || p === "/select-org";
+      const isProtected = p.startsWith("/app") || p.startsWith("/portal") || p.startsWith("/admin") || p === "/select-org";
       return isProtected ? Boolean(auth?.user) : true;
     },
     jwt({ token, user }) {
