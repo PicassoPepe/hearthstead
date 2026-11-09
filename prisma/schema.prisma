@@ -2417,3 +2417,111 @@ model StripeEvent {
   type       String
   receivedAt DateTime @default(now())
 }
+
+/// §2.7a Landlord discounts & concessions. Computed in DeedWood's ledger (never Stripe coupons):
+/// each application posts a CREDIT against "Concessions & Discounts" tied to one charge.
+model Discount {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  /// PERCENT | FIXED
+  kind           String
+  /// PERCENT: basis points (2500 = 25%). FIXED: cents off each matching charge.
+  value          Int
+  /// SINGLE_CHARGE | CHARGE_KINDS
+  target         String
+  chargeId       String?
+  /// Charge kinds it applies to (RENT, LATE_FEE, NSF_FEE, UTILITY, OTHER). Empty = all.
+  chargeKinds    String[]
+  /// ONCE | MONTHS | DATE_RANGE | FOREVER
+  duration       String
+  months         Int?
+  startDate      DateTime  @db.Date
+  /// Last day a charge can be discounted (MONTHS is computed; FOREVER = null).
+  endDate        DateTime? @db.Date
+  /// DIRECT (staff picks a lease) | CODE (tenant enters a code)
+  delivery       String
+  leaseId        String?
+  code           String?
+  codeExpiresAt  DateTime?
+  maxUses        Int?
+  perTenantLimit Int?
+  propertyId     String?
+  unitId         String?
+  reasonKey      String
+  reasonText     String
+  notes          String?
+  /// PENDING_APPROVAL | ACTIVE | REJECTED | REVOKED
+  status         String    @default("ACTIVE")
+  createdById    String?
+  approvedById   String?
+  approvedAt     DateTime?
+  revokedById    String?
+  revokedAt      DateTime?
+  revokeReason   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  redemptions  DiscountRedemption[]
+  applications DiscountApplication[]
+  events       DiscountEvent[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+  @@index([organizationId, leaseId])
+}
+
+/// A code linked to a lease (tenant entered it, or staff did for them).
+model DiscountRedemption {
+  id             String   @id @default(cuid())
+  organizationId String
+  discountId     String
+  leaseId        String
+  tenantId       String?
+  redeemedById   String?
+  createdAt      DateTime @default(now())
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+
+  @@unique([discountId, leaseId])
+  @@index([organizationId, leaseId])
+}
+
+/// One discount on one charge: the before/after amounts and the credit that carries it.
+model DiscountApplication {
+  id             String   @id @default(cuid())
+  organizationId String
+  discountId     String
+  leaseId        String
+  chargeId       String
+  creditId       String
+  chargeCents    Int
+  amountCents    Int
+  afterCents     Int
+  createdAt      DateTime @default(now())
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+
+  @@unique([discountId, chargeId])
+  @@index([organizationId, chargeId])
+  @@index([organizationId, createdAt])
+}
+
+/// Append-only history of every discount action (the app's database login can't change or delete rows).
+model DiscountEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  discountId     String
+  /// created | approved | rejected | redeemed | applied | revoked
+  action         String
+  actorId        String?
+  reason         String?
+  before         Json?
+  after          Json?
+  ip             String?
+  createdAt      DateTime @default(now())
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, discountId, createdAt])
+}

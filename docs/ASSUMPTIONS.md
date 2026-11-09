@@ -457,3 +457,29 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Owner console → company → "Make free (beta)": Beta or Complimentary, required reason,
   optional end date, platform-audited. Ending it (or the end date passing) gives a fresh 14-day
   trial; a company with a Stripe subscription goes back to it.
+
+## Landlord discounts & concessions (§2.7a)
+
+- Rent & Money → Discounts & concessions. A discount is percent (basis points) or a fixed amount
+  per charge; it comes off one charge, or off kinds of charges (rent, late fees, returned-payment
+  fees, utility bill-backs, other fees & add-ons) once, for N months, between dates, or until
+  stopped. Security deposits and opening balances are never discounted. Application fees aren't
+  on the lease ledger, so they can't be discounted yet.
+- Delivery: directly to a lease (applied right away to charges already in its window, then to
+  each new charge as it's posted), or as a code (optional property/unit, expiry, max uses,
+  per-tenant limit) that a tenant enters on the portal Pay page or staff enter for them.
+- Ledger: each discount on a charge posts a CREDIT (chargeKind DISCOUNT, relatedId = the charge)
+  against the system account 4050 "Concessions & Discounts" (contra-income), so it reduces gross
+  rent in the P&L and its CSV, and shows on the tenant ledger/portal history with its reason.
+  Percent amounts round to the nearest cent; all discounts on one charge together never exceed
+  the charge. Voiding a charge voids its discounts. Discounts are DeedWood ledger entries, never
+  Stripe coupons, and work the same with PAYMENTS_ENABLED off.
+- Reason is required (owner-editable list + "Other" with text). Every create/approve/reject/
+  redeem/apply/stop writes an append-only DiscountEvent (actor, IP, before/after); the app's
+  database role has no UPDATE/DELETE on that table. Stopping a discount is forward-only.
+- Permission area "Discounts": Edit = give, Full = approve/turn down/stop and edit the settings.
+  Migration defaults: Admin Full, Property Manager Edit, Bookkeeper View, others none.
+- Maker-checker: dollar or percent discounts above the owner's thresholds wait for someone else
+  with Full access; Full-access users' own discounts aren't held.
+- Tenants get a portal message when a direct discount starts. Tax/accountant export:
+  `/api/exports/discounts?year=YYYY` (CSV).

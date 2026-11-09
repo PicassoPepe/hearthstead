@@ -26,6 +26,7 @@ export const DEFAULT_CHART: ChartAccount[] = [
   { code: "3950", name: "Opening Balance Equity", type: "EQUITY", systemKey: "OPENING_BALANCE_EQUITY" },
   // Income
   { code: "4000", name: "Rent Income", type: "INCOME", systemKey: "RENT_INCOME" },
+  { code: "4050", name: "Concessions & Discounts", type: "INCOME", systemKey: "CONCESSIONS" },
   { code: "4100", name: "Late Fee Income", type: "INCOME", systemKey: "LATE_FEE_INCOME" },
   { code: "4200", name: "Other Income", type: "INCOME", systemKey: "OTHER_INCOME" },
   { code: "4300", name: "Management Fee Income", type: "INCOME", systemKey: "MANAGEMENT_FEE_INCOME" },
@@ -50,9 +51,11 @@ type Tx = Prisma.TransactionClient | PrismaClient;
 
 /** Idempotently create the default chart (and bank-account records) for an organization. */
 export async function provisionChart(tx: Tx, orgId: string, createdById?: string | null): Promise<void> {
-  const existing = new Set((await tx.account.findMany({ where: { organizationId: orgId }, select: { code: true } })).map((a) => a.code));
+  const rows = await tx.account.findMany({ where: { organizationId: orgId }, select: { code: true, systemKey: true } });
+  const existing = new Set(rows.map((a) => a.code));
+  const keys = new Set(rows.map((a) => a.systemKey).filter(Boolean));
   for (const a of DEFAULT_CHART) {
-    if (existing.has(a.code)) continue;
+    if (existing.has(a.code) || (a.systemKey && keys.has(a.systemKey))) continue;
     const acct = await tx.account.create({
       data: {
         organizationId: orgId,

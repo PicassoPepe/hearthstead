@@ -99,7 +99,10 @@ export default async function LeasePage({ params, searchParams }: { params: Prom
           { label: "Deposit held", value: `${formatMoney(held)}${lease.depositCents && held < lease.depositCents ? ` of ${formatMoney(lease.depositCents)}` : ""}` },
           { label: "Rent due", value: `Day ${lease.rentDueDay}` },
         ]}
-        actions={<LeaseActions leaseId={lease.id} status={lease.status} balanceCents={bal.balanceCents} options={options} canMoney={canMoney} canEdit={canEdit} />}
+        actions={<>
+          <LeaseActions leaseId={lease.id} status={lease.status} balanceCents={bal.balanceCents} options={options} canMoney={canMoney} canEdit={canEdit} />
+          {can(ctx.permissions, "discounts", "edit") && (lease.status === "ACTIVE" || lease.status === "EVICTION") ? <Link href={`/app/money/discounts?lease=${lease.id}`} className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-muted">Give a discount</Link> : null}
+        </>}
       />
       <EntityTabs
         base={base}
