@@ -55,3 +55,6 @@ REVOKE INSERT, UPDATE, DELETE ON "AuthAccount", "Session", "VerificationToken" F
 
 -- Platform-only tables: never reachable by the app role (written/read through the admin connection).
 REVOKE ALL ON "SecurityEvent", "PlatformAdmin", "PlatformAuditLog", "Impersonation", "FeatureFlag", "PlatformAnnouncement", "Release", "Plan", "Subscription", "License", "Entitlement", "AccountToken", "BackupRun", "ErrorEvent", "PendingSignup", "StripeEvent" FROM deedwood_app;
+
+-- Discount history is append-only for the app: it can add events but never change or remove them.
+REVOKE UPDATE, DELETE ON "DiscountEvent" FROM deedwood_app;

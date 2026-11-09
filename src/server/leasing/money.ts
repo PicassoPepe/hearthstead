@@ -91,7 +91,7 @@ export async function applyPrepaid(tx: ScopedTx, a: Actor, leaseId: string, date
 export async function postCharge(
   tx: ScopedTx,
   a: Actor,
-  input: { leaseId: string; accountId: string; amountCents: number; date: Date; dueDate?: Date | null; memo?: string | null; chargeKind?: string; order?: ApplicationOrder; skipPrepaid?: boolean },
+  input: { leaseId: string; accountId: string; amountCents: number; date: Date; dueDate?: Date | null; memo?: string | null; chargeKind?: string; order?: ApplicationOrder; skipPrepaid?: boolean; skipDiscounts?: boolean },
 ) {
   positive(input.amountCents, "Charge");
   const ctx = await leaseContext(tx, input.leaseId);
@@ -121,7 +121,33 @@ export async function postCharge(
       createdById: a.userId,
     },
   });
+  // Landlord discounts that cover this charge (rent specials, fee waivers…) come off right away.
+  if (!input.skipDiscounts) {
+    const { applyDiscountsToCharge } = await import("@/server/discounts/engine");
+    await applyDiscountsToCharge(tx, a, t);
+  }
   if (!input.skipPrepaid) await applyPrepaid(tx, a, input.leaseId, input.date, input.order);
+  return t;
+}
+
+/**
+ * A discount on one specific charge: Dr Concessions & Discounts, Cr A/R for what's still owed on
+ * that charge (anything more — the charge was already paid — becomes a credit balance).
+ */
+export async function postDiscountCredit(tx: ScopedTx, a: Actor, input: { leaseId: string; chargeId: string; amountCents: number; date: Date; memo: string }) {
+  positive(input.amountCents, "Discount");
+  const ctx = await leaseContext(tx, input.leaseId);
+  const charge = await tx.leaseTransaction.findFirst({ where: { id: input.chargeId, leaseId: input.leaseId, type: "CHARGE", voidedAt: null }, include: { appliedTo: { select: { amountCents: true } } } });
+  if (!charge) throw new UserFacingError("Charge not found");
+  const remaining = charge.amountCents - charge.appliedTo.reduce((s, x) => s + x.amountCents, 0);
+  const applied = Math.max(0, Math.min(input.amountCents, remaining));
+  const accounts = new AccountResolver(tx);
+  const conc = await accounts.id("CONCESSIONS");
+  const je = await postEntry(tx, a.orgId, a.userId, { date: input.date, memo: input.memo, source: "LEASE_DISCOUNT", sourceId: input.leaseId, lines: P.creditLines(input.amountCents, applied, { id: conc }, dimsOf(ctx)) }, accounts);
+  const t = await tx.leaseTransaction.create({
+    data: { organizationId: a.orgId, leaseId: input.leaseId, type: "CREDIT", chargeKind: "DISCOUNT", relatedId: charge.id, amountCents: input.amountCents, date: input.date, memo: input.memo, accountId: conc, journalEntryId: je.id, createdById: a.userId },
+  });
+  if (applied) await tx.paymentApplication.create({ data: { organizationId: a.orgId, sourceId: t.id, chargeId: charge.id, amountCents: applied } });
   return t;
 }
 
@@ -309,8 +335,16 @@ export async function voidTransaction(tx: ScopedTx, a: Actor, input: { id: strin
     case "RETURNED_PAYMENT":
       throw new UserFacingError("A returned payment can't be voided. Record a new payment instead.");
     case "CHARGE": {
+      // A discount on a voided charge goes away with it (it shouldn't turn into a credit balance).
+      const discounts = await tx.leaseTransaction.findMany({ where: { relatedId: t.id, type: "CREDIT", chargeKind: "DISCOUNT", voidedAt: null } });
+      for (const d of discounts) {
+        await unpostSource(tx, a, d.id, input.date, `Void: ${d.memo ?? "discount"} — charge voided`, "LEASE_VOID");
+        await tx.leaseTransaction.update({ where: { id: d.id }, data: { voidedAt: new Date(), voidReason: `Charge voided: ${reason}` } });
+      }
       await reverseEntry(tx, a.orgId, a.userId, t.journalEntryId, input.date, memo);
-      const applied = t.appliedTo.reduce((s, x) => s + x.amountCents, 0);
+      const applied = discounts.length
+        ? (await tx.paymentApplication.aggregate({ where: { chargeId: t.id }, _sum: { amountCents: true } }))._sum.amountCents ?? 0
+        : t.appliedTo.reduce((s, x) => s + x.amountCents, 0);
       if (applied > 0) {
         const ctx = await leaseContext(tx, t.leaseId);
         await postEntry(tx, a.orgId, a.userId, { date: input.date, memo: "Payments moved to credit balance after void", source: "PREPAID_UNAPPLIED", sourceId: t.id, lines: P.unapplyLines(applied, dimsOf(ctx)) });

@@ -73,7 +73,7 @@ export async function postBillback(db: ScopedDb, v: BillbackInput) {
     const out: (BillbackLine & { transactionId: string | null })[] = [];
     for (const l of p.lines) {
       if (l.amountCents <= 0) { out.push({ ...l, transactionId: null }); continue; }
-      const t = await postCharge(tx, { orgId: db.ctx.orgId, userId: db.ctx.userId }, { leaseId: l.leaseId, accountId: income.id, amountCents: l.amountCents, date: chargeDate, dueDate: chargeDate, memo: `${v.label.trim() || "Utilities"} billback — ${monthLabel} (${METHODS[v.method].toLowerCase()})`, chargeKind: "OTHER" });
+      const t = await postCharge(tx, { orgId: db.ctx.orgId, userId: db.ctx.userId }, { leaseId: l.leaseId, accountId: income.id, amountCents: l.amountCents, date: chargeDate, dueDate: chargeDate, memo: `${v.label.trim() || "Utilities"} billback — ${monthLabel} (${METHODS[v.method].toLowerCase()})`, chargeKind: "UTILITY" });
       out.push({ ...l, transactionId: t.id });
     }
     return tx.utilityBillback.create({ data: { organizationId: db.ctx.orgId, propertyId: v.propertyId, period: v.period, expenseAccountId: v.expenseAccountId, incomeAccountId: income.id, label: v.label.trim() || "Utilities", method: v.method, recoveryPct: v.recoveryPct, billCents: p.billCents, totalCents: p.recoverCents, lines: out as unknown as object, createdById: db.ctx.userId } });

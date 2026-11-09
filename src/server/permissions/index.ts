@@ -8,6 +8,7 @@ export const MODULES = [
   "leasing",
   "people",
   "accounting",
+  "discounts",
   "tasks",
   "communications",
   "reports",
@@ -29,6 +30,7 @@ export const MODULE_LABELS: Record<Module, string> = {
   leasing: "Leasing",
   people: "People",
   accounting: "Accounting",
+  discounts: "Discounts (Edit = give, Full = approve)",
   tasks: "Tasks & maintenance",
   communications: "Communications",
   reports: "Reports",
@@ -96,6 +98,7 @@ export const BUILT_IN_ROLES: Record<
     permissions: {
       ...all("edit"),
       accounting: "edit",
+      discounts: "edit",
       settings: "view",
       users: "view",
       workflows: "edit",
@@ -107,6 +110,7 @@ export const BUILT_IN_ROLES: Record<
     permissions: {
       ...all("view"),
       accounting: "delete",
+      discounts: "view",
       reports: "edit",
       tasks: "view",
       communications: "view",

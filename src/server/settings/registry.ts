@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_DISCOUNT_REASONS } from "@/lib/discounts";
 
 /**
  * Every configurable setting is declared once here: its schema, default, which scopes may
@@ -25,7 +26,8 @@ export type SettingGroup =
   | "ownerPortal"
   | "branding"
   | "maintenance"
-  | "communications";
+  | "communications"
+  | "discounts";
 
 type Def<S extends z.ZodType> = {
   key: string;
@@ -208,6 +210,24 @@ export const SETTINGS = {
     schema: z.boolean(), default: true, scopes: ORG_PROP, input: { kind: "boolean" },
   }),
 
+  // ── Discounts & concessions (§2.7a) ──
+  "discounts.reasons": def({
+    key: "discounts.reasons", group: "discounts", label: "Reasons to choose from",
+    help: "\"Other (specify)\" is always offered too.",
+    schema: z.array(z.string().trim().min(2).max(80)).min(1).max(40),
+    default: [...DEFAULT_DISCOUNT_REASONS], scopes: ["ORG"], input: { kind: "custom" },
+  }),
+  "discounts.approvalOverCents": def({
+    key: "discounts.approvalOverCents", group: "discounts", label: "Fixed discounts above this need approval",
+    help: "A second person with Full access to Discounts must approve. $0 = no approval needed.",
+    schema: z.number().int().min(0), default: 0, scopes: ["ORG"], input: { kind: "money" },
+  }),
+  "discounts.approvalOverPercentBps": def({
+    key: "discounts.approvalOverPercentBps", group: "discounts", label: "Percent discounts above this need approval",
+    help: "0% = no approval needed.",
+    schema: z.number().int().min(0).max(10000), default: 0, scopes: ["ORG"], input: { kind: "percent" },
+  }),
+
   // ── Branding (portal theming) ──
   "branding.portalAccent": def({
     key: "branding.portalAccent", group: "branding", label: "Portal accent color",
@@ -229,6 +249,7 @@ export const SETTING_GROUP_LABELS: Record<SettingGroup, string> = {
   branding: "Branding",
   maintenance: "Maintenance",
   communications: "Communications & SMS",
+  discounts: "Discounts & concessions",
 };
 
 export function isSettingKey(k: string): k is SettingKey {

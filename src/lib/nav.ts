@@ -59,6 +59,7 @@ export const NAV_MAIN: NavSection[] = [
     children: [
       { label: "Money home", href: "/app/money", keywords: ["who owes", "rent due"] },
       { label: "Rent paid online", href: "/app/accounting/payments", phase: 4, keywords: ["incoming payments"] },
+      { label: "Discounts & concessions", href: "/app/money/discounts", keywords: ["discount", "concession", "promo code", "waive", "move-in special", "coupon"] },
       { label: "Bills to pay", href: "/app/accounting/bills", phase: 6, keywords: ["payables", "ap", "invoices"] },
       { label: "Expenses", href: "/app/accounting/expenses", phase: 6 },
       { label: "Pay owners", href: "/app/accounting/distributions", phase: 6, keywords: ["owner distributions", "payouts"] },
