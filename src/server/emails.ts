@@ -3,11 +3,11 @@ const APP = process.env.NEXT_PUBLIC_APP_NAME ?? "DeedWood";
 function layout(title: string, body: string): string {
   return `<!doctype html><html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;padding:24px;color:#0f172a">
 <table role="presentation" width="100%" style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px">
-<tr><td><p style="font-weight:600;color:#0F766E;margin:0 0 16px">${APP}</p><h1 style="font-size:20px;margin:0 0 16px">${title}</h1>${body}</td></tr></table></body></html>`;
+<tr><td><p style="font-weight:600;color:#0C4C54;margin:0 0 16px">${APP}</p><h1 style="font-size:20px;margin:0 0 16px">${title}</h1>${body}</td></tr></table></body></html>`;
 }
 
 function button(url: string, label: string): string {
-  return `<p style="margin:24px 0"><a href="${url}" style="background:#0F766E;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block">${label}</a></p>`;
+  return `<p style="margin:24px 0"><a href="${url}" style="background:#0C4C54;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block">${label}</a></p>`;
 }
 
 export function magicLinkEmail(url: string) {

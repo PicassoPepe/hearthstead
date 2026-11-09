@@ -82,8 +82,8 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
             // eslint-disable-next-line @next/next/no-img-element -- user-uploaded logo served from our file route
             <img src={shell.orgLogoUrl} alt="" className="size-8 shrink-0 rounded-lg bg-white object-contain p-0.5" />
           ) : (
-            <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-orange-500 font-display text-sm font-extrabold text-slate-950">
-              {(shell.orgName || "H").slice(0, 1)}
+            <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-[#8F5A3A] font-display text-sm font-extrabold text-white">
+              {(shell.orgName || "D").slice(0, 1)}
             </span>
           )}
           {collapsed ? <span className="sr-only">{shell.orgName} home</span> : (

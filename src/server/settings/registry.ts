@@ -211,7 +211,7 @@ export const SETTINGS = {
   // ── Branding (portal theming) ──
   "branding.portalAccent": def({
     key: "branding.portalAccent", group: "branding", label: "Portal accent color",
-    schema: z.string().regex(/^#[0-9a-fA-F]{6}$/), default: "#0F766E", scopes: ORG_PROP,
+    schema: z.string().regex(/^#[0-9a-fA-F]{6}$/), default: "#0C4C54", scopes: ORG_PROP,
     input: { kind: "color" },
   }),
 } as const;

@@ -3,8 +3,10 @@
 Decisions made without asking, per the brief. Each can be changed later.
 
 **Product**
-- App name **DeedWood**, brand color **#0F766E** (teal 700; 5.47:1 on white). Dark mode uses
-  teal 400 (#2DD4BF) with dark text. The `{{EXTRA_CONTEXT}}` placeholder was empty.
+- App name **DeedWood**. Official palette (DeedWood LLC; logos in `public/` and `docs/brand/`, used
+  as-is): deep teal **#0C4C54** primary, dark slate **#18383B** text, copper **#B8774F** accent,
+  ivory **#F7F3EA** page background (never pure white, for less eye strain). Dark mode uses a soft
+  charcoal teal background (#121C1E) and a lighter teal (#4DB0B8) primary. The `{{EXTRA_CONTEXT}}` placeholder was empty.
 - Demo data is fictional; emails use the reserved `example.com` domain.
 - Currency is USD only; amounts are integer cents everywhere (`src/lib/money.ts`).
 

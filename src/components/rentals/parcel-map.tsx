@@ -27,10 +27,10 @@ export function ParcelMap({ geometry, latitude, longitude, label, className = "h
       layers.current.satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" });
       layers.current.satellite.addTo(m);
       if (geometry) {
-        const shape = L.geoJSON({ type: "Feature", properties: {}, geometry } as GeoJSON.Feature, { style: { color: "#f59e0b", weight: 3, fillColor: "#f59e0b", fillOpacity: 0.15 } }).addTo(m);
+        const shape = L.geoJSON({ type: "Feature", properties: {}, geometry } as GeoJSON.Feature, { style: { color: "#B8774F", weight: 3, fillColor: "#B8774F", fillOpacity: 0.15 } }).addTo(m);
         m.fitBounds(shape.getBounds(), { padding: [24, 24], maxZoom: 19 });
       } else if (latitude !== null && longitude !== null) {
-        L.circleMarker([latitude, longitude], { radius: 8, color: "#f59e0b", weight: 3 }).addTo(m);
+        L.circleMarker([latitude, longitude], { radius: 8, color: "#B8774F", weight: 3 }).addTo(m);
         m.setView([latitude, longitude], 17);
       } else {
         m.setView([37.8, -85.7], 7); // Kentucky

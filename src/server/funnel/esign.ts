@@ -85,7 +85,7 @@ async function emailSigner(db: ScopedDb, orgName: string, title: string, s: { na
   await getEmailProvider().send({
     to: s.email, organizationId: db.ctx.orgId, subject: `Please sign: ${title}`,
     text: `${orgName} sent you "${title}" to sign: ${url}`,
-    html: `<div style="font-family:system-ui,sans-serif"><p>Hi ${s.name.split(" ")[0]},</p><p>${orgName} sent you <strong>${title}</strong> to review and sign electronically.</p><p style="margin:24px 0"><a href="${url}" style="background:#0F766E;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Review &amp; sign</a></p><p style="color:#64748b;font-size:13px">This link is just for you — please don't forward it.</p></div>`,
+    html: `<div style="font-family:system-ui,sans-serif"><p>Hi ${s.name.split(" ")[0]},</p><p>${orgName} sent you <strong>${title}</strong> to review and sign electronically.</p><p style="margin:24px 0"><a href="${url}" style="background:#0C4C54;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Review &amp; sign</a></p><p style="color:#64748b;font-size:13px">This link is just for you — please don't forward it.</p></div>`,
   });
 }
 

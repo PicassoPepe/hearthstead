@@ -90,7 +90,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <section aria-labelledby="hero-h" className="relative mb-6 overflow-hidden rounded-[20px] bg-gradient-to-br from-[#0b3532] via-[#0f5a52] to-[#0f766e] p-6 text-white shadow-pop sm:p-8">
+      <section aria-labelledby="hero-h" className="relative mb-6 overflow-hidden rounded-[20px] bg-gradient-to-br from-[#18383B] via-[#0C4C54] to-[#0E5A63] p-6 text-white shadow-pop sm:p-8">
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-white/10 blur-2xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-24 right-24 size-56 rounded-full bg-amber-300/20 blur-2xl" />
         <p className="relative text-sm text-teal-100">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>

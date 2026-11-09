@@ -9,63 +9,61 @@
  * surface they're used on — see tests/unit/contrast.test.ts.
  */
 :root {
-  --primary: #0f766e;           /* brand: teal 700 — 5.47:1 on white */
-  --primary-hover: #115e59;
+  --primary: #0C4C54;           /* deep teal — 9.23:1 on surface */
+  --primary-hover: #0A3F46;
   --primary-foreground: #ffffff;
-  --primary-soft: #ccfbf1;
-  --primary-soft-foreground: #134e4a;
+  --primary-soft: #D7E8EA;
+  --primary-soft-foreground: #0C4C54;
 
-  --background: #f5f7f6;        /* warm slate with a hint of the brand */
-  --surface: #ffffff;
-  --surface-muted: #f1f5f9;     /* slate 100 */
-  --foreground: #0f172a;        /* slate 900 */
-  --muted-foreground: #475569;  /* slate 600 — 7.58:1 on white */
-  --border: #e2e8f0;            /* slate 200 */
-  --border-strong: #cbd5e1;
-  --input: #64748b;             /* slate 500 — 4.76:1 non-text contrast for input borders */
-  --ring: #0f766e;
+  --background: #F7F3EA;        /* ivory — soft, not pure white */
+  --surface: #FBFAF6;           /* near-ivory cards */
+  --surface-muted: #EFEAE0;
+  --foreground: #18383B;        /* dark slate */
+  --muted-foreground: #4A5C5E;  /* teal-gray — ≥ 5.8:1 on surfaces */
+  --border: #D9D2C5;
+  --border-strong: #C4BBA9;
+  --input: #64748B;             /* ≥ 3:1 non-text on surface */
+  --ring: #0C4C54;
 
   --success: #15803d;  --success-soft: #dcfce7;  --success-soft-foreground: #14532d;
   --warning: #b45309;  --warning-soft: #fef3c7;  --warning-soft-foreground: #78350f;
   --danger:  #b91c1c;  --danger-soft:  #fee2e2;  --danger-soft-foreground:  #7f1d1d;
   --info:    #1d4ed8;  --info-soft:    #dbeafe;  --info-soft-foreground:    #1e3a8a;
 
-  /* Categorical chart palette (light) */
-  /* Validated with the dataviz palette checker (CVD/normal-vision/contrast) — keep the order. */
+  /* Categorical chart palette (unchanged; slots 1–2 stay ≥ 3:1 on surface). */
   --chart-1: #2a78d6; --chart-2: #eb6834; --chart-3: #1baf7a; --chart-4: #eda100;
   --chart-5: #e87ba4; --chart-6: #008300;
 
-  /* Sidebar: deep brand panel (text contrast ≥ 7:1, muted ≥ 4.5:1 — see contrast tests). */
-  --sidebar: #0b3532;
-  --sidebar-foreground: #ecfdf9;
-  --sidebar-muted: #a7d4cd;
-  --sidebar-hover: #12443f;
-  --sidebar-active: #1a5a53;
-  --sidebar-border: #15433f;
-  --accent: #f59e0b;            /* warm accent for highlights and illustrations */
+  --sidebar: #0C4C54;
+  --sidebar-foreground: #F7F3EA;
+  --sidebar-muted: #B8D4D7;
+  --sidebar-hover: #0E5560;
+  --sidebar-active: #0F5C68;
+  --sidebar-border: #0A3F46;
+  --accent: #B8774F;            /* copper — replaces amber #f59e0b */
 
   --radius: 10px;
   --radius-card: 14px;
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.03);
-  --shadow-md: 0 10px 30px -12px rgb(15 23 42 / 0.18), 0 2px 6px rgb(15 23 42 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(24 56 59 / 0.04), 0 1px 1px rgb(24 56 59 / 0.03);
+  --shadow-md: 0 10px 30px -12px rgb(24 56 59 / 0.18), 0 2px 6px rgb(24 56 59 / 0.06);
 }
 
 .dark {
-  --primary: #2dd4bf;           /* teal 400 on dark surfaces */
-  --primary-hover: #5eead4;
-  --primary-foreground: #042f2e;
-  --primary-soft: #134e4a;
-  --primary-soft-foreground: #ccfbf1;
+  --primary: #4DB0B8;           /* lighter teal on soft dark surfaces */
+  --primary-hover: #6BC4CB;
+  --primary-foreground: #0A2A2E;
+  --primary-soft: #1A3F44;
+  --primary-soft-foreground: #B8DEE2;
 
-  --background: #050b0f;
-  --surface: #0f172a;
-  --surface-muted: #1e293b;
-  --foreground: #f1f5f9;
-  --muted-foreground: #94a3b8;
-  --border: #1e293b;
-  --border-strong: #334155;
-  --input: #64748b;
-  --ring: #2dd4bf;
+  --background: #121C1E;        /* soft dark — not near-black #050b0f */
+  --surface: #1A282B;
+  --surface-muted: #243538;
+  --foreground: #F7F3EA;
+  --muted-foreground: #A8B5B7;
+  --border: #2A3C40;
+  --border-strong: #3A4F54;
+  --input: #64748B;
+  --ring: #4DB0B8;
 
   --success: #4ade80;  --success-soft: #14532d;  --success-soft-foreground: #dcfce7;
   --warning: #fbbf24;  --warning-soft: #78350f;  --warning-soft-foreground: #fef3c7;
@@ -74,13 +72,16 @@
 
   --chart-1: #3987e5; --chart-2: #d95926; --chart-3: #199e70; --chart-4: #c98500;
   --chart-5: #d55181; --chart-6: #008300;
-  --sidebar: #07110f;
-  --sidebar-foreground: #ecfdf9;
-  --sidebar-muted: #9fc7c1;
-  --sidebar-hover: #0f1f1c;
-  --sidebar-active: #153430;
-  --sidebar-border: #13211f;
-  --shadow-md: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+
+  --sidebar: #0C4C54;
+  --sidebar-foreground: #F7F3EA;
+  --sidebar-muted: #B8D4D7;
+  --sidebar-hover: #0E5560;
+  --sidebar-active: #0F5C68;
+  --sidebar-border: #0A3F46;
+  --accent: #D89A6B;            /* lighter copper for dark mode highlights */
+
+  --shadow-md: 0 10px 30px -12px rgb(0 0 0 / 0.5);
 }
 
 @theme inline {

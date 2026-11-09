@@ -20,8 +20,8 @@ export function statementHtml(r: ReportResult, orgName: string, portalUrl: strin
   }).join("");
   return `<div style="font-family:system-ui,-apple-system,sans-serif;color:#0f172a;max-width:680px">
 <h2 style="margin:0 0 4px">${esc(r.title)}</h2><p style="margin:0 0 16px;color:#475569">${esc(r.subtitle)}</p>
-<table style="border-collapse:collapse;width:100%;font-size:14px"><thead><tr>${r.columns.map((c, i) => `<th style="text-align:${i ? "right" : "left"};padding:6px 8px;border-bottom:2px solid #0f766e;font-size:12px;color:#475569">${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>
-<p style="margin-top:20px"><a href="${portalUrl}" style="background:#0f766e;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600">View in your owner portal</a></p>
+<table style="border-collapse:collapse;width:100%;font-size:14px"><thead><tr>${r.columns.map((c, i) => `<th style="text-align:${i ? "right" : "left"};padding:6px 8px;border-bottom:2px solid #0C4C54;font-size:12px;color:#475569">${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>
+<p style="margin-top:20px"><a href="${portalUrl}" style="background:#0C4C54;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600">View in your owner portal</a></p>
 <p style="color:#64748b;font-size:12px">Sent by ${esc(orgName)}. Figures are cash basis for the month.</p></div>`;
 }
 

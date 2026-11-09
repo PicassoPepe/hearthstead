@@ -22,7 +22,7 @@ model Organization {
   name         String
   slug         String    @unique
   logoUrl      String?
-  brandColor   String    @default("#0F766E")
+  brandColor   String    @default("#0C4C54")
   timezone     String    @default("America/New_York")
   phone        String?
   email        String?

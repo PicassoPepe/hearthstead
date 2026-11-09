@@ -33,7 +33,7 @@ test("company details save with validation and a toast", async ({ page }) => {
   await color.fill("teal");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Use a 6-digit hex color")).toBeVisible();
-  await color.fill("#0F766E");
+  await color.fill("#0C4C54");
   await page.getByRole("textbox", { name: "Phone" }).fill("(312) 555-0142");
   await page.getByRole("textbox", { name: "Street address" }).fill("400 Maple Ave");
   await page.getByRole("button", { name: "Save changes" }).click();

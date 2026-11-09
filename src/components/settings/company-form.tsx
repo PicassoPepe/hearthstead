@@ -83,13 +83,13 @@ export function CompanyForm({ defaults, canEdit }: { defaults: CompanyInput; can
             </div>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <Field label="Brand color" description="6-digit hex, e.g. #0F766E." error={e.brandColor?.message}>
+            <Field label="Brand color" description="6-digit hex, e.g. #0C4C54." error={e.brandColor?.message}>
               {(a) => (
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     aria-label="Pick brand color"
-                    value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : "#0F766E"}
+                    value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : "#0C4C54"}
                     onChange={(ev) => form.setValue("brandColor", ev.target.value.toUpperCase(), { shouldDirty: true, shouldValidate: true })}
                     className="h-9 w-12 cursor-pointer rounded-lg border border-input bg-surface"
                   />
@@ -99,7 +99,7 @@ export function CompanyForm({ defaults, canEdit }: { defaults: CompanyInput; can
             </Field>
             <div aria-hidden className="rounded-lg border border-border p-3">
               <div className="text-xs text-muted-foreground">Portal preview</div>
-              <div className="mt-2 rounded-md px-3 py-2 text-sm font-semibold text-white" style={{ background: /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#0F766E" }}>
+              <div className="mt-2 rounded-md px-3 py-2 text-sm font-semibold text-white" style={{ background: /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#0C4C54" }}>
                 Pay rent
               </div>
             </div>

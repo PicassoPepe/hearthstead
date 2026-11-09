@@ -10,7 +10,7 @@ export const companySchema = z.object({
   state: z.string().trim().max(40),
   postalCode: z.string().trim().max(20),
   timezone: z.string().min(1),
-  brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a 6-digit hex color like #0F766E"),
+  brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a 6-digit hex color like #0C4C54"),
 });
 export type CompanyInput = z.infer<typeof companySchema>;
 
