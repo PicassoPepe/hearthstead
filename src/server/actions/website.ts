@@ -80,6 +80,7 @@ const msg = z.object({
   when: z.string().trim().max(120).optional(),
   /** Honeypot: people never see this field; bots fill it in. */
   website: z.string().max(0).optional(),
+  captcha: z.string().max(4096).optional(),
 });
 
 export async function sendSiteMessageAction(orgSlug: string, raw: z.input<typeof msg>): Promise<ActionResult> {
@@ -93,6 +94,8 @@ export async function sendSiteMessageAction(orgSlug: string, raw: z.input<typeof
       throw e;
     }
     const v = msg.parse(raw);
+    const { verifyCaptcha, CAPTCHA_FAILED } = await import("@/server/auth/captcha");
+    if (!(await verifyCaptcha(v.captcha, ip))) throw new UserFacingError(CAPTCHA_FAILED);
     await S.receiveWebsiteMessage(orgSlug, v);
   }, "Thanks! We'll get back to you soon.");
 }

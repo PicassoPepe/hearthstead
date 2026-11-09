@@ -44,3 +44,11 @@ export function verifyEmailEmail(url: string) {
     text: `Confirm your email for ${APP}: ${url}\nThe link expires in 3 days.`,
   };
 }
+
+export function signupCodeEmail(code: string) {
+  return {
+    subject: `${code} is your ${APP} code`,
+    html: layout("Your sign-up code", `<p>Enter this code to finish creating your account:</p><p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">${code}</p><p style="color:#475569;font-size:13px">It expires in 15 minutes. If you didn't try to sign up, ignore this email.</p>`),
+    text: `Your ${APP} sign-up code is ${code}. It expires in 15 minutes.`,
+  };
+}

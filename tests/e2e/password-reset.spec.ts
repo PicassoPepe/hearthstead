@@ -1,21 +1,10 @@
-import { test, expect } from "./fixtures";
+import { test, expect, signUpNewAccount } from "./fixtures";
 
 test("forgot password → email link → new password works; the link can't be reused", async ({ page }) => {
   const email = `forgot-${Date.now()}@example.org`;
   // A fresh account (sign up), then sign out.
-  await page.goto("/signup");
-  await page.getByRole("textbox", { name: "Your name" }).fill("Fran Forgot");
-  await page.getByRole("textbox", { name: "Company name" }).fill("Forgetful Rentals");
-  await page.getByRole("textbox", { name: "Work email" }).fill(email);
-  await page.getByRole("textbox", { name: "Password" }).fill("original-password-1");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await page.waitForURL("**/app/setup");
-  await expect(page.getByTestId("verify-email-banner")).toBeVisible();
-
-  // Confirm the email from the outbox.
-  await page.goto("/dev/outbox");
-  await page.getByTestId("outbox-message").filter({ hasText: email }).filter({ hasText: "Confirm your email" }).first().getByTestId("outbox-link").first().click();
-  await expect(page.getByRole("heading", { name: "Email confirmed — thank you!" })).toBeVisible();
+  // Signing up with an email code confirms the email right away.
+  await signUpNewAccount(page, { name: "Fran Forgot", org: "Forgetful Rentals", email, password: "original-password-1" });
   await page.goto("/app/overview");
   await expect(page.getByTestId("verify-email-banner")).toHaveCount(0);
 

@@ -24,6 +24,28 @@ Sign-in links, password resets, invites and notices need it.
       `EMAIL_FROM=DeedWood <no-reply@yourdomain.com>`.
 - [ ] Test: on the sign-in page use **Forgot password?** with your email — the email should arrive.
 
+## 2b. Sign-up protection and "Sign in with…" — you (20 minutes, all free)
+
+New accounts always confirm a 6-digit code by email (or text). These add more:
+
+- [ ] **"I'm human" check (Cloudflare Turnstile):** dash.cloudflare.com → Turnstile → Add widget →
+      your app's domain → copy the two keys into Railway → Variables: `TURNSTILE_SITE_KEY`,
+      `TURNSTILE_SECRET_KEY`. It then appears on sign-up, email sign-in links, forgot password and
+      the contact/tour forms on company websites.
+- [ ] **Sign in with Google:** console.cloud.google.com → APIs & Services → Credentials → Create
+      credentials → OAuth client ID → Web application. Authorized redirect URI:
+      `https://<your app>/api/auth/callback/google`. Put the ID and secret in `AUTH_GOOGLE_ID`,
+      `AUTH_GOOGLE_SECRET`.
+- [ ] **Sign in with Microsoft:** portal.azure.com → App registrations → New registration →
+      "Accounts in any organizational directory and personal Microsoft accounts" → Redirect URI
+      (Web): `https://<your app>/api/auth/callback/microsoft-entra-id`. Then Certificates & secrets →
+      New client secret. Put them in `AUTH_MICROSOFT_ENTRA_ID_ID`, `AUTH_MICROSOFT_ENTRA_ID_SECRET`.
+- [ ] **Codes by text message (optional):** a Twilio account with a phone number (US numbers
+      need A2P 10DLC or toll-free verification): `SMS_PROVIDER=twilio`, `TWILIO_ACCOUNT_SID`,
+      `TWILIO_AUTH_TOKEN`, `SMS_FROM`. Without it, sign-up codes go by email only.
+
+The buttons and checks appear automatically once their keys are set; nothing else to change.
+
 ## 3. Your owner console — you (10 minutes)
 
 - [ ] DEPLOY.md step 7: `PLATFORM_OWNER_EMAIL`, run `pnpm platform:owner`, open the link, set a

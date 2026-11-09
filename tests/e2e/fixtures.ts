@@ -45,3 +45,23 @@ export const test = base.extend<{ consoleErrors: string[] }>({
   ],
 });
 export { expect };
+
+/** Sign up a new account: details → 6-digit email code (read from the test outbox) → workspace. */
+export async function signUpNewAccount(page: Page, v: { name: string; org: string; email: string; password: string }) {
+  await page.goto("/signup");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("textbox", { name: "Your name" }).fill(v.name);
+  await page.getByRole("textbox", { name: "Company name" }).fill(v.org);
+  await page.getByRole("textbox", { name: "Work email" }).fill(v.email);
+  await page.getByRole("textbox", { name: "Password" }).fill(v.password);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("heading", { name: "Enter your code" })).toBeVisible();
+  const outbox = await page.context().newPage();
+  await outbox.goto("/dev/outbox");
+  const subject = await outbox.getByTestId("outbox-message").filter({ hasText: v.email }).filter({ hasText: "is your DeedWood code" }).first().locator("h2").textContent();
+  await outbox.close();
+  const code = /(\d{6})/.exec(subject ?? "")![1]!;
+  await page.getByRole("textbox", { name: "6-digit code" }).fill(code);
+  await page.getByRole("button", { name: "Create my workspace" }).click();
+  await page.waitForURL("**/app/setup", { timeout: 60_000 });
+}

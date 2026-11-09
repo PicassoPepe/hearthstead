@@ -60,6 +60,9 @@ model User {
   image            String?
   passwordHash     String?
   twoFactorEnabled Boolean   @default(false)
+  /// Mobile number confirmed with a code at sign-up (E.164).
+  phone            String?
+  phoneVerified    DateTime?
   /// Per-user UI preferences (sidebar collapsed, dismissed checklist, dashboard layout...)
   preferences      Json      @default("{}")
   lastOrgId        String?
@@ -2384,4 +2387,23 @@ model ErrorEvent {
 
   @@index([createdAt])
   @@index([fingerprint, createdAt])
+}
+
+/// A sign-up waiting for its 6-digit code (sent by email or text). The account is only created
+/// after the right code is entered. Platform-only; deleted once used.
+model PendingSignup {
+  id        String   @id @default(cuid())
+  email     String
+  /// EMAIL | SMS
+  channel   String
+  phone     String?
+  codeHash  String
+  attempts  Int      @default(0)
+  sends     Int      @default(1)
+  /// { name, orgName, passwordHash }
+  payload   Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
 }
