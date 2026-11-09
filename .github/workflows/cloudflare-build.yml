@@ -1,0 +1,28 @@
+# Proves the Worker bundle builds. Does not deploy and does not need secrets.
+name: Cloudflare build
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: opennextjs-cloudflare build
+        run: npx opennextjs-cloudflare build && node scripts/wrap-cf-worker.mjs
+        env:
+          DEEDWOOD_GIT_SHA: ${{ github.sha }}
+          AUTH_SECRET: ci-only-not-a-real-secret-ci-only-not-a-real-secret
+          NODE_OPTIONS: --max-old-space-size=8192

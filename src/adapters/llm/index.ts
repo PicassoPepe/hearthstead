@@ -4,7 +4,9 @@
  * LLM_FALLBACK = comma list tried next (e.g. "groq,openrouter"); the built-in helper is always last.
  * LLM_MODEL overrides the first provider's model.
  */
+import { workersAiBinding } from "@/server/runtime";
 import { FREE_PROVIDERS, freeConfig, OpenAiCompatibleProvider, ResilientLlm, type FreeName } from "./free";
+import { WorkersAiProvider } from "./workers-ai";
 export type LlmMessage = { role: "user" | "assistant"; content: string };
 export type LlmRequest = { system?: string; messages: LlmMessage[]; maxTokens?: number; purpose: string };
 
@@ -153,6 +155,10 @@ let provider: LlmProvider | undefined;
 
 /** Build one named provider, or null when it isn't set up (missing key). */
 function make(name: string, model: string | undefined, env: Record<string, string | undefined>): LlmProvider | null {
+  if (name === "cloudflare") {
+    const ai = workersAiBinding();
+    if (ai) return new WorkersAiProvider(ai, model ?? "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+  }
   if (name === "anthropic") return env.ANTHROPIC_API_KEY ? new AnthropicProvider(env.ANTHROPIC_API_KEY, model ?? "claude-sonnet-5-5") : null;
   if ((FREE_PROVIDERS as readonly string[]).includes(name)) {
     const c = freeConfig(name as FreeName, env, model);

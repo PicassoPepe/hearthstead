@@ -1,44 +1,8 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve, sep } from "node:path";
+import { LocalStorage } from "./local";
+export type { StorageProvider } from "./types";
+import type { StorageProvider } from "./types";
 
-/** Adapter interface for file storage. Implementations: LocalStorage (default), S3Storage (MinIO / AWS). */
-export interface StorageProvider {
-  readonly name: string;
-  put(key: string, body: Uint8Array, contentType: string): Promise<void>;
-  get(key: string): Promise<Uint8Array | null>;
-  delete(key: string): Promise<void>;
-}
-
-/** Stores files under ./storage. Zero configuration; fine for development and single-node installs. */
-export class LocalStorage implements StorageProvider {
-  readonly name = "local";
-  private readonly root: string;
-  constructor(root = process.env.STORAGE_LOCAL_DIR ?? "storage") {
-    this.root = resolve(root);
-  }
-  private path(key: string): string {
-    const p = resolve(join(this.root, key));
-    if (!p.startsWith(this.root + sep)) throw new Error("Invalid storage key");
-    return p;
-  }
-  async put(key: string, body: Uint8Array): Promise<void> {
-    const p = this.path(key);
-    await mkdir(dirname(p), { recursive: true });
-    await writeFile(p, body);
-  }
-  async get(key: string): Promise<Uint8Array | null> {
-    try {
-      return new Uint8Array(await readFile(this.path(key)));
-    } catch {
-      return null;
-    }
-  }
-  async delete(key: string): Promise<void> {
-    await rm(this.path(key), { force: true });
-  }
-}
-
-/** S3-compatible storage (MinIO locally via docker-compose, or AWS S3). */
+/** S3-compatible storage (MinIO locally via docker-compose, AWS S3, or Cloudflare R2). */
 export class S3Storage implements StorageProvider {
   readonly name = "s3";
   private clientPromise: Promise<import("@aws-sdk/client-s3").S3Client>;
@@ -75,7 +39,12 @@ export class S3Storage implements StorageProvider {
 }
 
 let storage: StorageProvider | undefined;
+
 export function getStorage(): StorageProvider {
-  storage ??= process.env.STORAGE_PROVIDER === "s3" ? new S3Storage(process.env.S3_BUCKET ?? "deedwood") : new LocalStorage();
+  // Hosted Cloudflare sets STORAGE_PROVIDER=s3 (R2). The disk implementation stays in ./local so
+  // the desktop app is unchanged; Workers nodejs_compat covers the unused node:fs import.
+  if (!storage) {
+    storage = process.env.STORAGE_PROVIDER === "s3" ? new S3Storage(process.env.S3_BUCKET ?? "deedwood") : new LocalStorage();
+  }
   return storage;
 }

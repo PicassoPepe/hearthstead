@@ -8,6 +8,8 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Driver adapters (Neon / Hyperdrive) are stable in Prisma 6.19. The old
+  // previewFeatures = ["driverAdapters"] flag now warns and is not required.
 }
 
 datasource db {
@@ -2360,6 +2362,24 @@ model AccountToken {
   createdAt DateTime  @default(now())
 
   @@index([userId, purpose])
+}
+
+/// One row per hosted cron day so nightly work runs once even though Workers have no disk stamp.
+/// Platform-only (the app role cannot read it). `day` is YYYY-MM-DD in America/Kentucky/Monticello
+/// for nightly, and UTC for the minutely heartbeat.
+model JobRun {
+  id        String   @id @default(cuid())
+  /// minutely | nightly
+  name      String
+  day       String
+  ok        Boolean  @default(false)
+  /// "running" while a nightly pass is in progress; a short result afterwards. Never a secret.
+  detail    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, day])
+  @@index([createdAt])
 }
 
 /// Nightly whole-database backups (the file lives in file storage under `key`). Platform-only.

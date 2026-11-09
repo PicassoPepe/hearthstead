@@ -1,0 +1,90 @@
+# Deploy DeedWood to Cloudflare Workers.
+# Manual only until the GitHub secrets in docs/OPERATIONS.md exist — a push trigger would fail
+# every commit before that. After the secrets are set, you can add:
+#   on:
+#     push:
+#       branches: [main]
+#     workflow_dispatch:
+name: Deploy to Cloudflare
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Migrate database
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: prisma migrate, row-level security, backfill
+        run: |
+          pnpm exec prisma migrate deploy
+          pnpm exec tsx prisma/apply-rls.ts
+          pnpm exec tsx prisma/backfill.ts
+        env:
+          # Direct Neon host, role deedwood_owner. Not the pooled URL.
+          DATABASE_ADMIN_URL: ${{ secrets.DATABASE_ADMIN_URL }}
+          # Production: do not create deedwood_app and do not change its password.
+          DEEDWOOD_RLS_MODE: production
+
+  deploy:
+    name: Build and deploy Worker
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Copy Worker secrets (values are not printed)
+        run: node scripts/sync-wrangler-secrets.mjs DATABASE_ADMIN_URL DATABASE_URL AUTH_SECRET AUTH_URL SITE_URL S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY RESEND_API_KEY EMAIL_FROM CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_AI_TOKEN GROQ_API_KEY STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY RESEND_WEBHOOK_SECRET EMAIL_WEBHOOK_SECRET BACKUP_KEY PLATFORM_ALERT_EMAIL TURNSTILE_SITE_KEY TURNSTILE_SECRET_KEY
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DATABASE_ADMIN_URL: ${{ secrets.DATABASE_ADMIN_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_URL: ${{ secrets.AUTH_URL }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          CLOUDFLARE_AI_TOKEN: ${{ secrets.CLOUDFLARE_AI_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          RESEND_WEBHOOK_SECRET: ${{ secrets.RESEND_WEBHOOK_SECRET }}
+          EMAIL_WEBHOOK_SECRET: ${{ secrets.EMAIL_WEBHOOK_SECRET }}
+          BACKUP_KEY: ${{ secrets.BACKUP_KEY }}
+          PLATFORM_ALERT_EMAIL: ${{ secrets.PLATFORM_ALERT_EMAIL }}
+          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+      - name: OpenNext build
+        run: npx opennextjs-cloudflare build && node scripts/wrap-cf-worker.mjs
+        env:
+          DEEDWOOD_GIT_SHA: ${{ github.sha }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          NODE_OPTIONS: --max-old-space-size=8192
+      - name: wrangler deploy
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

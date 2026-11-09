@@ -1,6 +1,9 @@
 node_modules
 .next
 .next-website
+.open-next
+.wrangler
+.dev.vars
 .env
 .env.local
 *.tsbuildinfo

@@ -1,5 +1,4 @@
 import "server-only";
-import IORedis from "ioredis";
 import { adminDb } from "@/server/db";
 import { getStorage } from "@/adapters/storage";
 
@@ -21,6 +20,7 @@ export async function healthChecks(): Promise<Health[]> {
     out.push({ name: "Database", status: "down", detail: e instanceof Error ? e.message.slice(0, 200) : "error" });
   }
   if (process.env.REDIS_URL) {
+    const { default: IORedis } = await import("ioredis");
     const r = new IORedis(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1, connectTimeout: 2000 });
     r.on("error", () => undefined);
     try {
@@ -48,6 +48,12 @@ export async function healthChecks(): Promise<Health[]> {
   out.push({ name: "Webhooks (24 h)", status: failed > 20 ? "down" : "ok", detail: `${failed} failed deliveries` });
   const last = await adminDb.auditLog.findFirst({ where: { actorType: "SYSTEM" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }).catch(() => null);
   out.push({ name: "Background jobs", status: last && Date.now() - last.createdAt.getTime() < 3 * 86_400_000 ? "ok" : "off", detail: last ? `last system activity ${last.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC` : "no system activity recorded yet" });
+  const nightly = await adminDb.jobRun.findFirst({ where: { name: "nightly" }, orderBy: { updatedAt: "desc" } }).catch(() => null);
+  out.push(!nightly
+    ? { name: "Nightly job", status: "off", detail: "no nightly run recorded yet" }
+    : nightly.ok
+      ? { name: "Nightly job", status: "ok", detail: `${nightly.day} · ${nightly.detail ?? "done"}` }
+      : { name: "Nightly job", status: nightly.detail === "running" ? "off" : "down", detail: nightly.detail ?? "failed" });
   const lastBackup = await adminDb.backupRun.findFirst({ orderBy: { createdAt: "desc" } }).catch(() => null);
   out.push(!lastBackup
     ? { name: "Backups", status: "off", detail: "no backup yet — the first runs tonight (or press Back up now)" }

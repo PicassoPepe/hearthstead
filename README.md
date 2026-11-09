@@ -32,7 +32,10 @@ Your settings and data are kept.
 
 ### Online, for your whole team (no install for anyone)
 
-Follow **[docs/DEPLOY.md](docs/DEPLOY.md)** — about 15 minutes on Railway, step by step.
+The hosted app runs on Cloudflare Workers. Follow **[docs/DEPLOY-CLOUDFLARE.md](docs/DEPLOY-CLOUDFLARE.md)**
+and **[docs/OPERATIONS.md](docs/OPERATIONS.md)**. Railway is the previous host; leave it up until
+Cloudflare is checked, then cancel it. The Windows **Update DeedWood.bat** / **Start DeedWood.bat**
+path is unchanged and still uses the database inside the folder.
 
 ### For developers
 
@@ -119,11 +122,11 @@ Zillow doesn't offer a way for other apps to copy its photos, so DeedWood links 
 | Variable | Default (dev) | Purpose |
 | --- | --- | --- |
 | `DATABASE_ADMIN_URL` | `postgres://postgres:postgres@localhost:5432/deedwood` | Table owner. Migrations, seed, auth lookups, system jobs. Bypasses RLS. |
-| `DATABASE_URL` | `postgres://deedwood_app:deedwood_app@…` | Request-time role. **Not** the owner, so RLS applies. Created by `prisma/rls.sql`. |
+| `DATABASE_URL` | `postgres://deedwood_app:deedwood_app@…` | Request-time role. **Not** the owner, so RLS applies. Local installs create it from `prisma/rls.sql`. Production Neon already has this role; deploy does not create or reset its password. |
 | `REDIS_URL` | `redis://localhost:6379` | BullMQ (background jobs, from Phase 3) |
 | `AUTH_SECRET` | dev value | Auth.js JWT secret — **change in production** |
 | `AUTH_URL` | `http://localhost:3000` | Public base URL (links in emails) |
-| `EMAIL_PROVIDER` | `mock` | `mock` (records to DB, view at `/dev/outbox`) or `smtp` |
+| `EMAIL_PROVIDER` | `mock` | `mock` (records to DB, view at `/dev/outbox`), `smtp` (local Mailpit), or `resend` (HTTPS; required on Cloudflare) |
 | `SMTP_URL` | `smtp://localhost:1025` | Mailpit in docker-compose; any SMTP relay in prod |
 | `EMAIL_FROM` | `DeedWood <no-reply@…>` | Sender |
 | `STORAGE_PROVIDER` | `local` | `local` writes to `./storage`; `s3` uses the vars below |
@@ -293,7 +296,7 @@ API keys. Select an implementation with its env var.
 
 | Adapter | Env var | Implementations | Phase |
 | --- | --- | --- | --- |
-| EmailProvider | `EMAIL_PROVIDER` | `mock`, `smtp` | 1 ✅ |
+| EmailProvider | `EMAIL_PROVIDER` | `mock`, `smtp` (local), `resend` (HTTPS) | 1 ✅ |
 | StorageProvider | `STORAGE_PROVIDER` | `local` (./storage), `s3` (MinIO / AWS) | 2 ✅ |
 | AddressProvider | `ADDRESS_PROVIDER` | `mock` (offline autocomplete) | 2 ✅ |
 | PaymentsProvider | `PAYMENTS_PROVIDER` | `mock`, `stripe` (Connect Express + Financial Connections) | 4 ✅ |

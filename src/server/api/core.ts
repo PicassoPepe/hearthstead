@@ -56,9 +56,10 @@ let redis: IORedis | null | undefined;
 const memory = new Map<string, { n: number; reset: number }>();
 
 function getRedis() {
+  if (!process.env.REDIS_URL) return null;
   if (redis !== undefined) return redis;
   try {
-    redis = new IORedis(process.env.REDIS_URL ?? "redis://localhost:6379", { maxRetriesPerRequest: 1, lazyConnect: true, enableOfflineQueue: false });
+    redis = new IORedis(process.env.REDIS_URL, { maxRetriesPerRequest: 1, lazyConnect: true, enableOfflineQueue: false });
     redis.on("error", () => undefined);
     void redis.connect().catch(() => { redis = null; });
   } catch {
