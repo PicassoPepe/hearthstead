@@ -399,3 +399,11 @@ export async function rejectVendorInvoiceAction(id: string, note: string): Promi
     done();
   }, "Returned to the vendor");
 }
+
+export async function fillBudgetAction(id: string, o: import("@/server/accounting/budgets").FillOptions): Promise<ActionResult<{ amounts: Record<string, number[]>; sources: import("@/server/accounting/budgets").FillSource[] }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("accounting", "edit");
+    const { budgetFill } = await import("@/server/accounting/budgets");
+    return budgetFill(ctx, id, o);
+  });
+}

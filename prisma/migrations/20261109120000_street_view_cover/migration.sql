@@ -1,0 +1,1 @@
+ALTER TABLE "Property" ADD COLUMN "streetViewCover" BOOLEAN NOT NULL DEFAULT false;

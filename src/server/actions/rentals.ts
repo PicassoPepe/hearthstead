@@ -20,8 +20,14 @@ export async function createProperty(input: PropertyWizardInput): Promise<Action
     const ctx = await requirePermission("rentals", "edit");
     if (ctx.membership.propertyScope.length) throw new UserFacingError("Your access is limited to specific properties, so you can't create new ones.");
     const r = await svc.createPropertyFromWizard(ctx.db, input);
-    // Look up the county land record in the background; the property page shows it when ready.
-    void import("@/server/rentals/land-records").then((m) => m.refreshLandRecord(ctx.db, r.id)).catch(() => undefined);
+    // In the background: look up the county land record, then (if there's no photo yet) add a free
+    // aerial picture as the main picture. The property page shows them when ready.
+    void (async () => {
+      await import("@/server/rentals/land-records").then((m) => m.refreshLandRecord(ctx.db, r.id)).catch(() => undefined);
+      if (process.env.PLACE_PHOTOS === "off" || process.env.PARCELS_PROVIDER === "mock" || process.env.PARCELS_PROVIDER === "off") return;
+      const prop = await ctx.db.property.findFirst({ where: { id: r.id }, select: { photos: true } });
+      if (prop && !prop.photos.length) await import("@/server/images/place-photos").then((m) => m.addAerialPhoto(ctx.db, r.id, { cover: true })).catch(() => undefined);
+    })();
     refresh();
     return r;
   }, "Property created");

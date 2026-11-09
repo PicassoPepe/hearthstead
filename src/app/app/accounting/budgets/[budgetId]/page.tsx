@@ -36,7 +36,8 @@ export default async function BudgetPage({ params, searchParams }: { params: Pro
       <PageHeader eyebrow={<Link href="/app/accounting/budgets" className="hover:underline">← Budgets</Link>} title={d.budget.name} description={`${d.budget.year} · ${prop?.name ?? "Company-wide"} · accrual actuals from the ledger`} />
       <EntityTabs base={`/app/accounting/budgets/${budgetId}`} active={tab} tabs={[{ id: "actual", label: "Budget vs actual" }, ...(canEdit ? [{ id: "edit", label: "Edit budget" }] : [])]} />
       {tab === "edit" && canEdit ? (
-        <BudgetGrid id={budgetId} name={d.budget.name} accounts={d.accounts} amounts={d.budget.amounts as Record<string, number[]>} />
+        <BudgetGrid id={budgetId} name={d.budget.name} year={d.budget.year} accounts={d.accounts} amounts={d.budget.amounts as Record<string, number[]>}
+          otherBudgets={(await ctx.db.budget.findMany({ where: { id: { not: budgetId }, ...(ctx.membership.propertyScope.length ? { propertyId: { in: ctx.membership.propertyScope } } : {}) }, orderBy: [{ year: "desc" }, { name: "asc" }], select: { id: true, name: true, year: true } })).map((o) => ({ id: o.id, label: `${o.name} (${o.year})` }))} />
       ) : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">

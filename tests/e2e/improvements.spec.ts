@@ -44,8 +44,8 @@ test("property photos: upload, cover, shown on the public listing site", async (
   await page.locator('input[type="file"]').setInputFiles({ name: "lobby.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByText("1 photo added")).toBeVisible();
   await expect(page.getByTestId("photo-grid").locator("li")).toHaveCount(before + 1);
-  await page.getByRole("button", { name: `Make photo ${before + 1} the cover` }).click();
-  await expect(page.getByText("Cover photo updated")).toBeVisible();
+  await page.getByRole("button", { name: `Make photo ${before + 1} the main picture` }).click();
+  await expect(page.getByText("Main picture updated")).toBeVisible();
   await page.goto("/l/maple-main");
   await expect(page.locator('img[src^="/api/images/"]').first()).toBeVisible();
 });
@@ -112,6 +112,15 @@ test("budgets: create from last year's actuals and see budget vs actual", async 
   await dlg.getByRole("button", { name: "Create budget" }).click();
   await page.waitForURL(/\/app\/accounting\/budgets\/.+tab=edit/);
   await page.getByRole("textbox", { name: "Repairs & Maintenance, Jan" }).fill("1200");
+  // "Same every month" repeats January across the year.
+  await page.getByRole("button", { name: "Same every month for Repairs & Maintenance" }).click();
+  await expect(page.getByRole("textbox", { name: "Repairs & Maintenance, Dec" })).toHaveValue("1200");
+  // "Fill in from…" pulls rent from the leases.
+  await page.getByRole("button", { name: "Fill in from…" }).click();
+  const fill = page.getByRole("dialog", { name: "Fill in the budget" });
+  await fill.getByRole("button", { name: "Fill in", exact: true }).click();
+  await expect(page.getByTestId("budget-filled")).toContainText("Rent and monthly charges from your leases");
+  await expect(page.getByRole("textbox", { name: /Rent.*, Jun/ }).first()).not.toHaveValue("");
   await page.getByRole("button", { name: "Save budget" }).click();
   await expect(page.getByText("Budget saved")).toBeVisible();
   await page.getByRole("link", { name: "Budget vs actual" }).click();
@@ -218,4 +227,15 @@ test("simple home page and Report a repair with a photo", async ({ page }) => {
   await page.waitForURL(/\/app\/tasks\/[^/?]+$/);
   await expect(page.getByRole("heading", { name: /Bathroom ceiling has a water stain/ })).toBeVisible();
   await expect(page.getByTestId("repair-photos").getByRole("img")).toHaveCount(1);
+});
+
+test("properties show their main picture; the Photos tab offers ways to get one", async ({ page }) => {
+  await signIn(page, "admin@example.com", "/app/rentals");
+  await expect(page.locator('table img[src^="/api/images/"]').first()).toBeVisible();
+  await page.getByRole("link", { name: "Maple Court", exact: true }).first().click();
+  await page.getByRole("link", { name: /^Photos/ }).click();
+  await page.waitForURL(/tab=photos/);
+  await expect(page.getByRole("heading", { name: "Get a picture of this place" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Get aerial photo" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Zillow/ })).toBeVisible();
 });

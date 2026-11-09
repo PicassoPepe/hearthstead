@@ -15,7 +15,7 @@ const url = (id: string) => `/api/images/${id}`;
  * Photo gallery with upload (drag & drop or browse), reorder, set-as-cover and delete.
  * The first photo is the cover used on cards, the public listing site and the listing feed.
  */
-export function PhotoGallery({ kind, id, photos, canEdit, inherited }: { kind: "property" | "unit"; id: string; photos: string[]; canEdit: boolean; inherited?: string[] }) {
+export function PhotoGallery({ kind, id, photos, canEdit, inherited, streetViewCover = false }: { kind: "property" | "unit"; id: string; photos: string[]; canEdit: boolean; inherited?: string[]; streetViewCover?: boolean }) {
   const router = useRouter();
   const [list, setList] = React.useState(photos);
   const [busy, setBusy] = React.useState(false);
@@ -32,10 +32,10 @@ export function PhotoGallery({ kind, id, photos, canEdit, inherited }: { kind: "
     toast.success(`${r.data.count} photo${r.data.count === 1 ? "" : "s"} added`);
     router.refresh();
   };
-  const save = async (next: string[], msg?: string) => {
+  const save = async (next: string[], msg?: string, cover = false) => {
     const prev = list;
     setList(next);
-    const r = await setPhotosAction(kind, id, next);
+    const r = await setPhotosAction(kind, id, next, cover);
     if (!r.ok) {
       setList(prev);
       return void toast.error(r.error);
@@ -71,13 +71,13 @@ export function PhotoGallery({ kind, id, photos, canEdit, inherited }: { kind: "
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={url(p)} alt="" loading="lazy" className="size-full object-cover transition-transform group-hover:scale-[1.03]" />
                 </button>
-                {i === 0 && own ? <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">Cover</span> : null}
+                {i === 0 && own && !streetViewCover ? <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">Main picture</span> : null}
                 {canEdit && own ? (
                   <div className="flex items-center justify-between gap-1 border-t border-border p-1.5">
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" aria-label={`Move photo ${i + 1} left`} disabled={i === 0} onClick={() => move(i, -1)}><ArrowLeft aria-hidden /></Button>
                       <Button size="icon" variant="ghost" aria-label={`Move photo ${i + 1} right`} disabled={i === list.length - 1} onClick={() => move(i, 1)}><ArrowRight aria-hidden /></Button>
-                      {i > 0 ? <Button size="icon" variant="ghost" aria-label={`Make photo ${i + 1} the cover`} onClick={() => save([p, ...list.filter((x) => x !== p)], "Cover photo updated")}><Star aria-hidden /></Button> : null}
+                      {i > 0 || streetViewCover ? <Button size="icon" variant="ghost" aria-label={`Make photo ${i + 1} the main picture`} onClick={() => save([p, ...list.filter((x) => x !== p)], "Main picture updated", true)}><Star aria-hidden /></Button> : null}
                     </div>
                     <Button size="icon" variant="ghost" aria-label={`Delete photo ${i + 1}`} onClick={() => save(list.filter((x) => x !== p), "Photo deleted")}><Trash2 aria-hidden /></Button>
                   </div>

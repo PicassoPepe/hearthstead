@@ -35,8 +35,12 @@ async function current(db: ScopedDb, t: Target) {
   return u.photos;
 }
 
-async function save(db: ScopedDb, t: Target, photos: string[]) {
-  if (t.kind === "property") await db.property.update({ where: { id: t.id }, data: { photos, photoUrl: photos[0] ? imageUrl(photos[0]) : null } });
+async function save(db: ScopedDb, t: Target, photos: string[], newCover = false) {
+  if (t.kind === "property") {
+    const p = await db.property.findFirst({ where: { id: t.id }, select: { streetViewCover: true } });
+    const street = Boolean(p?.streetViewCover) && !newCover;
+    await db.property.update({ where: { id: t.id }, data: { photos, ...(newCover ? { streetViewCover: false } : {}), photoUrl: street ? `/api/street-view/${t.id}` : photos[0] ? imageUrl(photos[0]) : null } });
+  }
   else await db.unit.update({ where: { id: t.id }, data: { photos } });
 }
 
@@ -51,12 +55,12 @@ export async function addPhotos(db: ScopedDb, t: Target, files: File[]) {
   return ids;
 }
 
-/** Reorder or remove: `photos` must be a subset (same ids) of the current list. */
-export async function setPhotos(db: ScopedDb, t: Target, photos: string[]) {
+/** Reorder or remove: `photos` must be a subset (same ids) of the current list. `cover` = the first one was just picked as the main picture. */
+export async function setPhotos(db: ScopedDb, t: Target, photos: string[], cover = false) {
   const existing = await current(db, t);
   if (photos.some((p) => !existing.includes(p))) throw new UserFacingError("Refresh and try again");
   const removed = existing.filter((p) => !photos.includes(p));
-  await save(db, t, photos);
+  await save(db, t, photos, cover);
   if (removed.length) await db.attachment.updateMany({ where: { id: { in: removed } }, data: { deletedAt: new Date() } });
 }
 

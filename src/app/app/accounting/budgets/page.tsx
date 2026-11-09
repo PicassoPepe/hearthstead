@@ -32,7 +32,7 @@ export default async function BudgetsPage() {
   };
   return (
     <>
-      <PageHeader icon={<Target aria-hidden />} eyebrow="Accounting" title="Budgets" description="Plan income and expenses by month, company-wide or per property, and track budget vs actual."
+      <PageHeader icon={<Target aria-hidden />} eyebrow="Rent & Money" title="Budgets" description="Plan how much money you expect to come in and go out each month. Fill a budget in from your leases, repeating bills or last year, then see how you’re doing against it."
         actions={can(ctx.permissions, "accounting", "edit") ? <NewBudgetButton properties={properties} defaultYear={today.getUTCFullYear()} canCompany={!scope.length} /> : undefined} />
       {budgets.length === 0 ? (
         <p className="rounded-card border border-dashed border-border p-10 text-center text-sm text-muted-foreground">No budgets yet. Start one from last year&apos;s actuals — adjust by a percentage, then fine-tune by month.</p>

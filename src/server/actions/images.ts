@@ -17,10 +17,10 @@ export async function addPhotosAction(kind: "property" | "unit", id: string, for
   });
 }
 
-export async function setPhotosAction(kind: "property" | "unit", id: string, photos: string[]): Promise<ActionResult> {
+export async function setPhotosAction(kind: "property" | "unit", id: string, photos: string[], cover = false): Promise<ActionResult> {
   return runAction(async () => {
     const ctx = await requirePermission("rentals", "edit");
-    await IMG.setPhotos(ctx.db, { kind, id }, photos);
+    await IMG.setPhotos(ctx.db, { kind, id }, photos, cover);
     revalidatePath("/app/rentals", "layout");
   }, "Photos updated");
 }
@@ -45,4 +45,22 @@ export async function setAvatarAction(form: FormData | null): Promise<ActionResu
     revalidatePath("/", "layout");
     return { url };
   }, form ? "Profile photo updated" : "Profile photo removed");
+}
+
+export async function addAerialPhotoAction(propertyId: string, cover: boolean): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("rentals", "edit");
+    const { addAerialPhoto } = await import("@/server/images/place-photos");
+    await addAerialPhoto(ctx.db, propertyId, { cover });
+    revalidatePath("/app/rentals", "layout");
+  }, "Aerial photo added");
+}
+
+export async function setStreetViewCoverAction(propertyId: string, on: boolean): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("rentals", "edit");
+    const { setStreetViewCover } = await import("@/server/images/place-photos");
+    await setStreetViewCover(ctx.db, propertyId, on);
+    revalidatePath("/app/rentals", "layout");
+  }, on ? "Street View is now the main picture" : "Street View picture removed");
 }

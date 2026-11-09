@@ -25,6 +25,9 @@ import { balancesBy, listLeases } from "@/server/leasing/queries";
 import { LeasesTable } from "@/components/leasing/leases-table";
 import { formatDate } from "@/lib/dates";
 import { PhotoGallery } from "@/components/images/photo-gallery";
+import { PlacePicture } from "@/components/images/place-picture";
+import { streetViewEnabled } from "@/server/images/place-photos";
+import { outsideLinks } from "@/lib/outside-links";
 import { LandRecord } from "@/components/rentals/land-record";
 import { landRecordView } from "@/server/rentals/land-records";
 
@@ -52,6 +55,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
       portfolio: true,
       defaultOperating: true,
       defaultDeposit: true,
+      parcelRecord: { select: { latitude: true, longitude: true } },
       ownerships: { where: { deletedAt: null }, include: { owner: true }, orderBy: { percentBps: "desc" } },
     },
   });
@@ -169,7 +173,10 @@ export default async function PropertyPage({ params, searchParams }: { params: P
       ) : tab === "land" ? (
         <LandRecord mode="staff" propertyId={p.id} propertyName={p.name} address={p} {...await landRecordView(ctx.db, p.id, (id) => `/api/files/${id}`)} />
       ) : tab === "photos" ? (
-        <PhotoGallery kind="property" id={p.id} photos={p.photos} canEdit={canEdit} />
+        <div className="grid gap-4">
+          {canEdit ? <PlacePicture propertyId={p.id} hasPhotos={p.photos.length > 0} streetView={streetViewEnabled()} streetViewCover={p.streetViewCover} links={outsideLinks(p, p.parcelRecord ?? undefined)} /> : null}
+          <PhotoGallery kind="property" id={p.id} photos={p.photos} canEdit={canEdit} streetViewCover={p.streetViewCover} />
+        </div>
       ) : tab === "units" ? (
         <UnitsTable rows={units} showProperty={false} canEdit={canEdit && !meta.singleUnit} canDelete={can(ctx.permissions, "rentals", "delete")} propertyId={p.id} />
       ) : tab === "owners" ? (

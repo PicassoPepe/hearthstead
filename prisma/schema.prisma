@@ -276,6 +276,8 @@ model Property {
   photoUrl                  String?
   /// Ordered public image attachment ids; the first is the cover.
   photos                    String[]     @default([])
+  /// Use the Google Street View picture of the address as the main picture (shown live, never stored).
+  streetViewCover           Boolean      @default(false)
   /// Default bank accounts used when posting money for this property (chart-of-accounts ids).
   defaultOperatingAccountId String?
   defaultDepositAccountId   String?

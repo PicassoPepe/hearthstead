@@ -50,6 +50,7 @@ Optional, for land records (parcel maps and owner of record) outside Louisville/
 | Name | Value |
 | --- | --- |
 | `REGRID_TOKEN` | Your Regrid API token (regrid.com/api — paid, per parcel; each property is looked up once and refreshed every 90 days) |
+| `GOOGLE_MAPS_API_KEY` | Optional. Google Street View pictures of each property (Street View Static API key). Aerial photos are free and need nothing. |
 
 ## 5. Keep uploaded files
 

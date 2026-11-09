@@ -76,6 +76,17 @@ Every demo user's password is `Demo1234!x`:
 
 Magic-link emails are captured by the mock email provider — open **http://localhost:3000/dev/outbox**.
 
+### Pictures from Google (optional)
+
+Aerial photos work with no setup. To also get the **Street View** picture of the front of each building:
+
+1. Go to <https://console.cloud.google.com/>, sign in, and create a project.
+2. Search for **Street View Static API** and press **Enable** (Google asks for a card; there's a free monthly amount that covers a small company).
+3. Open **APIs & Services → Credentials → Create credentials → API key** and copy the key.
+4. Open the `.env` file in the DeedWood folder with Notepad and add a line: `GOOGLE_MAPS_API_KEY="paste-the-key-here"`. Save, then start DeedWood again.
+
+Zillow doesn't offer a way for other apps to copy its photos, so DeedWood links to Zillow instead — save the picture there and upload it.
+
 ### Troubleshooting
 
 | Problem | Fix |
@@ -319,6 +330,8 @@ Try these after `pnpm db:seed` (password `Demo1234!x`):
 | Owner approvals | `owner@example.com` → **Approvals** | Cedar Duplex requires approval over $1,500 — a $2,480 gutter bill is waiting and can't be paid until approved. |
 | Reminders & statements | nightly job | Rent reminders (Settings → Notifications) and monthly owner statements (Distributions → **Email last month's statements**). |
 | Land records | Property → **Land records**; owner portal → Properties → a property | Parcel map with lot lines, owner of record (with a warning when it doesn't match your records), parcel ID, acres, assessed value, last sale, deed book/page, and deed/title/survey documents. Owners see it in their portal. Demo data uses sample parcels. Real lookups: Louisville/Jefferson County, KY free from the official county map; every other county (including Wayne County, KY) through Regrid once you add a `REGRID_TOKEN`. |
+| Property pictures | Properties list; Property → **Photos** → *Get a picture of this place* | Each property shows its main picture in the list (or an **Add** box). Upload your own, press **Get aerial photo** (free, U.S. government, any U.S. address — new properties get one automatically), use **Google Street View** (needs a key, below), or open Zillow / Google Maps / Google Earth, save a picture and upload it. |
+| Budget fill-in | Rent & Money → **Budgets** → a budget → **Edit budget** | **Fill in from…** pulls rent and monthly charges from your leases (optionally assuming they renew), repeating bills, last year's actuals (+/- %), or another budget. **Same every month** repeats a row's first amount across the year (one row, or all rows at once). Check the numbers, then **Save budget**. |
 | Phone | any page at phone width | Bottom tab bar with a **+** quick-actions sheet; tables become cards. |
 
 ## Roadmap

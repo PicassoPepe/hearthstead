@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Building2, DoorOpen, Plus, Upload, UserRound } from "lucide-react";
+import { Building2, DoorOpen, ImagePlus, Plus, Upload, UserRound } from "lucide-react";
 import { DataTable } from "@/components/patterns/data-table";
 import { EmptyState } from "@/components/patterns/empty-state";
 import { StatusBadge } from "@/components/patterns/status-badge";
@@ -60,11 +60,21 @@ export function PropertiesTable({ rows, portfolios, canEdit, canDelete }: { rows
         accessorKey: "name",
         header: "Property",
         cell: ({ row }) => (
-          <div className="min-w-0">
-            <Link href={`/app/rentals/${row.original.id}`} className="font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
-              {row.original.name}
-            </Link>
-            <div className="truncate text-xs text-muted-foreground">{row.original.address}</div>
+          <div className="flex min-w-0 items-center gap-3">
+            {row.original.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={row.original.photoUrl} alt="" loading="lazy" className="size-12 shrink-0 rounded-lg border border-border object-cover" />
+            ) : (
+              <Link href={`/app/rentals/${row.original.id}?tab=photos`} onClick={(e) => e.stopPropagation()} className="flex size-12 shrink-0 flex-col items-center justify-center rounded-lg border border-dashed border-border-strong text-[10px] font-medium leading-tight text-muted-foreground hover:bg-surface-muted" aria-label="Add a picture" title={`Add a picture of ${row.original.name}`}>
+                <ImagePlus className="size-4" aria-hidden />Add
+              </Link>
+            )}
+            <div className="min-w-0">
+              <Link href={`/app/rentals/${row.original.id}`} className="font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+                {row.original.name}
+              </Link>
+              <div className="truncate text-xs text-muted-foreground">{row.original.address}</div>
+            </div>
           </div>
         ),
       },

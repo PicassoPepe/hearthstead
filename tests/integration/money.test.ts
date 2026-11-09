@@ -4,7 +4,7 @@ import { createPropertyFromWizard } from "@/server/rentals/service";
 import { createLease } from "@/server/leasing/leases";
 import { postEntry } from "@/server/ledger/journal";
 import { closeYear, reopenYear, previewClose } from "@/server/accounting/close";
-import { budgetVsActual, createBudget, saveBudgetAmounts, spread } from "@/server/accounting/budgets";
+import { activeMonths, budgetFill, budgetVsActual, createBudget, saveBudgetAmounts, spread } from "@/server/accounting/budgets";
 import { postBillback, previewBillback } from "@/server/accounting/billback";
 import { forms1099, irisCsv } from "@/server/accounting/tax1099";
 import { incomeExpense } from "@/server/reports/engine";
@@ -78,6 +78,26 @@ describe("budgets", () => {
     expect(util.actualYtd).toBe(90_000);
     expect(util.varianceYtd).toBe(util.budgetYtd - 90_000);
     await expect(saveBudgetAmounts(db, b.id, { nope: [1] })).rejects.toThrow(/Unknown account/);
+  });
+});
+
+describe("budget fill-in", () => {
+  it("fills from leases (with or without renewals), repeating bills and another budget", async () => {
+    expect(activeMonths(2027, d("2027-03-15"), d("2027-05-01"))).toEqual([false, false, true, true, true, false, false, false, false, false, false, false]);
+    const rent = (await db.account.findFirstOrThrow({ where: { systemKey: "RENT_INCOME" } })).id;
+    const vendor = await db.vendor.create({ data: { organizationId: O.orgId, name: "Green Lawns" } });
+    await db.recurringBill.create({ data: { organizationId: O.orgId, vendorId: vendor.id, dayOfMonth: 5, nextRunDate: d("2027-03-05"), lines: [{ accountId: utilities, amountCents: 5_000, propertyId }, { accountId: utilities, amountCents: 7_777, propertyId: "other-property" }] } });
+    const b27 = await createBudget(ctx, { name: "2027", year: 2027, propertyId, start: "BLANK" });
+    const f = await budgetFill(ctx, b27.id, { leases: true, assumeRenew: false, bills: true });
+    expect(f.amounts[rent]).toEqual(Array(12).fill(250_000));
+    expect(f.amounts[utilities]).toEqual([0, 0, 5_000, 5_000, 5_000, 5_000, 5_000, 5_000, 5_000, 5_000, 5_000, 5_000]);
+    expect(f.sources.map((s) => s.key)).toEqual(["leases", "bills"]);
+    const b28 = await createBudget(ctx, { name: "2028", year: 2028, propertyId, start: "BLANK" });
+    expect((await budgetFill(ctx, b28.id, { leases: true, assumeRenew: false })).amounts[rent]).toBeUndefined(); // both leases end in 2027
+    expect((await budgetFill(ctx, b28.id, { leases: true, assumeRenew: true })).amounts[rent]).toEqual(Array(12).fill(250_000));
+    await saveBudgetAmounts(db, b27.id, f.amounts);
+    expect((await budgetFill(ctx, b28.id, { copyBudgetId: b27.id })).amounts[utilities]![2]).toBe(5_000);
+    await expect(budgetFill(ctx, b28.id, {})).rejects.toThrow(/Pick at least one/);
   });
 });
 

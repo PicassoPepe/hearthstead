@@ -88,3 +88,99 @@ export async function budgetVsActual(ctx: AppContext, id: string, throughMonth: 
     },
   };
 }
+
+// ─── Fill a budget from what's already in the account ─────────────────────
+
+export type FillOptions = {
+  /** Rent and other monthly charges on current leases. */
+  leases?: boolean;
+  /** Keep charging after a lease's end date (assume it renews at the same rent). */
+  assumeRenew?: boolean;
+  /** Repeating bills (Rent & Money → Bills → repeating). */
+  bills?: boolean;
+  /** Last year's actual income and spending, adjusted by `adjustPct`. */
+  lastYear?: boolean;
+  adjustPct?: number;
+  /** Copy another budget's amounts. */
+  copyBudgetId?: string | null;
+};
+export type FillSource = { key: "leases" | "bills" | "lastYear" | "copy"; label: string; totalCents: number; accounts: number };
+
+const monthStart = (y: number, m: number) => new Date(Date.UTC(y, m, 1));
+const monthEnd = (y: number, m: number) => new Date(Date.UTC(y, m + 1, 0));
+/** Months (0-11) of `year` overlapping [start, end]. */
+export function activeMonths(year: number, start: Date, end: Date | null) {
+  return Array.from({ length: 12 }, (_, m) => start <= monthEnd(year, m) && (!end || end >= monthStart(year, m)));
+}
+
+/**
+ * Suggested monthly amounts for a budget, from the sources picked. Nothing is saved — the editor
+ * shows the numbers so the user can check them before pressing Save.
+ */
+export async function budgetFill(ctx: AppContext, id: string, o: FillOptions) {
+  const b = await ctx.db.budget.findFirst({ where: { id } });
+  const scope = ctx.membership.propertyScope;
+  const inScope = (x: { propertyId: string | null } | null) => x && (!scope.length || (x.propertyId && scope.includes(x.propertyId)));
+  if (!b || !inScope(b)) throw new UserFacingError("Budget not found");
+  const propIds = b.propertyId ? [b.propertyId] : scope.length ? [...scope] : null;
+  const valid = new Set((await ctx.db.account.findMany({ where: { type: { in: ["INCOME", "EXPENSE"] }, deletedAt: null }, select: { id: true } })).map((a) => a.id));
+  const out: Amounts = {};
+  const sources: FillSource[] = [];
+  const add = (target: Amounts, acct: string, m: number, cents: number) => {
+    if (!valid.has(acct) || !cents) return;
+    const row = (target[acct] ??= Array<number>(12).fill(0));
+    row[m] = (row[m] ?? 0) + cents;
+  };
+  const merge = (key: FillSource["key"], label: string, part: Amounts) => {
+    let total = 0;
+    for (const [acct, months] of Object.entries(part)) {
+      for (let m = 0; m < 12; m++) { add(out, acct, m, months[m]!); total += months[m]!; }
+    }
+    sources.push({ key, label, totalCents: total, accounts: Object.keys(part).length });
+  };
+
+  if (o.leases) {
+    const part: Amounts = {};
+    const charges = await ctx.db.recurringCharge.findMany({
+      where: { deletedAt: null, frequency: "MONTHLY", lease: { deletedAt: null, status: { in: ["ACTIVE", "DRAFT"] }, ...(propIds ? { propertyId: { in: propIds } } : {}) } },
+      include: { lease: { select: { endDate: true, moveOutDate: true, termType: true } } },
+    });
+    for (const c of charges) {
+      const end = o.assumeRenew ? null : c.endDate ?? c.lease.moveOutDate ?? (c.lease.termType === "FIXED" ? c.lease.endDate : null);
+      activeMonths(b.year, c.startDate, end).forEach((on, m) => { if (on) add(part, c.accountId, m, c.amountCents); });
+    }
+    merge("leases", o.assumeRenew ? "Rent and monthly charges from your leases (assuming they renew)" : "Rent and monthly charges from your leases", part);
+  }
+
+  if (o.bills) {
+    const part: Amounts = {};
+    const bills = await ctx.db.recurringBill.findMany({ where: { deletedAt: null, active: true } });
+    for (const rb of bills) {
+      const lines = (rb.lines as { accountId: string; amountCents: number; propertyId?: string | null }[]) ?? [];
+      const months = activeMonths(b.year, monthStart(b.year, 0) < rb.nextRunDate ? new Date(Date.UTC(rb.nextRunDate.getUTCFullYear(), rb.nextRunDate.getUTCMonth(), 1)) : monthStart(b.year, 0), rb.endDate);
+      for (const l of lines) {
+        if (propIds && (!l.propertyId || !propIds.includes(l.propertyId))) continue;
+        months.forEach((on, m) => { if (on) add(part, l.accountId, m, l.amountCents); });
+      }
+    }
+    merge("bills", "Repeating bills", part);
+  }
+
+  if (o.lastYear) {
+    const y = b.year - 1;
+    const actual = await incomeExpense(ctx, { from: `${y}-01-01`, to: `${y}-12-31`, basis: "ACCRUAL", propertyIds: propIds, col: (d) => String(d.getUTCMonth()) });
+    const f = 1 + (o.adjustPct ?? 0) / 100;
+    const part: Amounts = {};
+    for (const [acct, cols] of actual) for (let m = 0; m < 12; m++) add(part, acct, m, Math.max(0, Math.round((cols.get(String(m)) ?? 0) * f)));
+    merge("lastYear", `What actually came in and went out in ${y}${o.adjustPct ? ` (${o.adjustPct > 0 ? "+" : ""}${o.adjustPct}%)` : ""}`, part);
+  }
+
+  if (o.copyBudgetId) {
+    const other = await ctx.db.budget.findFirst({ where: { id: o.copyBudgetId } });
+    if (!other || !inScope(other)) throw new UserFacingError("That budget wasn't found");
+    merge("copy", `Copied from “${other.name}”`, clean(other.amounts));
+  }
+
+  if (!sources.length) throw new UserFacingError("Pick at least one place to fill in from");
+  return { amounts: out, sources };
+}

@@ -38,6 +38,8 @@ export type PropertyRow = {
   owners: string;
   marketRentCents: number;
   balanceCents: number;
+  /** Cover picture (uploaded, aerial or street view), if any. */
+  photoUrl: string | null;
 };
 
 export async function listProperties(ctx: AppContext): Promise<PropertyRow[]> {
@@ -64,6 +66,7 @@ export async function listProperties(ctx: AppContext): Promise<PropertyRow[]> {
     balanceCents: balances.get(p.id) ?? 0,
     owners: p.ownerships.map((o) => ownerDisplayName(o.owner)).join(", "),
     marketRentCents: p.units.reduce((s, u) => s + u.marketRentCents, 0),
+    photoUrl: p.photoUrl,
   }));
 }
 
