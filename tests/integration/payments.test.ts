@@ -117,3 +117,33 @@ async function runRent(tx: Parameters<Parameters<ScopedDb["tx"]>[0]>[0], until =
   const { runRecurringForLease } = await import("@/server/leasing/leases");
   await runRecurringForLease(tx, { orgId: A.orgId, userId: A.userId }, leaseId, d(until));
 }
+
+describe("pausing a tenant's portal access", () => {
+  it("blocks the portal login, keeps every record, optionally stops autopay, and can be undone", async () => {
+    const { pauseTenantPortal, resumeTenantPortal } = await import("@/server/portal/invite");
+    await inviteTenantToPortal(db, tenantId, "Test PAY");
+    const link = await db.tenantUser.findFirstOrThrow({ where: { tenantId } });
+    const pm = await db.paymentMethod.findFirstOrThrow({ where: { tenantId } });
+    if (!(await db.autopay.updateMany({ where: { tenantId }, data: { active: true } })).count) await db.autopay.create({ data: { organizationId: A.orgId, leaseId, tenantId, paymentMethodId: pm.id, dayOfMonth: 1 } });
+    const before = { tx: await db.leaseTransaction.count({ where: { leaseId } }), bal: await balance() };
+
+    await expect(pauseTenantPortal(db, tenantId, { reason: "" })).rejects.toThrow(/reason/);
+    const r = await pauseTenantPortal(db, tenantId, { reason: "Moved out", stopAutopay: true });
+    expect(r.autopaysStopped).toBe(1);
+    expect(await db.autopay.count({ where: { tenantId, active: true } })).toBe(0);
+    await expect(pauseTenantPortal(db, tenantId, { reason: "Again" })).rejects.toThrow(/already paused/);
+    // The login link is kept, but the portal lookup (same filter as getPortalContext) no longer finds it.
+    expect(await admin.tenantUser.count({ where: { id: link.id, deletedAt: null } })).toBe(1);
+    expect(await admin.tenantUser.count({ where: { userId: link.userId, deletedAt: null, tenant: { portalPausedAt: null } } })).toBe(0);
+    await expect(inviteTenantToPortal(db, tenantId, "Test PAY")).rejects.toThrow(/paused/);
+    // Nothing is lost.
+    expect(await db.leaseTransaction.count({ where: { leaseId } })).toBe(before.tx);
+    expect(await balance()).toBe(before.bal);
+    expect(await db.tenant.count({ where: { id: tenantId, deletedAt: null } })).toBe(1);
+    expect(await db.auditLog.count({ where: { action: "tenant.portal_paused", entityId: tenantId } })).toBe(1);
+
+    await resumeTenantPortal(db, tenantId);
+    expect(await admin.tenantUser.count({ where: { userId: link.userId, deletedAt: null, tenant: { portalPausedAt: null } } })).toBe(1);
+    expect((await db.tenant.findFirstOrThrow({ where: { id: tenantId } })).portalPausedReason).toBeNull();
+  });
+});

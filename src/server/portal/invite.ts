@@ -12,6 +12,7 @@ export async function inviteTenantToPortal(db: ScopedDb, tenantId: string, orgNa
   const t = await db.tenant.findFirst({ where: { id: tenantId } });
   if (!t) throw new UserFacingError("Tenant not found");
   if (!t.email) throw new UserFacingError(`${tenantDisplayName(t)} has no email address. Add one first.`);
+  if (t.portalPausedAt) throw new UserFacingError(`${tenantDisplayName(t)}'s portal access is paused. Turn it back on first.`);
   const email = t.email.toLowerCase();
   // Users are global identities (system lookup), the link is tenant data (scoped).
   const user = (await adminDb.user.findUnique({ where: { email } })) ?? (await adminDb.user.create({ data: { email, name: tenantDisplayName(t) } }));
@@ -56,4 +57,30 @@ export async function inviteOwnerToPortal(db: ScopedDb, ownerId: string, orgName
   });
   await audit(db, { action: "owner.portal_invited", entityType: "Owner", entityId: ownerId, after: { email } });
   return { email };
+}
+
+/**
+ * Pause a tenant's portal: they can't sign in to the resident portal until it's turned back on.
+ * Nothing is deleted — lease, payments, messages, requests and files all stay. Optionally stops
+ * autopay too (otherwise scheduled payments keep running).
+ */
+export async function pauseTenantPortal(db: ScopedDb, tenantId: string, v: { reason: string; stopAutopay?: boolean }) {
+  const t = await db.tenant.findFirst({ where: { id: tenantId } });
+  if (!t) throw new UserFacingError("Tenant not found");
+  if (t.portalPausedAt) throw new UserFacingError("Portal access is already paused.");
+  const reason = v.reason.trim().slice(0, 500);
+  if (reason.length < 3) throw new UserFacingError("Add a short reason (for your records).", { reason: "Required" });
+  await db.tenant.update({ where: { id: tenantId }, data: { portalPausedAt: new Date(), portalPausedReason: reason } });
+  let autopays = 0;
+  if (v.stopAutopay) autopays = (await db.autopay.updateMany({ where: { tenantId, active: true }, data: { active: false } })).count;
+  await audit(db, { action: "tenant.portal_paused", entityType: "Tenant", entityId: tenantId, after: { reason, autopayStopped: autopays } });
+  return { autopaysStopped: autopays };
+}
+
+export async function resumeTenantPortal(db: ScopedDb, tenantId: string) {
+  const t = await db.tenant.findFirst({ where: { id: tenantId } });
+  if (!t) throw new UserFacingError("Tenant not found");
+  if (!t.portalPausedAt) return;
+  await db.tenant.update({ where: { id: tenantId }, data: { portalPausedAt: null, portalPausedReason: null } });
+  await audit(db, { action: "tenant.portal_resumed", entityType: "Tenant", entityId: tenantId, before: { reason: t.portalPausedReason } });
 }

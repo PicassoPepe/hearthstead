@@ -40,7 +40,7 @@ export function TenantsTable({ rows, canEdit }: { rows: TenantRow[]; canEdit: bo
       onRowClick={(r) => router.push(`/app/people/tenants/${r.id}`)}
       filters={[
         { columnId: "leaseStatus", label: "Lease statuses", options: [{ value: "ACTIVE", label: "Active" }, { value: "EVICTION", label: "Eviction" }, { value: "ENDED", label: "Ended" }, { value: "DRAFT", label: "Draft" }] },
-        { columnId: "portalStatus", label: "Portal statuses", options: [{ value: "NOT_INVITED", label: "Not invited" }, { value: "INVITED", label: "Invited" }, { value: "ACTIVE", label: "Active" }] },
+        { columnId: "portalStatus", label: "Portal statuses", options: [{ value: "NOT_INVITED", label: "Not invited" }, { value: "INVITED", label: "Invited" }, { value: "ACTIVE", label: "Active" }, { value: "PAUSED", label: "Paused" }] },
       ]}
       bulkActions={canEdit ? [{
         label: "Invite to portal",

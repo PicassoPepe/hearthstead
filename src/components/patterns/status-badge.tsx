@@ -7,6 +7,7 @@ type Tone = "neutral" | "primary" | "success" | "warning" | "danger" | "info";
 const MAP: Record<string, { tone: Tone; label: string; Icon: typeof Circle }> = {
   ACTIVE: { tone: "success", label: "Active", Icon: CheckCircle2 },
   INVITED: { tone: "info", label: "Invited", Icon: Mail },
+  PAUSED: { tone: "warning", label: "Paused", Icon: Clock },
   SUSPENDED: { tone: "danger", label: "Suspended", Icon: XCircle },
   DRAFT: { tone: "neutral", label: "Draft", Icon: CircleDashed },
   PENDING: { tone: "warning", label: "Pending", Icon: Clock },

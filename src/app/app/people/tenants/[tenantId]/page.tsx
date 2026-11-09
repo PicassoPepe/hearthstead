@@ -56,7 +56,7 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
       <EntityHeader
         breadcrumb={<><Link href="/app/people/tenants" className="hover:underline">Tenants</Link> / {name}</>}
         title={name}
-        status={<StatusBadge status={t.portalStatus} label={`Portal: ${t.portalStatus.replace("_", " ").toLowerCase()}`} />}
+        status={t.portalPausedAt ? <StatusBadge status="PAUSED" label="Portal: paused" /> : <StatusBadge status={t.portalStatus} label={`Portal: ${t.portalStatus.replace("_", " ").toLowerCase()}`} />}
         subtitle={[t.email, t.phone].filter(Boolean).join(" · ") || undefined}
         stats={[
           { label: "Balance", value: <span className={total > 0 ? "text-danger" : ""}>{formatMoney(total)}</span> },
@@ -66,11 +66,16 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
         ]}
         actions={
           <>
-            <TenantPortalActions tenantId={t.id} status={t.portalStatus} hasEmail={Boolean(t.email)} canInvite={canEdit} />
+            <TenantPortalActions tenantId={t.id} status={t.portalStatus} hasEmail={Boolean(t.email)} canInvite={canEdit} paused={Boolean(t.portalPausedAt)} name={name} />
             {can(ctx.permissions, "leasing", "edit") ? <Button asChild variant="secondary"><Link href={`/app/new/lease?tenantId=${t.id}`} scroll={false}><Plus aria-hidden /> New lease</Link></Button> : null}
           </>
         }
       />
+      {t.portalPausedAt ? (
+        <p role="status" className="mb-4 rounded-lg border border-warning/40 bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" data-testid="portal-paused">
+          <strong>Portal access paused</strong> since {formatDate(t.portalPausedAt)}{t.portalPausedReason ? ` — ${t.portalPausedReason}` : ""}. {name} can&apos;t sign in to the resident portal. All their information is kept.
+        </p>
+      ) : null}
       <EntityTabs base={base} active={tab} tabs={[{ id: "overview", label: "Overview" }, { id: "leases", label: "Leases", count: leases.length }, { id: "tasks", label: "Tasks" }, { id: "communications", label: "Communications" }, { id: "notes", label: "Notes" }, { id: "files", label: "Files" }]} />
       {tab === "overview" ? (
         <Card className="max-w-3xl">
