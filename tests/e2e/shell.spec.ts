@@ -80,7 +80,7 @@ test("every Create new kind opens a real form (Bill as the example)", async ({ p
 test("org switcher changes the active organization", async ({ page }) => {
   await page.getByRole("button", { name: /Account menu/ }).click();
   await page.getByRole("menuitem", { name: "Harbor Light Rentals" }).click();
-  await expect(page.getByText("Here's what's happening at Harbor Light Rentals.")).toBeVisible();
+  await expect(page.getByText("This is your home page for Harbor Light Rentals.", { exact: false })).toBeVisible();
   await page.goto("/app/settings/late-fees");
   // Harbor Light overrides grace days to 10; Admin is only a Property Manager there (view-only settings).
   await expect(page.locator('[data-setting="lateFees.graceDays"] input')).toHaveValue("10");
