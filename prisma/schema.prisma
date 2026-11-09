@@ -2193,3 +2193,114 @@ model Release {
   publishedAt DateTime @default(now())
   createdById String
 }
+
+/// What DeedWood sells. Prices are editable in /admin → Plans (no code change needed). Amounts in cents.
+model Plan {
+  id                  String   @id @default(cuid())
+  /// hosted_starter | hosted_growth | hosted_scale | local_annual | local_care | addon_*
+  key                 String   @unique
+  /// HOSTED | SELF_HOSTED | ADDON
+  mode                String
+  displayName         String
+  description         String   @default("")
+  active              Boolean  @default(true)
+  /// Shown on pricing pages / checkout.
+  published           Boolean  @default(true)
+  unitMin             Int      @default(0)
+  unitMax             Int?
+  /// Monthly: flat price, or per-unit with a minimum.
+  monthlyFlatCents    Int?
+  monthlyPerUnitCents Int?
+  monthlyMinCents     Int?
+  /// Yearly: flat price, or per-unit with a minimum.
+  annualFlatCents     Int?
+  annualPerUnitCents  Int?
+  annualMinCents      Int?
+  /// Volume pricing above this many units (Scale: 250).
+  volumeAboveUnits    Int?
+  volumeMonthlyCents  Int?
+  volumeAnnualCents   Int?
+  /// Local + Care: added to the base Local price each year.
+  addOnAnnualCents    Int?
+  stripeProductId     String?
+  stripePriceMonthId  String?
+  stripePriceYearId   String?
+  /// Feature keys this plan includes (see src/lib/entitlements.ts).
+  features            String[] @default([])
+  smsIncluded         Int      @default(0)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+/// A company's DeedWood subscription (one per company). Platform-only table.
+model Subscription {
+  id                   String    @id @default(cuid())
+  orgId                String    @unique
+  /// HOSTED | SELF_HOSTED
+  mode                 String    @default("HOSTED")
+  planKey              String    @default("hosted_starter")
+  /// month | year
+  interval             String    @default("month")
+  /// TRIALING | ACTIVE | PAST_DUE | READ_ONLY | CANCELED | BETA | COMPLIMENTARY
+  status               String    @default("TRIALING")
+  trialEndsAt          DateTime?
+  betaUntil            DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  pastDueSince         DateTime?
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  /// Units billed last time we synced with Stripe.
+  billedUnits          Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+/// Signed license for a computer (self-hosted) install. Platform-only table.
+model License {
+  id                 String    @id @default(cuid())
+  orgId              String?
+  customerEmail      String
+  customerName       String?
+  planKey            String    @default("local_annual")
+  maxUnits           Int
+  features           String[]  @default([])
+  validFrom          DateTime  @default(now())
+  validUntil         DateTime
+  /// Days an install keeps working after validUntil when it can't check in (then read-only).
+  graceDays          Int       @default(14)
+  releaseChannel     String    @default("stable")
+  /// ACTIVE | REVOKED
+  status             String    @default("ACTIVE")
+  revokedAt          DateTime?
+  revokedReason      String?
+  lastCheckInAt      DateTime?
+  lastCheckInVersion String?
+  lastCheckInUnits   Int?
+  /// Most recent signed license text (what the customer installs).
+  token              String
+  issuedAt           DateTime  @default(now())
+  createdById        String?
+
+  @@index([customerEmail])
+}
+
+/// Who may use what: plan features, add-ons, codes, purchases, owner grants. Platform-only table.
+model Entitlement {
+  id         String    @id @default(cuid())
+  orgId      String
+  featureKey String
+  /// PLAN | ADDON | CODE | PURCHASE | ADMIN | REFERRAL
+  source     String
+  sourceId   String?
+  startsAt   DateTime  @default(now())
+  endsAt     DateTime?
+  /// ACTIVE | PENDING_FEATURE | REVOKED | EXPIRED
+  status     String    @default("ACTIVE")
+  meta       Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([orgId, featureKey])
+}

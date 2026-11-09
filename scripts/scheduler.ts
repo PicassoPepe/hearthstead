@@ -9,6 +9,7 @@ import { PrismaClient } from "@prisma/client";
 import { loadEnvFile } from "node:process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { runMinutelyForAllOrgs, runNightlyForAllOrgs } from "../src/server/jobs/runner";
+import { licenseCheckIn } from "../src/server/license/local";
 
 if (existsSync(".env")) loadEnvFile(".env");
 const admin = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
@@ -24,6 +25,10 @@ async function nightly() {
   busy = true;
   try {
     const r = await runNightlyForAllOrgs({ admin, app });
+    // Computer installs: check the license in with DeedWood (skipped when offline / not set up).
+    const units = await admin.unit.count({ where: { deletedAt: null, property: { deletedAt: null } } });
+    const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { version: string };
+    await licenseCheckIn(pkg.version, units).catch(() => null);
     mkdirSync(".deedwood", { recursive: true });
     writeFileSync(STAMP, today());
     console.log(`[jobs] nightly done ${JSON.stringify(r).slice(0, 300)}`);

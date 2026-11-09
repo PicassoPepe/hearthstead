@@ -262,3 +262,21 @@ export async function changePasswordAction(current: string | null, next: string)
     if (ctx) await audit(ctx.db, { action: "user.password_changed", entityType: "User", entityId: userId });
   }, "Password saved");
 }
+
+/** Computer installs: paste the license DeedWood sent (Settings → Billing). */
+export async function installLicenseAction(text: string): Promise<ActionResult<{ customer: string; validUntil: string; maxUnits: number }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("settings", "edit");
+    const { installLicense, isLocalInstall } = await import("@/server/license/local");
+    if (!isLocalInstall()) throw new UserFacingError("Licenses are only for DeedWood installed on your own computer.");
+    let c;
+    try {
+      c = installLicense(text);
+    } catch (e) {
+      throw new UserFacingError(e instanceof Error ? e.message : "That license didn't work.", { license: "Invalid" });
+    }
+    await audit(ctx.db, { action: "license.installed", entityType: "Organization", entityId: ctx.org.id, after: { licenseId: c.licenseId, validUntil: c.validUntil, maxUnits: c.maxUnits } });
+    done("/app/settings/billing");
+    return { customer: c.customer, validUntil: c.validUntil, maxUnits: c.maxUnits };
+  }, "License added");
+}

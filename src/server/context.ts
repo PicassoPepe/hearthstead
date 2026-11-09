@@ -6,6 +6,8 @@ import { auth } from "@/server/auth";
 import { adminDb } from "@/server/db";
 import { forOrg } from "@/server/dal/for-org";
 import type { ScopedDb } from "@/server/dal";
+import { localLicense } from "@/server/license/local";
+import { UserFacingError } from "@/server/action-result";
 import { IMPERSONATE_COOKIE, activeImpersonation, isPlatformAdmin } from "@/server/platform-admin/service";
 import {
   can,
@@ -125,6 +127,11 @@ export async function requirePermission(module: Module, level: Exclude<Level, "n
   if (!ctx) throw new PermissionError(module, level);
   if (ctx.org.suspended && !ctx.impersonation) throw new PermissionError(module, level);
   if (!can(ctx.permissions, module, level)) throw new PermissionError(module, level);
+  // Computer installs whose license or trial has ended are read-only (nothing is deleted).
+  if (level !== "view") {
+    const lic = localLicense();
+    if (lic.readOnly && !(module === "settings" && level === "edit")) throw new UserFacingError(lic.message);
+  }
   return ctx;
 }
 

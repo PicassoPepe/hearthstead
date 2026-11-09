@@ -1,5 +1,6 @@
 "use server";
 
+import { assertUnitCapacity } from "@/server/license/local";
 import { revalidatePath } from "next/cache";
 import { requirePermission, type AppContext } from "@/server/context";
 import { runAction, UserFacingError, type ActionResult } from "@/server/action-result";
@@ -19,6 +20,7 @@ export async function createProperty(input: PropertyWizardInput): Promise<Action
   return runAction(async () => {
     const ctx = await requirePermission("rentals", "edit");
     if (ctx.membership.propertyScope.length) throw new UserFacingError("Your access is limited to specific properties, so you can't create new ones.");
+    await assertUnitCapacity(() => ctx.db.unit.count({ where: { deletedAt: null } }), Math.max(1, input.units?.length ?? 1));
     const r = await svc.createPropertyFromWizard(ctx.db, input);
     // In the background: look up the county land record, then (if there's no photo yet) add a free
     // aerial picture as the main picture. The property page shows them when ready.
@@ -55,6 +57,7 @@ export async function addUnit(propertyId: string, input: UnitInput): Promise<Act
   return runAction(async () => {
     const ctx = await requirePermission("rentals", "edit");
     guardProperty(ctx, propertyId);
+    await assertUnitCapacity(() => ctx.db.unit.count({ where: { deletedAt: null } }), 1);
     const r = await svc.createUnit(ctx.db, propertyId, input);
     refresh();
     return r;
