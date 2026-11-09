@@ -1,4 +1,5 @@
 import { requirePortal } from "@/server/portal/context";
+import { PAYMENTS_COMING_SOON } from "@/lib/payments-flag";
 import { portalHome } from "@/server/portal/queries";
 import { PayForm } from "@/components/portal/pay-form";
 import { Card } from "@/components/ui/card";
@@ -22,7 +23,7 @@ export default async function PayPage() {
           readOnly={ctx.preview}
         />
       ) : (
-        <Card className="p-6 text-muted-foreground">Online payments aren&apos;t available for your lease. Contact {ctx.org.name} for other ways to pay.</Card>
+        <Card className="p-6 text-muted-foreground" data-testid="payments-coming-soon">{h.paymentsComingSoon ? PAYMENTS_COMING_SOON : <>Online payments aren&apos;t available for your lease. Contact {ctx.org.name} for other ways to pay.</>}</Card>
       )}
     </div>
   );

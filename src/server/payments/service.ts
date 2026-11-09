@@ -1,4 +1,5 @@
 import { emit } from "@/server/platform/events";
+import { PAYMENTS_COMING_SOON, paymentsEnabled } from "@/lib/payments-flag";
 import { createDeposit } from "@/server/accounting/banking";
 import { randomUUID } from "node:crypto";
 import type { PaymentStatus } from "@prisma/client";
@@ -49,6 +50,7 @@ export async function startPayment(
   db: ScopedDb,
   input: { leaseId: string; tenantId: string; paymentMethodId: string; amountCents: number; origin: "PORTAL" | "AUTOPAY" | "STAFF"; idempotencyKey?: string; today: Date },
 ) {
+  if (!paymentsEnabled()) throw new UserFacingError(PAYMENTS_COMING_SOON);
   if (input.idempotencyKey) {
     const dup = await db.paymentIntent.findFirst({ where: { idempotencyKey: input.idempotencyKey } });
     if (dup) return dup;
@@ -171,6 +173,7 @@ export async function advanceMockPayments(db: ScopedDb, today: Date): Promise<{ 
  */
 export async function runAutopay(db: ScopedDb, today: Date): Promise<{ attempted: number; skipped: number; failed: number }> {
   const out = { attempted: 0, skipped: 0, failed: 0 };
+  if (!paymentsEnabled()) return out;
   const autopays = await db.autopay.findMany({ where: { active: true } });
   const period = periodOf(today);
   for (const ap of autopays) {
@@ -204,6 +207,7 @@ export async function savePaymentMethod(
   tenantId: string,
   input: { type: "CARD"; card: { number: string; expMonth: number; expYear: number; cvc: string } } | { type: "ACH"; bank: { routingNumber: string; accountNumber: string; holderName: string } },
 ) {
+  if (!paymentsEnabled()) throw new UserFacingError(PAYMENTS_COMING_SOON);
   const provider = getPaymentsProvider();
   let saved;
   try {
@@ -231,6 +235,7 @@ export async function removePaymentMethod(db: ScopedDb, tenantId: string, id: st
 }
 
 export async function connectProcessor(db: ScopedDb, orgName: string, email: string | null) {
+  if (!paymentsEnabled()) throw new UserFacingError(PAYMENTS_COMING_SOON);
   const existing = await db.processorAccount.findFirst();
   const provider = getPaymentsProvider();
   const r = existing ? await provider.refreshAccount(existing.externalId) : await provider.createAccount(orgName, email);

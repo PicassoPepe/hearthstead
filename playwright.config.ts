@@ -17,5 +17,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}/login`,
     reuseExistingServer: true,
     timeout: 120_000,
+    // The suite exercises online payments, which are "coming soon" unless switched on.
+    env: { PAYMENTS_ENABLED: "1" },
   },
 });

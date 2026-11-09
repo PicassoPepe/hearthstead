@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { paymentsEnabled } from "@/lib/payments-flag";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -53,6 +54,7 @@ export default async function SettingsGroupPage({ params }: { params: Promise<{ 
           account={await ctx.db.processorAccount.findFirst().then((a) => (a ? { status: a.status, externalId: a.externalId, payoutBankMask: a.payoutBankMask } : null))}
           provider={getPaymentsProvider().name}
           canEdit={canEdit}
+          comingSoon={!paymentsEnabled()}
         />
       ) : null}
       <Card>

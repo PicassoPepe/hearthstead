@@ -15,6 +15,9 @@
  * Every demo password is: Demo1234!x
  */
 import { PrismaClient } from "@prisma/client";
+// Demo data includes online-payment history and autopays, so the loader may use them even while
+// online payments are "coming soon" for real use (this only affects this seeding process).
+process.env.PAYMENTS_ENABLED = "1";
 import bcrypt from "bcryptjs";
 import { provisionOrganization, purgeOrganizations } from "../src/server/orgs";
 import { seedRentals } from "./seed-rentals";
