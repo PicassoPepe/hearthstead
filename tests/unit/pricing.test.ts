@@ -18,9 +18,12 @@ describe("accepted price list", () => {
     expect(quote(plan("hosted_scale"), 101, "month")).toBe(17_675);
     expect(quote(plan("hosted_scale"), 250, "month")).toBe(43_750);
     expect(quote(plan("hosted_scale"), 300, "month")).toBe(250 * 175 + 50 * 150);
-    expect(quote(plan("hosted_scale"), 300, "year")).toBe(175_000); // $1,750 yearly minimum still applies
-    expect(quote(plan("hosted_scale"), 1_500, "year")).toBe(250 * 145 + 1_250 * 125);
-    expect(quote(plan("hosted_scale"), 50, "year")).toBe(175_000);
+    // Yearly: $17.40/unit for units 1–250, $15.00/unit above 250 (Stripe graduated tiers), $1,750 minimum.
+    expect(quote(plan("hosted_scale"), 101, "year")).toBe(175_740);
+    expect(quote(plan("hosted_scale"), 250, "year")).toBe(435_000);
+    expect(quote(plan("hosted_scale"), 300, "year")).toBe(250 * 1_740 + 50 * 1_500);
+    expect(quote(plan("hosted_scale"), 1_500, "year")).toBe(250 * 1_740 + 1_250 * 1_500);
+    expect(quote(plan("hosted_scale"), 50, "year")).toBe(175_000); // minimum applies
   });
   it("Local is $15/unit/year with a $199 minimum; Care adds $249", () => {
     expect(quote(plan("local_annual"), 5, "year")).toBe(19_900);

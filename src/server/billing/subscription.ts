@@ -1,6 +1,6 @@
 import { adminDb } from "@/server/db";
 import { UserFacingError } from "@/server/action-result";
-import { DEFAULT_PLANS, hostedPlanFor } from "@/lib/pricing";
+import { DEFAULT_PLANS, hostedPlanFor, quote } from "@/lib/pricing";
 import { stripe } from "./stripe-client";
 
 /**
@@ -71,10 +71,26 @@ export function stripeLine(planKey: string, interval: "month" | "year", units: n
   switch (planKey) {
     case "hosted_starter": return { lookupKey: interval === "year" ? "starter_yearly" : "starter_monthly", quantity: 1 };
     case "hosted_growth": if (interval !== "month") throw new UserFacingError("Growth is billed monthly"); return { lookupKey: "growth_unit_monthly", quantity: Math.max(u, Math.ceil((p.monthlyMinCents ?? 0) / (p.monthlyPerUnitCents ?? 1))) };
-    case "hosted_scale": if (interval !== "month") throw new UserFacingError("Scale is billed monthly"); return { lookupKey: "scale_unit_monthly", quantity: Math.max(u, Math.ceil((p.monthlyMinCents ?? 0) / (p.monthlyPerUnitCents ?? 1))) };
+    case "hosted_scale":
+      if (interval === "year") return { lookupKey: "scale_unit_yearly_tiered", quantity: minQuantityFor(p, u, "year") };
+      return { lookupKey: "scale_unit_monthly", quantity: Math.max(u, Math.ceil((p.monthlyMinCents ?? 0) / (p.monthlyPerUnitCents ?? 1))) };
     case "local_annual": return { lookupKey: "local_unit_yearly", quantity: Math.max(u, Math.ceil((p.annualMinCents ?? 0) / (p.annualPerUnitCents ?? 1))) };
     default: throw new UserFacingError("That plan can't be bought online yet");
   }
+}
+
+/**
+ * Stripe charges per unit (graduated tiers for Scale yearly) with no minimum of its own, so the app
+ * enforces the plan minimum by raising the quantity to the smallest count whose tiered price
+ * reaches it. Scale yearly: $17.40 × 101 = $1,757.40 is the first count over the $1,750 minimum —
+ * only companies under 101 units (below Scale's range) are affected.
+ */
+function minQuantityFor(p: (typeof DEFAULT_PLANS)[number], units: number, interval: "month" | "year") {
+  const min = (interval === "year" ? p.annualMinCents : p.monthlyMinCents) ?? 0;
+  const tiered = (q: number) => quote({ ...p, annualMinCents: 0, monthlyMinCents: 0 }, q, interval);
+  let q = Math.max(1, units);
+  while (tiered(q) < min) q++;
+  return q;
 }
 
 async function priceId(lookupKey: string) {

@@ -56,6 +56,12 @@ describe("stripe prices", () => {
     expect(stripeLine("hosted_growth", "month", 80)).toEqual({ lookupKey: "growth_unit_monthly", quantity: 80 });
     expect(stripeLine("hosted_scale", "month", 120)).toEqual({ lookupKey: "scale_unit_monthly", quantity: 120 });
     expect(stripeLine("hosted_scale", "month", 50).quantity).toBe(100); // $175 min ÷ $1.75
+    // Yearly uses the graduated price; Stripe applies the tiers, quantity = units.
+    expect(stripeLine("hosted_scale", "year", 101)).toEqual({ lookupKey: "scale_unit_yearly_tiered", quantity: 101 });
+    expect(stripeLine("hosted_scale", "year", 400)).toEqual({ lookupKey: "scale_unit_yearly_tiered", quantity: 400 });
+    // Below the $1,750 minimum: raised to the first count that reaches it (100 × $17.40 = $1,740 < $1,750).
+    expect(stripeLine("hosted_scale", "year", 40).quantity).toBe(101);
+    expect(stripeLine("hosted_scale", "year", 100).quantity).toBe(101);
     expect(stripeLine("local_annual", "year", 5)).toEqual({ lookupKey: "local_unit_yearly", quantity: 14 }); // $199 min ÷ $15
     expect(() => stripeLine("hosted_growth", "year", 50)).toThrow(/monthly/);
     expect(() => stripeLine("nope", "month", 5)).toThrow();
