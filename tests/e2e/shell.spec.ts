@@ -15,12 +15,16 @@ test("two-level sidebar swaps to a section submenu and back", async ({ page }) =
 });
 
 test("sidebar collapses to icons and remembers it", async ({ page }) => {
+  // The preference is saved in the background — wait for that request before reloading.
+  const saved = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/app/"));
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
-  await page.waitForLoadState("networkidle"); // the preference is saved in the background
+  await saved;
   await page.reload();
   await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
+  const restored = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/app/"));
   await page.getByRole("button", { name: "Expand sidebar" }).click();
+  await restored;
 });
 
 test("command palette searches people and navigates", async ({ page }) => {
