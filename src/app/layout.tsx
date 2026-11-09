@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import "./globals.css";
+import { siteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: { default: "DeedWood", template: "%s · DeedWood" },
   description: "Property management for landlords and property managers.",
   applicationName: "DeedWood",

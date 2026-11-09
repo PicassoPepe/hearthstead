@@ -18,5 +18,7 @@ export default defineConfig({
     // Integration tests share one database; run files serially.
     fileParallelism: false,
     testTimeout: 20_000,
+    // Online payments are off by default (coming soon); the suite exercises them, so switch them on.
+    env: { PAYMENTS_ENABLED: "1" },
   },
 });

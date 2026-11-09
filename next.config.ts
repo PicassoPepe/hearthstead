@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
       // Company websites may appear in the staff editor's preview (same site only) and load Plausible.
       { source: "/s/:path*", headers: securityHeaders(dev, true) },
       { source: "/:path((?!s/).*)", headers: securityHeaders(dev) },
+      // Private areas: never in search results (belt and braces with robots.txt).
+      ...["/app/:path*", "/portal/:path*", "/admin/:path*", "/admin", "/sign/:path*", "/api/:path*", "/dev/:path*", "/login", "/signup", "/select-org", "/apply/:path*"].map((source) => ({ source, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] })),
     ];
   },
 };

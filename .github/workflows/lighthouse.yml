@@ -1,0 +1,23 @@
+# Lighthouse performance check of the marketing pages. Runs only when a pull request gets the
+# "lighthouse" label (or by hand), so it stays well inside GitHub's free minutes.
+name: lighthouse
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+jobs:
+  lighthouse:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'lighthouse'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+        env: { AUTH_SECRET: "ci-only-not-a-real-secret-ci-only-not-a-real-secret" }
+      - run: node scripts/export-marketing.mjs --out deploy/pages-static --site https://deedwood.example --app https://app.deedwood.example
+        env: { AUTH_SECRET: "ci-only-not-a-real-secret-ci-only-not-a-real-secret", MARKETING_STATIC: "1" }
+      - run: npx -y @lhci/cli@0.14.0 autorun --collect.staticDistDir=deploy/pages-static --collect.url=http://localhost/index.html --collect.url=http://localhost/pricing/index.html --assert.assertions.categories:performance=error --assert.assertions.categories:performance.minScore=0.9 --assert.preset=lighthouse:no-pwa --upload.target=temporary-public-storage

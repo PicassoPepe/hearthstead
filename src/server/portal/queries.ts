@@ -1,4 +1,5 @@
 import "server-only";
+import { paymentsEnabled } from "@/lib/payments-flag";
 import type { PortalContext } from "./context";
 import * as M from "@/server/leasing/money";
 import { portalSettings } from "@/server/payments/service";
@@ -27,7 +28,8 @@ export async function portalHome(ctx: PortalContext) {
     rentCents,
     nextDue: lease.status === "ENDED" ? null : toISODate(nextDue),
     settings,
-    paymentsReady: Boolean(account?.chargesEnabled) && settings.allowOnlinePayments,
+    paymentsReady: paymentsEnabled() && Boolean(account?.chargesEnabled) && settings.allowOnlinePayments,
+    paymentsComingSoon: !paymentsEnabled(),
     autopay: autopay ? { dayOfMonth: autopay.dayOfMonth, amountMode: autopay.amountMode, fixedCents: autopay.fixedCents, method: autopayMethod ? `${autopayMethod.type === "CARD" ? autopayMethod.brand : autopayMethod.bankName} ••${autopayMethod.last4}` : "?", paymentMethodId: autopay.paymentMethodId } : null,
     methods: methods.map((m) => ({ id: m.id, type: m.type as "CARD" | "ACH", label: `${m.type === "CARD" ? (m.brand ?? "Card") : (m.bankName ?? "Bank")} ••${m.last4}`, detail: m.type === "CARD" ? `Expires ${String(m.expMonth).padStart(2, "0")}/${String(m.expYear).slice(-2)}` : m.verified ? "Verified" : "Not verified", isDefault: m.isDefault, verified: m.verified })),
     recentPayments: payments.map((p) => ({ id: p.id, amountCents: p.amountCents, status: p.status, methodType: p.methodType, date: toISODate(p.initiatedOn), origin: p.origin })),

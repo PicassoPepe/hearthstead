@@ -147,3 +147,17 @@ describe("pausing a tenant's portal access", () => {
     expect((await db.tenant.findFirstOrThrow({ where: { id: tenantId } })).portalPausedReason).toBeNull();
   });
 });
+
+describe("online payments switch", () => {
+  it("while PAYMENTS_ENABLED isn't 1, online payments and autopay are refused (staff-recorded payments still work)", async () => {
+    process.env.PAYMENTS_ENABLED = "0";
+    try {
+      const pm = await db.paymentMethod.findFirstOrThrow({ where: { tenantId } });
+      await expect(P.startPayment(db, { leaseId, tenantId, paymentMethodId: pm.id, amountCents: 1_000, origin: "PORTAL", today })).rejects.toThrow(/coming soon/);
+      await expect(P.savePaymentMethod(db, tenantId, { type: "CARD", card: { number: "4242424242424242", expMonth: 12, expYear: 2031, cvc: "123" } })).rejects.toThrow(/coming soon/);
+      expect(await P.runAutopay(db, today)).toEqual({ attempted: 0, skipped: 0, failed: 0 });
+    } finally {
+      process.env.PAYMENTS_ENABLED = "1";
+    }
+  });
+});

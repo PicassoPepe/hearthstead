@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { paymentsEnabled } from "@/lib/payments-flag";
 import { z } from "zod";
 import { emit } from "@/server/platform/events";
 import type { ScopedDb } from "@/server/dal";
@@ -104,6 +105,7 @@ export function stepErrors(step: number, d: ApplicationData): Record<string, str
 
 /** Pay the application fee by card (mock: 4242… succeeds, …0002 declines) and post it to the ledger. */
 export async function payApplicationFee(db: ScopedDb, id: string, card: { number: string; expMonth: number; expYear: number; cvc: string }) {
+  if (!paymentsEnabled()) throw new UserFacingError("Paying the application fee online is coming soon — the property manager will collect it.");
   const a = await db.application.findFirst({ where: { id } });
   if (!a) throw new UserFacingError("Application not found");
   if (a.feePaidAt || a.feeCents === 0) return a;
@@ -144,7 +146,8 @@ export async function submitApplication(db: ScopedDb, id: string, consent: { ip:
     const errs = stepErrors(s, d);
     if (Object.keys(errs).length) throw new UserFacingError(`Please finish "${APPLICATION_STEPS[s]}" first`, errs);
   }
-  if (a.feeCents > 0 && !a.feePaidAt) throw new UserFacingError("Pay the application fee to submit");
+  // While online payments are off, the fee is collected by the property manager instead.
+  if (a.feeCents > 0 && !a.feePaidAt && paymentsEnabled()) throw new UserFacingError("Pay the application fee to submit");
   await db.application.update({ where: { id }, data: { status: "SCREENING", submittedAt: new Date(), consentAt: new Date(), consentIp: consent.ip } });
   const listing = a.listingId ? await db.listing.findFirst({ where: { id: a.listingId } }) : null;
   const result = await getScreeningProvider().screen({

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { connectPayments } from "@/server/actions/payments";
 
-export function ProcessorCard({ account, provider, canEdit }: { account: { status: string; externalId: string; payoutBankMask: string | null } | null; provider: string; canEdit: boolean }) {
+export function ProcessorCard({ account, provider, canEdit, comingSoon = false }: { account: { status: string; externalId: string; payoutBankMask: string | null } | null; provider: string; canEdit: boolean; comingSoon?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
   return (
@@ -24,7 +24,9 @@ export function ProcessorCard({ account, provider, canEdit }: { account: { statu
         <Landmark className="size-5 text-muted-foreground" aria-hidden />
       </CardHeader>
       <CardContent>
-        {account ? (
+        {comingSoon ? (
+          <p className="rounded-lg bg-warning-soft p-3 text-sm text-warning-soft-foreground" data-testid="payments-coming-soon">Online payments are coming soon. Until then, record cash, check and money-order payments from <strong>Rent &amp; Money → Record a rent payment</strong>.</p>
+        ) : account ? (
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <Badge tone={account.status === "ACTIVE" ? "success" : "warning"}>{account.status === "ACTIVE" ? <><CheckCircle2 className="size-3" aria-hidden /> Accepting payments</> : account.status === "RESTRICTED" ? "Needs more information" : "Onboarding not finished"}</Badge>
             <span className="text-muted-foreground">Account {account.externalId}{account.payoutBankMask ? ` · payouts to ••${account.payoutBankMask}` : ""}</span>

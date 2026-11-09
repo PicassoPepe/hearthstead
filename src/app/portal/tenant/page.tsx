@@ -59,7 +59,7 @@ export default async function PortalHome() {
             <Link href="/portal/tenant/pay"><CreditCard aria-hidden /> {owes ? "Pay now" : "Make a payment"}</Link>
           </Button>
         ) : (
-          <p className="mt-4 rounded-lg bg-surface-muted p-3 text-sm text-muted-foreground">Online payments aren&apos;t available yet. Contact {ctx.org.name} for other ways to pay.</p>
+          <p className="mt-4 rounded-lg bg-surface-muted p-3 text-sm text-muted-foreground">{h.paymentsComingSoon ? "Online payments are coming soon." : "Online payments aren’t available yet."} Contact {ctx.org.name} for other ways to pay.</p>
         )}
       </Card>
 

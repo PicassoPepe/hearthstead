@@ -392,3 +392,20 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Theme colors are adjusted automatically to keep AA contrast; Equal Housing footer is fixed.
 - Not yet: plan-gating of site features (needs billing, Phase 2c), multi-page sites/blog posts,
   Lighthouse CI.
+
+## Marketing site, SEO S0 and the payments switch
+
+- Marketing pages live in `src/app/(marketing)`; `/` shows them to signed-out visitors and still
+  sends signed-in people to their workspace. Copy only claims what exists today.
+- SEO S0: per-page title/description/canonical (`metadataBase` = `SITE_URL`), Open Graph,
+  `robots.ts`, `sitemap.ts` (marketing + company websites without their own domain),
+  `X-Robots-Tag: noindex` on every private path, Organization/SoftwareApplication/FAQ JSON-LD,
+  never self-serving ratings. Lighthouse runs on a labeled PR (free-minutes friendly).
+- Cloudflare: the marketing pages are exported as static files (`scripts/export-marketing.mjs`)
+  for Pages "Upload assets". The app stays on a Node host for now (Workers would need storage,
+  Prisma, jobs and Redis changes) — see docs/DEPLOY-CLOUDFLARE.md.
+- `PAYMENTS_ENABLED` (default off): startPayment, savePaymentMethod, connectProcessor and
+  payApplicationFee refuse; autopay runs do nothing; portal pages say "coming soon"; applications
+  can be submitted without paying the fee online. Tests and the demo seed switch it on.
+- Not yet (later SEO phases): MDX content engine, Kentucky guide, calculators, comparisons,
+  glossary, Spanish hreflang, IndexNow, listing-page JSON-LD, builder SEO score.

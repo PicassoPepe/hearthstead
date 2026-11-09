@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { paymentsEnabled } from "@/lib/payments-flag";
 import { notFound, redirect } from "next/navigation";
 import { publishedListings } from "@/server/public/listings";
 import { PublicShell } from "@/components/funnel/public-shell";
@@ -31,7 +32,8 @@ export default async function ApplyFormPage({ params }: { params: Promise<{ orgS
             You&apos;re applying as a <strong>{ROLE_LABEL[a.role]?.toLowerCase()}</strong>{primary ? <> with <strong>{primary.name}</strong></> : null}. {a.role === "GUARANTOR" ? "As a guarantor you agree to cover the rent if the tenants don't — we'll check your income and credit." : "Fill in your own details; they're kept separate from the other applicants'."}
           </p>
         ) : null}
-        <ApplyForm orgSlug={orgSlug} slug={slug} initial={applicationDataSchema.parse(a.data)} initialStep={a.step} fee={a.feeCents ? formatMoney(a.feeCents) : null} feePaid={Boolean(a.feePaidAt)} />
+        {a.feeCents && !paymentsEnabled() ? <p className="mb-4 rounded-lg bg-surface-muted p-3 text-sm">There&apos;s a {formatMoney(a.feeCents)} application fee. Online payment is coming soon — the property manager will tell you how to pay it.</p> : null}
+        <ApplyForm orgSlug={orgSlug} slug={slug} initial={applicationDataSchema.parse(a.data)} initialStep={a.step} fee={a.feeCents && paymentsEnabled() ? formatMoney(a.feeCents) : null} feePaid={Boolean(a.feePaidAt)} />
         {a.role === "PRIMARY" && hh ? <HouseholdPanel orgSlug={orgSlug} slug={slug} members={hh.members.filter((m) => m.role !== "PRIMARY").map((m) => ({ id: m.id, role: m.role, name: m.name, email: m.email, status: m.status }))} /> : null}
       </div>
     </PublicShell>
