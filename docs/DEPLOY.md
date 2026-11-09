@@ -84,6 +84,22 @@ Optional: `PLATFORM_ADMIN_IP_ALLOWLIST` (comma-separated addresses allowed into 
 `PLATFORM_BREAK_GLASS_SECRET` (24+ random characters, needed only to hand ownership to another
 email: `pnpm platform:owner --rotate --secret=…`). Company admins can never reach `/admin`.
 
+## 8. Licenses for computer installs (optional)
+
+Customers who run DeedWood on their own computer need a yearly license.
+
+1. On your own computer, in the DeedWood folder: `pnpm license:keygen`. It writes DeedWood's public
+   key into the code (commit and push it) and prints a **private key once**.
+2. Paste that private key into Railway → Variables as `LICENSE_SIGNING_PRIVATE_KEY`.
+3. Owner console → **Licenses** → issue a license (email, units, months) and send the text to the
+   customer. They paste it in Settings → Billing.
+
+Computer installs check in once a day when online (`LICENSE_CHECKIN_URL` =
+`https://<your address>/api/license/checkin`, set in their `.env`): renewals and updates arrive
+automatically, and a license you turn off becomes read-only. Offline they keep working until the
+license date plus a 14-day grace period. Without a license, a computer install has a 30-day trial,
+then becomes read-only (nothing is deleted). Prices live in Owner console → **Plans & prices**.
+
 ## Updates
 
 Every time new code lands on GitHub, Railway rebuilds and redeploys automatically. Your data stays

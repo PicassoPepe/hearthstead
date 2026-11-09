@@ -74,3 +74,30 @@ export async function endAnnouncementAction(id: string) {
 export async function publishReleaseAction(v: { version: string; channel: "stable" | "beta"; notes: string; minVersion: string | null }) {
   return withAdmin(async (p) => { await P.publishRelease(p, v); }, "Release published");
 }
+
+export async function savePlanAction(key: string, edit: import("@/server/billing/catalog").PlanEdit) {
+  return withAdmin(async (p) => {
+    const { cleanPlanEdit } = await import("@/server/billing/catalog");
+    const { adminDb } = await import("@/server/db");
+    const data = cleanPlanEdit(edit);
+    const before = await adminDb.plan.findUnique({ where: { key } });
+    if (!before) throw new UserFacingError("Plan not found");
+    await adminDb.plan.update({ where: { key }, data });
+    await P.platformAudit(p, { action: "plan.updated", targetType: "Plan", targetId: key, before, after: data });
+  }, "Plan saved");
+}
+
+export async function issueLicenseAction(v: { customerEmail: string; customerName?: string; planKey: string; maxUnits: number; months: number }) {
+  return withAdmin(async (p) => {
+    const { issueLicense } = await import("@/server/license/control");
+    const l = await issueLicense(p, v);
+    return { id: l.id, token: l.token };
+  }, "License issued");
+}
+
+export async function revokeLicenseAction(id: string, reason: string, code: string) {
+  return withAdmin(async (p) => {
+    const { revokeLicense } = await import("@/server/license/control");
+    await revokeLicense(p, id, reason, code);
+  }, "License turned off — the install becomes read-only at its next check-in");
+}

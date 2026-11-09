@@ -3,9 +3,12 @@ import { AppShell } from "@/components/shell/app-shell";
 import { adminDb } from "@/server/db";
 import { activeAnnouncements } from "@/server/platform-admin/service";
 import { ImpersonationBanner, PlatformNotice } from "@/components/shell/platform-banners";
+import { LicenseBanner } from "@/components/shell/license-banner";
+import { localLicense } from "@/server/license/local";
 
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const ctx = await requireContext();
+  const lic = localLicense();
   const [org, user, unread, notices] = await Promise.all([
     adminDb.organization.findUnique({ where: { id: ctx.org.id }, select: { logoUrl: true } }),
     adminDb.user.findUnique({ where: { id: ctx.user.id }, select: { image: true } }),
@@ -16,6 +19,7 @@ export default async function StaffLayout({ children, modal }: { children: React
     <AppShell
       modal={modal}
       banners={<>
+        {lic.message || lic.updateRequired ? <LicenseBanner message={lic.message} readOnly={lic.readOnly} update={lic.updateRequired ? `A required update to DeedWood ${lic.latestVersion ?? ""} is ready — double-click "Update DeedWood".` : null} /> : null}
         {ctx.impersonation ? <ImpersonationBanner name={ctx.user.name ?? ctx.user.email} org={ctx.org.name} expiresAt={ctx.impersonation.expiresAt} reason={ctx.impersonation.reason} /> : null}
         {notices.map((n) => <PlatformNotice key={n.id} id={n.id} title={n.title} body={n.body} level={n.level as "INFO" | "WARNING"} />)}
       </>}

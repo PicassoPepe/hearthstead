@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { smsUsage } from "@/server/comms/service";
 import { formatMoney } from "@/lib/money";
+import { isLocalInstall, localLicense, readCheckInState } from "@/server/license/local";
+import { InstallLicense } from "@/components/settings/license-panel";
 
 export const metadata = { title: "Billing" };
 
@@ -18,6 +20,7 @@ const SMS_OVERAGE = 2;
 export default async function BillingPage() {
   const ctx = await requireContext();
   if (!can(ctx.permissions, "settings", "view")) return <Forbidden what="billing" />;
+  if (isLocalInstall()) return <LocalBilling canEdit={can(ctx.permissions, "settings", "edit")} units={await ctx.db.unit.count({ where: { deletedAt: null, property: { deletedAt: null } } })} />;
   const [units, sms, apiCalls] = await Promise.all([
     ctx.db.unit.count({ where: { deletedAt: null, property: { deletedAt: null } } }),
     smsUsage(ctx.db),
@@ -50,6 +53,37 @@ export default async function BillingPage() {
           </table>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/** Computer installs: the license instead of a subscription. */
+function LocalBilling({ canEdit, units }: { canEdit: boolean; units: number }) {
+  const lic = localLicense();
+  const ci = readCheckInState();
+  const c = lic.claims;
+  const label: Record<string, [string, "success" | "warning" | "danger" | "neutral"]> = {
+    not_enforced: ["No license needed in this version", "neutral"], trial: ["Free trial", "warning"], trial_over: ["Trial ended — read-only", "danger"], valid: ["Active", "success"],
+    grace: ["Ended — grace period", "warning"], expired: ["Ended — read-only", "danger"], invalid: ["Not valid — read-only", "danger"], revoked: ["Turned off — read-only", "danger"], hosted: ["", "neutral"],
+  };
+  const [text, tone] = label[lic.state] ?? ["", "neutral"];
+  return (
+    <div className="grid max-w-3xl gap-4">
+      <PageHeader eyebrow="Settings" title="Billing & license" description="DeedWood is installed on your own computer. Your yearly license covers updates and support." />
+      <Card>
+        <CardHeader><div><CardTitle>Your license <Badge tone={tone} className="ml-2">{text}</Badge></CardTitle><CardDescription>{lic.message || (c ? "Everything is in order." : "")}</CardDescription></div></CardHeader>
+        <CardContent>
+          {c ? (
+            <dl className="grid gap-2 text-sm sm:grid-cols-2">
+              <div className="flex justify-between rounded-lg bg-surface-muted/60 p-3"><dt>Licensed to</dt><dd className="font-medium">{c.customer}</dd></div>
+              <div className="flex justify-between rounded-lg bg-surface-muted/60 p-3"><dt>Good until</dt><dd className="font-medium">{c.validUntil.slice(0, 10)}</dd></div>
+              <div className="flex justify-between rounded-lg bg-surface-muted/60 p-3"><dt>Units</dt><dd className="tabular font-medium">{units} of {c.maxUnits}</dd></div>
+              <div className="flex justify-between rounded-lg bg-surface-muted/60 p-3"><dt>Last checked with DeedWood</dt><dd className="font-medium">{ci.lastCheckInAt ? ci.lastCheckInAt.slice(0, 10) : "not yet"}</dd></div>
+            </dl>
+          ) : <p className="text-sm text-muted-foreground">{lic.state === "not_enforced" ? "This copy of DeedWood doesn't need a license." : `You have ${units} unit${units === 1 ? "" : "s"}. Buy a license from DeedWood, then paste it below.`}</p>}
+        </CardContent>
+      </Card>
+      {canEdit && lic.state !== "not_enforced" ? <Card><CardHeader><CardTitle>{c ? "Replace your license" : "Add your license"}</CardTitle></CardHeader><CardContent><InstallLicense /></CardContent></Card> : null}
     </div>
   );
 }

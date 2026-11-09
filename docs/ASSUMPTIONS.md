@@ -357,3 +357,20 @@ Decisions made without asking, per the brief. Each can be changed later.
   `ai` (AI helper page), `api` (public API). Others are available for new features to read.
 - The owner bootstrap is a script (`pnpm platform:owner`); there's no sign-up path to the role.
   It prints an Auth.js-compatible one-time email sign-in link.
+
+## Plans & licenses (ship plan, Phase 2b)
+
+- **Plan** rows hold the accepted prices (Starter $49 flat; Growth $2.50/unit, $99 min; Scale
+  $1.75/unit, $175 min, $1.50 above 250; Local $15/unit/year, $199 min; Care +$249; add-ons). The
+  backfill adds missing plans only, so /admin edits are never overwritten. `quote()` is the one
+  price formula.
+- **Feature keys** (`src/lib/entitlements.ts`) per plan; the `Entitlement` table is in place for
+  codes/purchases (Phase 2e). Hosted entitlement is still unenforced until billing (Phase 2c).
+- **Licenses:** Ed25519, `DW1.<claims>.<sig>` over canonical JSON. The private key exists only in
+  the host's env; the public key is committed by `pnpm license:keygen`. **Until that's run, computer
+  installs are not limited** (so existing installs keep working).
+- Computer installs (`DEEDWOOD_DEPLOYMENT=LOCAL`, set by `scripts/start.mjs`): no license → 30-day
+  trial from first start; past the end date → 14 grace days; then read-only (all writes except
+  Settings are refused server-side in `requirePermission`; viewing and exporting still work). The
+  unit limit is checked when adding properties/units. Daily check-in (only if
+  `LICENSE_CHECKIN_URL` is set) installs renewals and applies revocations and update notices.

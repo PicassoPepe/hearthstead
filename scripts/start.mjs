@@ -150,7 +150,7 @@ const free = (port) => new Promise((resolve) => {
 let port = Number(process.env.PORT ?? 3000);
 while (!(await free(port))) port++;
 const url = `http://localhost:${port}`;
-const childEnv = { ...process.env, ...env, NODE_ENV: "production", AUTH_URL: url, PORT: String(port) };
+const childEnv = { ...process.env, ...env, NODE_ENV: "production", AUTH_URL: url, PORT: String(port), DEEDWOOD_DEPLOYMENT: "LOCAL" };
 
 const jobs = spawn(node, [bin.tsx, "--conditions=react-server", "scripts/scheduler.ts"], { stdio: ["ignore", "inherit", "inherit"], env: childEnv });
 children.push(jobs);

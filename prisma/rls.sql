@@ -54,4 +54,4 @@ CREATE POLICY tenant_isolation ON "Organization" USING ("id" = app_org_id()) WIT
 REVOKE INSERT, UPDATE, DELETE ON "AuthAccount", "Session", "VerificationToken" FROM deedwood_app;
 
 -- Platform-only tables: never reachable by the app role (written/read through the admin connection).
-REVOKE ALL ON "SecurityEvent", "PlatformAdmin", "PlatformAuditLog", "Impersonation", "FeatureFlag", "PlatformAnnouncement", "Release" FROM deedwood_app;
+REVOKE ALL ON "SecurityEvent", "PlatformAdmin", "PlatformAuditLog", "Impersonation", "FeatureFlag", "PlatformAnnouncement", "Release", "Plan", "Subscription", "License", "Entitlement" FROM deedwood_app;

@@ -11,6 +11,8 @@ const NAV = [
   ["People", "/admin/users"],
   ["Feature switches", "/admin/flags"],
   ["Announcements", "/admin/announcements"],
+  ["Plans & prices", "/admin/plans"],
+  ["Licenses", "/admin/licenses"],
   ["Releases", "/admin/releases"],
   ["Audit log", "/admin/audit"],
   ["System health", "/admin/health"],
