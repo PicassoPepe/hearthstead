@@ -86,4 +86,8 @@ test("org switcher changes the active organization", async ({ page }) => {
   await expect(page.locator('[data-setting="lateFees.graceDays"] input')).toHaveValue("10");
   await expect(page.locator('[data-setting="lateFees.graceDays"]').getByRole("switch")).toHaveCount(0);
   await expect(page.locator('[data-setting="lateFees.graceDays"] input')).toBeDisabled();
+  // Switch back: the choice is remembered on the account, and later tests expect Maple & Main.
+  await page.getByRole("button", { name: /Account menu/ }).click();
+  await page.getByRole("menuitem", { name: "Maple & Main Property Co." }).click();
+  await expect(page.getByText("This is your home page for Maple & Main Property Co.", { exact: false })).toBeVisible();
 });

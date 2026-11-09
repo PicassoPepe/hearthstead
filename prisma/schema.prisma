@@ -488,6 +488,9 @@ model Tenant {
   dateOfBirth    DateTime? @db.Date
   /// NOT_INVITED | INVITED | ACTIVE
   portalStatus   String    @default("NOT_INVITED")
+  /// Landlord paused this tenant's portal sign-in. Every record is kept; turning it back on restores access.
+  portalPausedAt     DateTime?
+  portalPausedReason String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   createdById    String?

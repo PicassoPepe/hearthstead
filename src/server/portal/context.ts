@@ -73,7 +73,7 @@ export const getPortalContext = cache(async (): Promise<PortalContext | null> =>
   }
 
   // System lookup scoped by userId: which tenant records is this login linked to?
-  const links = await adminDb.tenantUser.findMany({ where: { userId, deletedAt: null }, orderBy: { createdAt: "asc" } });
+  const links = await adminDb.tenantUser.findMany({ where: { userId, deletedAt: null, tenant: { portalPausedAt: null } }, orderBy: { createdAt: "asc" } });
   for (const link of links) {
     const ctx = await build(link.organizationId, link.tenantId, user, false);
     if (!ctx) continue;
@@ -90,6 +90,7 @@ export async function requirePortal(): Promise<PortalContext> {
   const ctx = await getPortalContext();
   if (!ctx) {
     const session = await auth();
+    if (session?.user?.id && (await adminDb.tenantUser.count({ where: { userId: session.user.id, deletedAt: null, tenant: { portalPausedAt: { not: null } } } }))) redirect("/portal/no-access?paused=1");
     redirect(session?.user ? "/portal/no-access" : "/login?callbackUrl=%2Fportal%2Ftenant");
   }
   return ctx;
@@ -97,5 +98,5 @@ export async function requirePortal(): Promise<PortalContext> {
 
 /** Does this login have a tenant portal (and no staff membership)? Used to route after sign-in. */
 export async function hasTenantPortal(userId: string): Promise<boolean> {
-  return (await adminDb.tenantUser.count({ where: { userId, deletedAt: null } })) > 0;
+  return (await adminDb.tenantUser.count({ where: { userId, deletedAt: null, tenant: { portalPausedAt: null } } })) > 0;
 }

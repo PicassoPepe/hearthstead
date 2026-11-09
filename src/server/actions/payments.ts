@@ -86,3 +86,22 @@ export async function verifyInsurance(policyId: string, status: "VERIFIED" | "PE
     revalidatePath("/app", "layout");
   }, status === "VERIFIED" ? "Insurance verified" : "Marked for review");
 }
+
+export async function pauseTenantPortalAction(tenantId: string, reason: string, stopAutopay: boolean): Promise<ActionResult<{ autopaysStopped: number }>> {
+  return runAction(async () => {
+    const ctx = await requirePermission("people", "edit");
+    const { pauseTenantPortal } = await import("@/server/portal/invite");
+    const r = await pauseTenantPortal(ctx.db, tenantId, { reason, stopAutopay });
+    revalidatePath("/app", "layout");
+    return r;
+  }, "Portal access paused — all their information is kept");
+}
+
+export async function resumeTenantPortalAction(tenantId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const ctx = await requirePermission("people", "edit");
+    const { resumeTenantPortal } = await import("@/server/portal/invite");
+    await resumeTenantPortal(ctx.db, tenantId);
+    revalidatePath("/app", "layout");
+  }, "Portal access turned back on");
+}

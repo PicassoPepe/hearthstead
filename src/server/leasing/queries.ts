@@ -141,7 +141,7 @@ export async function listTenants(ctx: AppContext) {
       leaseId: current?.leaseId ?? null,
       leaseStatus: current?.lease.status ?? "NO_LEASE",
       balanceCents: t.leases.reduce((s, l) => s + (balances.get(l.leaseId) ?? 0), 0),
-      portalStatus: t.portalStatus,
+      portalStatus: t.portalPausedAt ? "PAUSED" : t.portalStatus,
     };
   });
 }
