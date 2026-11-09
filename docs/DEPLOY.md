@@ -1,5 +1,12 @@
 # Put DeedWood online
 
+**Railway is the legacy host.** The app is moving to Cloudflare Workers. Use
+[DEPLOY-CLOUDFLARE.md](./DEPLOY-CLOUDFLARE.md) and [OPERATIONS.md](./OPERATIONS.md). Keep the
+Railway service running until the Cloudflare smoke tests pass, then cancel it. Do not point
+Railway at the Neon database: the old start script would try to change the `deedwood_app` password.
+
+The steps below are the previous Railway setup, kept so that service can stay up during the move.
+
 Run DeedWood on the internet so you, your team, tenants and owners can open it from any device —
 no install on anyone's computer. This guide uses **Railway** (simple, about US$5/month after the
 free trial). DeedWood also runs on any host that can run a Docker image (Render, Fly.io, a VPS).

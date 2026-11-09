@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "deedwood",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-09",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // Workers Paid. One landlord's nightly pass needs more than the free 10ms CPU cap.
+  "limits": { "cpu_ms": 300000 },
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "ai": { "binding": "AI" },
+  // Uploads go through the existing S3 adapter (R2's S3 endpoint). This binding is for later
+  // direct reads and is not required for the adapter. The bucket must exist before the first deploy.
+  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "deedwood-uploads" }],
+  // The Worker calls itself for cron so the Next.js server (Prisma, jobs) runs the work.
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "deedwood" }],
+  // Runtime database secret is DATABASE_URL: Neon pooled host (-pooler), role deedwood_app.
+  // DATABASE_ADMIN_URL is the direct host, role deedwood_owner, for admin queries only.
+  // Neither secret is written here. The deploy does not create or reset deedwood_app.
+  //
+  // Optional later: Hyperdrive to the direct (non-pooler) host as deedwood_app, using the
+  // password already on that role. Do not invent a new password. Then uncomment:
+  // "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<from wrangler hyperdrive create>" }],
+  "triggers": { "crons": ["* * * * *", "15 7 * * *"] },
+  "vars": {
+    "STORAGE_PROVIDER": "s3",
+    "S3_BUCKET": "deedwood-uploads",
+    "S3_REGION": "auto",
+    "EMAIL_PROVIDER": "resend",
+    "LLM_PROVIDER": "cloudflare",
+    "LLM_FALLBACK": "groq",
+    "SMS_PROVIDER": "mock",
+    "AUTH_TRUST_HOST": "true",
+    "PAYMENTS_ENABLED": ""
+  }
+}

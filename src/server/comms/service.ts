@@ -182,6 +182,45 @@ export async function receiveInboundSms(input: { from: string; body: string; ext
   return { handled: true as const, orgId, conversationId: conv.id };
 }
 
+/** Inbound email (Resend or Cloudflare Email Routing). Matches a tenant, owner, or vendor by address. */
+export async function receiveInboundEmail(input: { from: string; subject: string; text: string; externalId: string }) {
+  const email = input.from.trim().toLowerCase();
+  if (!email.includes("@")) return { handled: false as const, reason: "bad address" };
+  if (input.externalId && (await adminDb.message.findFirst({ where: { externalId: input.externalId, direction: "IN" } }))) return { handled: true as const, duplicate: true };
+  const where = { email: { equals: email, mode: "insensitive" as const }, deletedAt: null };
+  const [tenants, owners, vendors] = await Promise.all([
+    adminDb.tenant.findMany({ where, select: { id: true, organizationId: true } }),
+    adminDb.owner.findMany({ where, select: { id: true, organizationId: true } }),
+    adminDb.vendor.findMany({ where, select: { id: true, organizationId: true } }),
+  ]);
+  const orgIds = [...new Set([...tenants, ...owners, ...vendors].map((r) => r.organizationId))];
+  if (!orgIds.length) return { handled: false as const, reason: "no matching organization" };
+  let orgId = orgIds[0]!;
+  if (orgIds.length > 1) {
+    const last = await adminDb.conversation.findFirst({
+      where: { organizationId: { in: orgIds } },
+      orderBy: { lastMessageAt: "desc" },
+      select: { organizationId: true },
+    });
+    if (!last) return { handled: false as const, reason: "no matching organization" };
+    orgId = last.organizationId;
+  }
+  const tenant = tenants.find((t) => t.organizationId === orgId);
+  const owner = owners.find((o) => o.organizationId === orgId);
+  const vendor = vendors.find((v) => v.organizationId === orgId);
+  const party = tenant ? { tenantId: tenant.id } : owner ? { ownerId: owner.id } : vendor ? { vendorId: vendor.id } : null;
+  if (!party) return { handled: false as const, reason: "no matching organization" };
+  const db = forOrg({ orgId, userId: null });
+  const conv = await findOrCreateConversation(db, party);
+  const contact = await contactOf(db, conv);
+  const body = [input.subject.trim() ? `Subject: ${input.subject.trim()}` : "", input.text.trim()].filter(Boolean).join("\n\n").slice(0, 2000);
+  if (!body) return { handled: false as const, reason: "empty" };
+  await record(db, conv.id, { direction: "IN", channel: "EMAIL", body, author: { userId: null, name: contact.name }, externalId: input.externalId });
+  const { notifyModule } = await import("@/server/notifications/service");
+  await notifyModule(db, "communications", { kind: "message", title: `New email from ${contact.name}`, body: body.slice(0, 140), href: `/app/communications?c=${conv.id}` });
+  return { handled: true as const, orgId, conversationId: conv.id };
+}
+
 async function findContactsByPhone(phone: string): Promise<string[]> {
   const digits = phone.slice(-10);
   const like = { contains: digits.slice(-4) };

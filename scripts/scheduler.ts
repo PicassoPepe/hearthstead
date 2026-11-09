@@ -36,6 +36,12 @@ async function nightly() {
     await licenseCheckIn(pkg.version, units).catch(() => null);
     mkdirSync(".deedwood", { recursive: true });
     writeFileSync(STAMP, today());
+    // Same stamp the Cloudflare cron uses, so a shared database does not run the night twice.
+    await admin.jobRun.upsert({
+      where: { name_day: { name: "nightly", day: today() } },
+      create: { name: "nightly", day: today(), ok: true, detail: "local scheduler" },
+      update: { ok: true, detail: "local scheduler" },
+    }).catch(() => undefined);
     console.log(`[jobs] nightly done ${JSON.stringify(r).slice(0, 300)}`);
   } catch (e) {
     console.error("[jobs] nightly failed", e);

@@ -24,6 +24,9 @@ const fail = (m) => { console.error(`[deedwood] ${m}`); process.exit(1); };
 // Many hosts name it DATABASE_URL; treat that as the owner URL if no admin URL is given.
 if (!env.DATABASE_ADMIN_URL && env.DATABASE_URL && !/deedwood_app/.test(env.DATABASE_URL)) env.DATABASE_ADMIN_URL = env.DATABASE_URL;
 if (!env.DATABASE_ADMIN_URL) fail("Set DATABASE_ADMIN_URL to your Postgres connection string.");
+// Neon is the Cloudflare database. This script rewrites deedwood_app's password, so it must
+// never be pointed at that host. Deploy Neon with GitHub Actions instead.
+if (/\.neon\.tech/i.test(env.DATABASE_ADMIN_URL)) fail("DATABASE_ADMIN_URL is a Neon host. Use the Cloudflare GitHub Action to migrate. This script must not create or reset deedwood_app.");
 if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || /dev-only/.test(env.AUTH_SECRET)) fail("Set AUTH_SECRET to a long random string (32+ characters).");
 if (!env.AUTH_URL) fail("Set AUTH_URL to your public address, e.g. https://your-app.up.railway.app");
 {

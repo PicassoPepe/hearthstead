@@ -1,18 +1,18 @@
 # Going live — checklist
 
-Work top to bottom. Each step says **who** does it. Nothing here costs money except the domain
-(about $12/year) and Railway (about $5–10/month to start).
+Work top to bottom. Each step says **who** does it. The hosted app is Cloudflare Workers Paid
+(about $5/month) plus a domain (about $11/year). Neon, R2, Resend, and Workers AI stay on free
+tiers. Railway is legacy: leave it up until this checklist passes, then cancel it.
 
 ## 1. Put the app online — you (about 30 minutes)
 
-- [ ] Follow [DEPLOY.md](./DEPLOY.md): Railway project, Postgres, the `/data` volume, settings.
-- [ ] Settings to add in Railway → Variables (besides the ones in DEPLOY.md):
-  - `BACKUP_KEY` — a long random phrase. **Write it down somewhere safe**: backups are encrypted
-    with it and can't be restored without it.
-  - `PLATFORM_ALERT_EMAIL` — your email, to hear about errors (at most one email an hour).
-  - `SITE_URL` — your marketing address (e.g. `https://deedwood.com`).
-  - Leave `PAYMENTS_ENABLED` **unset** until Stripe is ready.
-- [ ] Open `https://<your app>/api/health` — it should say `"ok": true`.
+- [ ] Follow [DEPLOY-CLOUDFLARE.md](./DEPLOY-CLOUDFLARE.md) and the secret list in [OPERATIONS.md](./OPERATIONS.md).
+- [ ] Neon is already created (project `rough-wind-47929745`). Paste `DATABASE_ADMIN_URL` (direct, user `deedwood_owner`) and `DATABASE_URL` (pooled, user `deedwood_app`) into GitHub Actions secrets. Do not add a secret that resets that password.
+- [ ] Workers Paid, R2 bucket `deedwood-uploads`, and a Resend API key, then the other secrets in OPERATIONS.md.
+- [ ] GitHub → Actions → **Deploy to Cloudflare** → Run workflow.
+- [ ] Optional: `BACKUP_KEY` (write it down; backups cannot be restored without it) and `PLATFORM_ALERT_EMAIL`.
+- [ ] Leave `PAYMENTS_ENABLED` and `BILLING_ENFORCED` unset.
+- [ ] Open `https://<your app>/api/health` — `"ok": true`, `"payments": "off"`.
 
 ## 2. Real email — you (15 minutes)
 
@@ -20,8 +20,8 @@ Sign-in links, password resets, invites and notices need it.
 
 - [ ] Make a free account at resend.com (3,000 emails/month free), add your domain, and add the
       DNS records it shows you.
-- [ ] In Railway → Variables: `EMAIL_PROVIDER=smtp`, `SMTP_URL=smtps://resend:<API key>@smtp.resend.com:465`,
-      `EMAIL_FROM=DeedWood <no-reply@yourdomain.com>`.
+- [ ] Worker secret `RESEND_API_KEY`, and `EMAIL_FROM=DeedWood <no-reply@yourdomain.com>`.
+      The Worker var `EMAIL_PROVIDER` is already `resend` (HTTPS). Do not set an SMTP URL on Cloudflare.
 - [ ] Test: on the sign-in page use **Forgot password?** with your email — the email should arrive.
 
 ## 2b. Sign-up protection and "Sign in with…" — you (20 minutes, all free)
@@ -29,7 +29,7 @@ Sign-in links, password resets, invites and notices need it.
 New accounts always confirm a 6-digit code by email (or text). These add more:
 
 - [ ] **"I'm human" check (Cloudflare Turnstile):** dash.cloudflare.com → Turnstile → Add widget →
-      your app's domain → copy the two keys into Railway → Variables: `TURNSTILE_SITE_KEY`,
+      your app's domain → copy the two keys into Worker secrets: `TURNSTILE_SITE_KEY`,
       `TURNSTILE_SECRET_KEY`. It then appears on sign-up, email sign-in links, forgot password and
       the contact/tour forms on company websites.
 - [ ] **Sign in with Google:** console.cloud.google.com → APIs & Services → Credentials → Create
@@ -48,8 +48,7 @@ The buttons and checks appear automatically once their keys are set; nothing els
 
 ## 3. Your owner console — you (10 minutes)
 
-- [ ] DEPLOY.md step 7: `PLATFORM_OWNER_EMAIL`, run `pnpm platform:owner`, open the link, set a
-      password and turn on two-factor.
+- [ ] On your own computer, with `DATABASE_ADMIN_URL` set to the Neon **direct** URL in the environment (do not print it) and `PLATFORM_OWNER_EMAIL` set: `pnpm platform:owner`. Open the link, set a password, and turn on two-factor.
 - [ ] Owner console → **System health**: everything green; press **Back up now** once.
 
 ## 4. Watch it — you (5 minutes)
@@ -69,7 +68,7 @@ The buttons and checks appear automatically once their keys are set; nothing els
 
 - [ ] Attorney reviews the Terms and Privacy pages (they're marked as drafts until then).
 - [x] Stripe sandbox catalog (products, prices, `DEEDWOODBETA` promo) — done.
-- [ ] Railway → Variables: `STRIPE_SECRET_KEY` (sk_test_…) and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
+- [ ] Worker secrets: `STRIPE_SECRET_KEY` (sk_test_…) and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (also a GitHub Actions secret, because the publishable key is baked in at build time).
 - [ ] Stripe → Developers → Webhooks → add `https://<your app>/api/webhooks/stripe` with these events:
       `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
       `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`,
@@ -84,8 +83,7 @@ The buttons and checks appear automatically once their keys are set; nothing els
 
 ## 7. Practice a restore once — you + Claude (15 minutes)
 
-You should know a restore works *before* you need it. On a copy (a second Railway environment,
-or your own computer):
+You should know a restore works *before* you need it. On a copy (a Neon branch, or your own computer):
 
 1. Owner console → System health → download the newest backup.
 2. On the copy, with the same `BACKUP_KEY`: `pnpm db:restore --file deedwood-….dwb --yes`
@@ -93,9 +91,10 @@ or your own computer):
 
 ### Restore a backup (real emergency)
 
-`pnpm db:restore --latest --yes` (Railway → service → ⋯ → Shell). It **replaces everything** with
-the backup. On a computer install, close DeedWood first, open a terminal in the DeedWood folder
-and run the same command.
+`pnpm db:restore --latest --yes` on a computer that has the backup file and the same `BACKUP_KEY`
+(not inside the Worker). It **replaces everything** in the database that command is pointed at.
+On a computer install, close DeedWood first, open a terminal in the DeedWood folder and run the
+same command.
 
 ## Already done in the code
 

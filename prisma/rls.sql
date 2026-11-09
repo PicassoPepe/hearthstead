@@ -4,6 +4,9 @@
 --   SELECT set_config('app.org_id', '<orgId>', true), set_config('app.user_id', '<userId>', true);
 -- With no context set, current_setting(...) returns '' and every policy denies.
 
+-- Local databases only. If the role already exists this block does nothing, so it will not
+-- reset a password. The production deploy (DEEDWOOD_RLS_MODE=production, or any *.neon.tech
+-- admin URL) deletes this statement before running and never issues ALTER ROLE.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'deedwood_app') THEN
@@ -54,7 +57,7 @@ CREATE POLICY tenant_isolation ON "Organization" USING ("id" = app_org_id()) WIT
 REVOKE INSERT, UPDATE, DELETE ON "AuthAccount", "Session", "VerificationToken" FROM deedwood_app;
 
 -- Platform-only tables: never reachable by the app role (written/read through the admin connection).
-REVOKE ALL ON "SecurityEvent", "PlatformAdmin", "PlatformAuditLog", "Impersonation", "FeatureFlag", "PlatformAnnouncement", "Release", "Plan", "Subscription", "License", "Entitlement", "AccountToken", "BackupRun", "ErrorEvent", "PendingSignup", "StripeEvent" FROM deedwood_app;
+REVOKE ALL ON "SecurityEvent", "PlatformAdmin", "PlatformAuditLog", "Impersonation", "FeatureFlag", "PlatformAnnouncement", "Release", "Plan", "Subscription", "License", "Entitlement", "AccountToken", "BackupRun", "ErrorEvent", "PendingSignup", "StripeEvent", "JobRun" FROM deedwood_app;
 
 -- Discount history is append-only for the app: it can add events but never change or remove them.
 REVOKE UPDATE, DELETE ON "DiscountEvent" FROM deedwood_app;

@@ -1,6 +1,7 @@
 import "server-only";
 import { adminDb } from "@/server/db";
 import { MockEmailProvider } from "./email/mock";
+import { ResendEmailProvider } from "./email/resend";
 import { SmtpEmailProvider } from "./email/smtp";
 import type { EmailProvider } from "./email/types";
 
@@ -14,14 +15,16 @@ export function getEmailProvider(): EmailProvider {
   if (email) return email;
   const kind = process.env.EMAIL_PROVIDER ?? "mock";
   email =
-    kind === "smtp"
-      ? new SmtpEmailProvider(process.env.SMTP_URL ?? "smtp://localhost:1025", process.env.EMAIL_FROM ?? "no-reply@localhost", adminDb)
-      : new MockEmailProvider(adminDb);
+    kind === "resend"
+      ? new ResendEmailProvider(process.env.RESEND_API_KEY ?? "", process.env.EMAIL_FROM ?? "DeedWood <no-reply@deedwood.local>", adminDb)
+      : kind === "smtp"
+        ? new SmtpEmailProvider(process.env.SMTP_URL ?? "smtp://localhost:1025", process.env.EMAIL_FROM ?? "no-reply@localhost", adminDb)
+        : new MockEmailProvider(adminDb);
   return email;
 }
 
 export const ADAPTERS = [
-  { name: "EmailProvider", env: "EMAIL_PROVIDER", implementations: ["mock", "smtp"], phase: 1 },
+  { name: "EmailProvider", env: "EMAIL_PROVIDER", implementations: ["mock", "smtp", "resend"], phase: 1 },
   { name: "PaymentsProvider", env: "PAYMENTS_PROVIDER", implementations: ["mock", "stripe"], phase: 4 },
   { name: "SmsProvider", env: "SMS_PROVIDER", implementations: ["mock", "twilio"], phase: 8 },
   { name: "ScreeningProvider", env: "SCREENING_PROVIDER", implementations: ["mock"], phase: 9 },
