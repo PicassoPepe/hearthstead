@@ -101,3 +101,10 @@ export async function revokeLicenseAction(id: string, reason: string, code: stri
     await revokeLicense(p, id, reason, code);
   }, "License turned off — the install becomes read-only at its next check-in");
 }
+
+export async function compOrgAction(orgId: string, v: { reason: string; until: string | null; kind?: "COMPLIMENTARY" | "BETA" }) {
+  return withAdmin((p) => P.compOrg(p, orgId, v), "Company is now free");
+}
+export async function endCompOrgAction(orgId: string, reason: string) {
+  return withAdmin((p) => P.endCompOrg(p, orgId, reason), "Free plan ended — they have a 14-day trial to choose a plan");
+}

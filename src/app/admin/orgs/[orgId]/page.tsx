@@ -6,8 +6,10 @@ import { FLAGS, flagEnabled } from "@/server/platform-admin/service";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminAction } from "@/components/admin/admin-action";
-import { ViewAsButton, FlagSwitch } from "@/components/admin/admin-widgets";
-import { forceLogoutOrgAction, reinstateOrgAction, suspendOrgAction } from "@/server/actions/admin";
+import { ViewAsButton, FlagSwitch, CompButton } from "@/components/admin/admin-widgets";
+import { compOrgAction, endCompOrgAction, forceLogoutOrgAction, reinstateOrgAction, suspendOrgAction } from "@/server/actions/admin";
+import { billingState, getSubscription } from "@/server/billing/subscription";
+import { BILLING_STATE_LABEL } from "@/lib/billing-labels";
 
 export const metadata = { title: "Company" };
 
@@ -16,6 +18,9 @@ export default async function AdminOrg({ params }: { params: Promise<{ orgId: st
   const { orgId } = await params;
   const org = await adminDb.organization.findUnique({ where: { id: orgId } });
   if (!org) notFound();
+  const sub = await getSubscription(orgId);
+  const bs = billingState(sub);
+  const isComp = sub.status === "COMPLIMENTARY" || sub.status === "BETA";
   const [members, units, properties, tenants, flagRows] = await Promise.all([
     adminDb.membership.findMany({ where: { organizationId: orgId, deletedAt: null }, include: { user: { select: { id: true, email: true, name: true, twoFactorEnabled: true } }, role: { select: { name: true } } }, orderBy: { createdAt: "asc" } }),
     adminDb.unit.count({ where: { organizationId: orgId, deletedAt: null } }),
@@ -37,6 +42,21 @@ export default async function AdminOrg({ params }: { params: Promise<{ orgId: st
           : <AdminAction label="Pause this company" danger needsCode description="Staff won't be able to use the app until you turn it back on. Nothing is deleted." action={suspendOrgAction.bind(null, org.id)} />}
         <AdminAction label="Sign everyone out" description="Signs every staff member out of every device." action={forceLogoutOrgAction.bind(null, org.id)} />
       </div>
+      <Card>
+        <CardHeader><CardTitle>Billing</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 text-sm">
+          <p data-testid="admin-billing-state"><Badge tone={BILLING_STATE_LABEL[bs.state].tone}>{BILLING_STATE_LABEL[bs.state].text}</Badge>{" "}
+            <span className="text-muted-foreground">
+              {isComp ? `${sub.status === "BETA" ? "Beta tester" : "Complimentary"} — ${sub.compReason ?? ""}${sub.compUntil ? ` (until ${sub.compUntil.toISOString().slice(0, 10)})` : " (no end date)"}` : `Plan: ${sub.planKey} · ${sub.interval}ly${sub.stripeSubscriptionId ? " · paid through Stripe" : ""}`}
+              {bs.daysLeft != null && !isComp ? ` · ${bs.daysLeft} day${bs.daysLeft === 1 ? "" : "s"} left` : ""}
+            </span></p>
+          <div className="flex flex-wrap gap-2">
+            {isComp
+              ? <AdminAction label="End free plan" description="They get a 14-day trial to choose a plan. Nothing is deleted." action={endCompOrgAction.bind(null, org.id)} />
+              : <CompButton orgId={org.id} action={compOrgAction} />}
+          </div>
+        </CardContent>
+      </Card>
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         {[["Web name", org.slug], ["Properties", properties], ["Units", units], ["Tenants", tenants], ["Email", org.email ?? "—"], ["Phone", org.phone ?? "—"], ["State", org.state ?? "—"], ["Started", org.createdAt.toISOString().slice(0, 10)]].map(([k, v]) => (
           <div key={String(k)} className="rounded-lg border border-border bg-surface p-3"><dt className="text-xs text-muted-foreground">{k}</dt><dd className="font-medium">{v}</dd></div>

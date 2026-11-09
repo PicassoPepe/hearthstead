@@ -2259,6 +2259,9 @@ model Subscription {
   stripeSubscriptionId String?   @unique
   /// Units billed last time we synced with Stripe.
   billedUnits          Int       @default(0)
+  /// Free account granted by the platform owner (beta / partner) — no card needed.
+  compReason           String?
+  compUntil            DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 }
@@ -2406,4 +2409,11 @@ model PendingSignup {
   createdAt DateTime @default(now())
 
   @@index([email])
+}
+
+/// Stripe webhook events already handled (so a re-delivered event never runs twice). Platform-only.
+model StripeEvent {
+  id         String   @id
+  type       String
+  receivedAt DateTime @default(now())
 }

@@ -183,3 +183,31 @@ export function compareVersions(a: string, b: string) {
   for (let i = 0; i < 3; i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) - (pb[i] ?? 0);
   return 0;
 }
+
+// ─── Billing: free beta / comped companies ────────────────────────────────────
+
+/** Make a company free ("Comped / Beta") — no card needed. Optional end date (YYYY-MM-DD). */
+export async function compOrg(p: PlatformCtx, orgId: string, v: { reason: string; until: string | null; kind?: "COMPLIMENTARY" | "BETA" }) {
+  const r = needReason(v.reason);
+  let until: Date | null = null;
+  if (v.until) {
+    until = new Date(`${v.until}T23:59:59.000Z`);
+    if (Number.isNaN(until.getTime())) throw new UserFacingError("Pick a valid end date", { until: "Invalid date" });
+    if (until <= new Date()) throw new UserFacingError("The end date must be in the future", { until: "Must be in the future" });
+  }
+  const org = await adminDb.organization.findUnique({ where: { id: orgId }, select: { id: true } });
+  if (!org) throw new UserFacingError("Company not found");
+  const { getSubscription, setComp } = await import("@/server/billing/subscription");
+  const before = await getSubscription(orgId);
+  const after = await setComp(orgId, { reason: r, until, kind: v.kind });
+  await platformAudit(p, { action: "billing.comped", targetType: "Organization", targetId: orgId, reason: r, before: { status: before.status, compUntil: before.compUntil }, after: { status: after.status, compUntil: after.compUntil } });
+}
+
+export async function endCompOrg(p: PlatformCtx, orgId: string, reason: string) {
+  const r = needReason(reason);
+  const { getSubscription, endComp } = await import("@/server/billing/subscription");
+  const before = await getSubscription(orgId);
+  if (before.status !== "COMPLIMENTARY" && before.status !== "BETA") throw new UserFacingError("This company isn't on a free plan.");
+  const after = await endComp(orgId);
+  await platformAudit(p, { action: "billing.comp_ended", targetType: "Organization", targetId: orgId, reason: r, before: { status: before.status, compReason: before.compReason }, after: { status: after.status, trialEndsAt: after.trialEndsAt } });
+}

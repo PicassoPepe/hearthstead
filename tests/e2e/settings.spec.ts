@@ -65,3 +65,11 @@ test("removing a member confirms first and can be undone", async ({ page }) => {
   await expect(page.getByText("Marco Maintenance restored")).toBeVisible();
   await expect(page.getByRole("row", { name: /Marco Maintenance/ })).toBeVisible();
 });
+
+test("Billing shows the real plan status and plan prices (no fake card)", async ({ page }) => {
+  await page.goto("/app/settings/billing");
+  await expect(page.getByRole("heading", { name: "Billing", exact: true })).toBeVisible();
+  await expect(page.getByTestId("billing-state")).toBeVisible();
+  await expect(page.getByText("4242")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Choose a plan" }).or(page.getByText("for free"))).toBeVisible();
+});

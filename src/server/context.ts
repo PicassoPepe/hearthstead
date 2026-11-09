@@ -122,7 +122,7 @@ export async function requireContext(): Promise<AppContext> {
 }
 
 /** For server actions and route handlers: throws PermissionError instead of redirecting. */
-export async function requirePermission(module: Module, level: Exclude<Level, "none"> = "view"): Promise<AppContext> {
+export async function requirePermission(module: Module, level: Exclude<Level, "none"> = "view", opts: { billing?: boolean } = {}): Promise<AppContext> {
   const ctx = await getContext();
   if (!ctx) throw new PermissionError(module, level);
   if (ctx.org.suspended && !ctx.impersonation) throw new PermissionError(module, level);
@@ -131,6 +131,11 @@ export async function requirePermission(module: Module, level: Exclude<Level, "n
   if (level !== "view") {
     const lic = localLicense();
     if (lic.readOnly && !(module === "settings" && level === "edit")) throw new UserFacingError(lic.message);
+    // Hosted companies whose trial ended or payment lapsed (only when BILLING_ENFORCED=1). Billing actions stay open.
+    if (!opts.billing && !ctx.impersonation) {
+      const { billingReadOnly } = await import("@/server/billing/subscription");
+      if (await billingReadOnly(ctx.org.id)) throw new UserFacingError("Your DeedWood plan needs attention — the account is read-only until you choose a plan in Settings → Billing. Nothing has been deleted.");
+    }
   }
   return ctx;
 }

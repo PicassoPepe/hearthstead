@@ -6,6 +6,7 @@ import { ImpersonationBanner, PlatformNotice } from "@/components/shell/platform
 import { LicenseBanner } from "@/components/shell/license-banner";
 import { VerifyEmailBanner } from "@/components/shell/verify-email-banner";
 import { localLicense } from "@/server/license/local";
+import { hostedBillingNotice } from "@/server/billing/subscription";
 
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const ctx = await requireContext();
@@ -16,11 +17,13 @@ export default async function StaffLayout({ children, modal }: { children: React
     ctx.db.notification.count({ where: { userId: ctx.user.id, readAt: null } }),
     activeAnnouncements(ctx.org.id),
   ]);
+  const billing = await hostedBillingNotice(ctx.org.id);
   return (
     <AppShell
       modal={modal}
       banners={<>
         {lic.message || lic.updateRequired ? <LicenseBanner message={lic.message} readOnly={lic.readOnly} update={lic.updateRequired ? `A required update to DeedWood ${lic.latestVersion ?? ""} is ready — double-click "Update DeedWood".` : null} /> : null}
+        {billing ? <LicenseBanner message={billing.message} readOnly={billing.readOnly} /> : null}
         {user && !user.emailVerified && !ctx.impersonation ? <VerifyEmailBanner email={ctx.user.email} /> : null}
         {ctx.impersonation ? <ImpersonationBanner name={ctx.user.name ?? ctx.user.email} org={ctx.org.name} expiresAt={ctx.impersonation.expiresAt} reason={ctx.impersonation.reason} /> : null}
         {notices.map((n) => <PlatformNotice key={n.id} id={n.id} title={n.title} body={n.body} level={n.level as "INFO" | "WARNING"} />)}
