@@ -15,6 +15,8 @@ export type ChargeInput = {
   feeCents: number;
   idempotencyKey: string;
   description: string;
+  /** Processor customer the saved method belongs to (Stripe: needed to reuse a saved card/bank). */
+  customerRef?: string | null;
 };
 export type ChargeResult = { providerRef: string; status: "SUCCEEDED" | "PROCESSING" | "FAILED"; failureReason?: string };
 
@@ -25,6 +27,10 @@ export interface PaymentsProvider {
   addCard(input: CardInput): Promise<SavedMethod>;
   verifyBank(input: BankInput): Promise<SavedMethod>;
   charge(input: ChargeInput): Promise<ChargeResult>;
+  /** Stripe: start saving a card or bank in the browser (Payment Element + SetupIntent). */
+  startSetup?(input: { customerRef: string | null; name: string; email: string | null; idempotencyKey: string }): Promise<{ customerRef: string; clientSecret: string }>;
+  /** Stripe: read back what the browser saved. Throws unless the setup finished. */
+  methodFromSetup?(setupIntentId: string): Promise<SavedMethod & { customerRef: string }>;
   /** Mock only: decide how a pending ACH settles. Real providers report this by webhook. */
   settle?(providerRef: string): Promise<"SUCCEEDED" | "FAILED">;
 }

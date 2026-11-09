@@ -7,19 +7,24 @@ import { PaymentDeclinedError } from "./types";
  * Connections; this adapter only ever receives Stripe ids (pm_…, fca_…), never raw numbers.
  * Requires STRIPE_SECRET_KEY; webhooks are verified with STRIPE_WEBHOOK_SECRET.
  */
+type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
+let stripeFetch: Fetcher = (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(20_000) });
+/** Tests replace the network. */
+export function setPaymentsFetcher(f: Fetcher) { stripeFetch = f; }
+
 export class StripePaymentsProvider implements PaymentsProvider {
   readonly name = "stripe";
   constructor(private readonly secretKey: string, private readonly appUrl: string) {}
 
   private async call<T>(method: "GET" | "POST", path: string, body?: Record<string, string>, idempotencyKey?: string): Promise<T> {
-    const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    const res = await stripeFetch(`https://api.stripe.com/v1${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${this.secretKey}`,
         "Content-Type": "application/x-www-form-urlencoded",
         ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
       },
-      body: body ? new URLSearchParams(body).toString() : undefined,
+      body: body && method === "POST" ? new URLSearchParams(body).toString() : undefined,
     });
     const json = (await res.json()) as T & { error?: { message: string } };
     if (!res.ok) throw new PaymentDeclinedError(json.error?.message ?? `Stripe error ${res.status}`);
@@ -73,6 +78,30 @@ export class StripePaymentsProvider implements PaymentsProvider {
     return { providerRef: pm.id, type: "ACH", bankName: pm.us_bank_account.bank_name, last4: pm.us_bank_account.last4, verified: true };
   }
 
+  async startSetup(input: { customerRef: string | null; name: string; email: string | null; idempotencyKey: string }) {
+    const customerRef = input.customerRef ?? (await this.call<{ id: string }>("POST", "/customers", { name: input.name, ...(input.email ? { email: input.email } : {}) }, `cust-${input.idempotencyKey}`)).id;
+    const si = await this.call<{ client_secret: string }>("POST", "/setup_intents", {
+      customer: customerRef,
+      usage: "off_session",
+      "payment_method_types[0]": "card",
+      "payment_method_types[1]": "us_bank_account",
+      // Bank accounts are linked by signing in to the bank (Financial Connections), verified instantly.
+      "payment_method_options[us_bank_account][verification_method]": "instant",
+      "payment_method_options[us_bank_account][financial_connections][permissions][0]": "payment_method",
+    });
+    return { customerRef, clientSecret: si.client_secret };
+  }
+
+  async methodFromSetup(setupIntentId: string) {
+    if (!/^seti_[A-Za-z0-9]+$/.test(setupIntentId)) throw new PaymentDeclinedError("That card or bank couldn't be saved. Please try again.");
+    const si = await this.call<{ status: string; customer: string | null; payment_method: { id: string; type: string; card?: { brand: string; last4: string; exp_month: number; exp_year: number }; us_bank_account?: { bank_name: string | null; last4: string } } | null }>("GET", `/setup_intents/${setupIntentId}?expand[]=payment_method`);
+    if (si.status !== "succeeded" || !si.payment_method || !si.customer) throw new PaymentDeclinedError("That card or bank wasn't confirmed. Please try again.");
+    const pm = si.payment_method;
+    if (pm.type === "card" && pm.card) return { customerRef: si.customer, providerRef: pm.id, type: "CARD" as const, brand: pm.card.brand, last4: pm.card.last4, expMonth: pm.card.exp_month, expYear: pm.card.exp_year, verified: true };
+    if (pm.type === "us_bank_account" && pm.us_bank_account) return { customerRef: si.customer, providerRef: pm.id, type: "ACH" as const, bankName: pm.us_bank_account.bank_name ?? "Bank", last4: pm.us_bank_account.last4, verified: true };
+    throw new PaymentDeclinedError("That payment type isn't accepted.");
+  }
+
   async charge(input: ChargeInput): Promise<ChargeResult> {
     const pi = await this.call<{ id: string; status: string; last_payment_error?: { message: string } }>(
       "POST",
@@ -86,6 +115,8 @@ export class StripePaymentsProvider implements PaymentsProvider {
         description: input.description,
         application_fee_amount: String(input.feeCents),
         "transfer_data[destination]": input.connectedAccount,
+        // A saved card/bank lives on the tenant's customer; the SetupIntent's mandate covers ACH.
+        ...(input.customerRef ? { customer: input.customerRef, off_session: "true" } : {}),
       },
       input.idempotencyKey,
     );

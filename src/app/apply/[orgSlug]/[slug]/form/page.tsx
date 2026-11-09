@@ -8,6 +8,7 @@ import { applicationByToken, applicationDataSchema, household, ROLE_LABEL } from
 import { HouseholdPanel } from "@/components/funnel/household-panel";
 import { APPLY_COOKIE } from "@/lib/funnel";
 import { formatMoney } from "@/lib/money";
+import { paymentsClientKey } from "@/server/payments/service";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Application" };
@@ -33,7 +34,7 @@ export default async function ApplyFormPage({ params }: { params: Promise<{ orgS
           </p>
         ) : null}
         {a.feeCents && !paymentsEnabled() ? <p className="mb-4 rounded-lg bg-surface-muted p-3 text-sm">There&apos;s a {formatMoney(a.feeCents)} application fee. Online payment is coming soon — the property manager will tell you how to pay it.</p> : null}
-        <ApplyForm orgSlug={orgSlug} slug={slug} initial={applicationDataSchema.parse(a.data)} initialStep={a.step} fee={a.feeCents && paymentsEnabled() ? formatMoney(a.feeCents) : null} feePaid={Boolean(a.feePaidAt)} />
+        <ApplyForm orgSlug={orgSlug} slug={slug} initial={applicationDataSchema.parse(a.data)} initialStep={a.step} fee={a.feeCents && paymentsEnabled() ? formatMoney(a.feeCents) : null} feePaid={Boolean(a.feePaidAt)} stripeKey={paymentsClientKey()} />
         {a.role === "PRIMARY" && hh ? <HouseholdPanel orgSlug={orgSlug} slug={slug} members={hh.members.filter((m) => m.role !== "PRIMARY").map((m) => ({ id: m.id, role: m.role, name: m.name, email: m.email, status: m.status }))} /> : null}
       </div>
     </PublicShell>

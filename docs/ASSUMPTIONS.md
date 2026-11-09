@@ -444,13 +444,14 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Each company has one `Subscription` (platform table). New companies get a 14-day trial; every
   company that existed before billing was switched on was marked complimentary.
 - Stripe Billing via REST (no SDK), prices resolved by `lookup_key` from the sandbox catalog
-  (`starter_monthly/yearly`, `growth_unit_monthly`, `scale_unit_monthly`, `scale_unit_yearly_tiered`, `local_unit_yearly`,
+  (`starter_monthly/yearly`, `growth_unit_monthly`, `scale_unit_monthly_tiered`, `scale_unit_yearly_tiered`, `local_unit_yearly`,
   `local_care_yearly`). Per-unit plans use quantity = units, raised to cover the plan minimum
   (Growth 40, Scale 100, Local 14). Scale yearly uses the graduated price
   `scale_unit_yearly_tiered` ($17.40/unit/yr for units 1–250, $15.00 above): quantity = units,
   Stripe applies the tiers, and the app enforces the $1,750/yr minimum by raising the quantity to
   the first count that reaches it (101 → $1,757.40; only below Scale's 101-unit range). Scale
-  monthly is still one flat $1.75/unit price, so its $1.50 rate above 250 units isn't in Stripe yet.
+  monthly likewise uses the graduated `scale_unit_monthly_tiered` ($1.75/unit for 1–250, $1.50
+  above; 100 units = the $175 minimum). The old flat `scale_unit_monthly` price is no longer used.
 - Checkout allows promotion codes (`DEEDWOODBETA`). Customer portal handles cards, receipts and
   cancel. Webhooks (`/api/webhooks/stripe`) are signature-checked (5-minute tolerance) and
   idempotent (`StripeEvent`).
@@ -486,3 +487,27 @@ Decisions made without asking, per the brief. Each can be changed later.
   with Full access; Full-access users' own discounts aren't held.
 - Tenants get a portal message when a direct discount starts. Tax/accountant export:
   `/api/exports/discounts?year=YYYY` (CSV).
+
+## Publish-review fixes (Nov 2026)
+
+- Marketing pages render when served (not at build), so canonical/og links, "Sign in" links and the
+  contact email always come from the live SITE_URL / MARKETING_APP_URL / CONTACT_EMAIL. The
+  Dockerfile also declares `ARG SITE_URL` / `ARG AUTH_URL`. The website export always rebuilds
+  (into `.next-website`, leaving the app's `.next` alone) and fails if any page links to localhost.
+- Free AI (plan §8.1): OpenAI-compatible client for Cloudflare Workers AI, Groq, OpenRouter and
+  Ollama. Cloud providers get text with emails/phones/SSNs/long numbers removed; Ollama (local)
+  gets the original. Chain: LLM_PROVIDER → LLM_FALLBACK → built-in helper; a provider that
+  answers 429/5xx/401/403 or doesn't answer is skipped for 10 minutes, and each has a daily cap
+  (LLM_DAILY_LIMIT). AI buttons therefore never fail because a free quota ran out. Not built yet:
+  a per-company AI on/off setting (the owner console's per-company "AI helper" switch exists),
+  response caching, and per-company quotas.
+- Online payments: card and bank details are entered only in Stripe's fields. Tenant portal:
+  Payment Element + SetupIntent (card, or bank linked by signing in to the bank — Financial
+  Connections, instant verification) attached to a Stripe customer per tenant
+  (`Tenant.paymentsCustomerRef`); payments on saved methods pass `customer` + `off_session`.
+  Application fee: Card Element → PaymentMethod id. A finished setup is only accepted if it
+  belongs to that tenant's own customer. Typed card/bank fields remain for the test processor.
+  `paymentsEnabled()` is false in production with the test processor (unless ENABLE_DEV_TOOLS=1),
+  and check-env refuses PAYMENTS_ENABLED=1 without PAYMENTS_PROVIDER=stripe and both Stripe keys.
+  Needs a check in Stripe test mode before launch: 3-D Secure cards (a charge needing extra
+  authentication is reported as failed for now) and ACH charges on the SetupIntent mandate.

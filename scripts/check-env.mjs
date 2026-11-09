@@ -36,6 +36,14 @@ export function checkEnv(env) {
   for (const k of ["TWILIO_AUTH_TOKEN", "S3_SECRET_ACCESS_KEY", "ANTHROPIC_API_KEY", "REGRID_TOKEN", "GOOGLE_MAPS_API_KEY", "SMTP_PASS"]) {
     if (env[k] !== undefined && bad(env[k])) errors.push(`${k} is set but looks like a placeholder — remove it or paste the real value in your host's settings.`);
   }
+  // Real money only through the real processor: never let the test processor mark payments paid.
+  if (env.PAYMENTS_ENABLED === "1") {
+    if (env.PAYMENTS_PROVIDER !== "stripe") errors.push("PAYMENTS_ENABLED=1 needs PAYMENTS_PROVIDER=stripe. With the test processor, payments would be marked paid without any money moving.");
+    if (!stripe || bad(stripe)) errors.push("PAYMENTS_ENABLED=1 needs STRIPE_SECRET_KEY.");
+    const pk = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    if (!pk || !/^pk_(test|live)_/.test(pk)) errors.push("PAYMENTS_ENABLED=1 needs NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (pk_test_… or pk_live_…) for the secure card and bank forms.");
+    else if (stripe && pk.startsWith("pk_live_") !== stripe.startsWith("sk_live_")) errors.push("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY must both be test keys or both live keys.");
+  }
   if (env.ENABLE_DEV_TOOLS === "1") warnings.push("ENABLE_DEV_TOOLS=1 turns on the test inbox and webhook sink. Turn it off for real customers.");
   return { errors, warnings };
 }

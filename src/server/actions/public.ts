@@ -50,9 +50,14 @@ export async function saveApplicationStepAction(orgSlug: string, step: number, d
   });
 }
 
-export async function payApplicationFeeAction(orgSlug: string, card: { number: string; exp: string; cvc: string }): Promise<ActionResult> {
+/** `{ token }` from the secure Stripe card field; typed details only work with the test ("mock") processor. */
+export async function payApplicationFeeAction(orgSlug: string, card: { number: string; exp: string; cvc: string } | { token: string }): Promise<ActionResult> {
   return runAction(async () => {
     const { db, a } = await myApplication(orgSlug);
+    if ("token" in card) {
+      if (!/^pm_[A-Za-z0-9]+$/.test(card.token)) throw new UserFacingError("The card couldn't be read. Please try again.");
+      return void (await A.payApplicationFee(db, a.id, { token: card.token }));
+    }
     const m = card.exp.match(/^(\d{2})\s*\/\s*(\d{2})$/);
     if (!m) throw new UserFacingError("Enter the expiry as MM/YY", { exp: "MM/YY" });
     await A.payApplicationFee(db, a.id, { number: card.number.replace(/\s/g, ""), expMonth: Number(m[1]), expYear: 2000 + Number(m[2]), cvc: card.cvc });

@@ -6,7 +6,7 @@ import type { PaymentStatus } from "@prisma/client";
 import type { ScopedDb } from "@/server/dal";
 import { UserFacingError } from "@/server/action-result";
 import { audit } from "@/server/audit";
-import { getPaymentsProvider, PaymentDeclinedError } from "@/adapters/payments";
+import { getPaymentsProvider, PaymentDeclinedError, type CardInput } from "@/adapters/payments";
 import { getSettings } from "@/server/settings/service";
 import { addDays, diffDays, periodOf, toISODate } from "@/lib/dates";
 import { convenienceFee, TRANSITIONS, type MethodType } from "@/lib/payments";
@@ -79,6 +79,7 @@ export async function startPayment(
     result = await getPaymentsProvider().charge({
       connectedAccount: account.externalId, methodType: type, methodRef: method.providerRef,
       totalCents: input.amountCents + fee, feeCents: fee, idempotencyKey: key, description: `Rent payment — lease ${lease.id}`,
+      customerRef: (await db.tenant.findFirst({ where: { id: input.tenantId }, select: { paymentsCustomerRef: true } }))?.paymentsCustomerRef ?? null,
     });
   } catch (e) {
     if (e instanceof PaymentDeclinedError) throw new UserFacingError(e.message);
@@ -205,13 +206,27 @@ export async function runAutopay(db: ScopedDb, today: Date): Promise<{ attempted
 export async function savePaymentMethod(
   db: ScopedDb,
   tenantId: string,
-  input: { type: "CARD"; card: { number: string; expMonth: number; expYear: number; cvc: string } } | { type: "ACH"; bank: { routingNumber: string; accountNumber: string; holderName: string } },
+  input: { type: "CARD"; card: CardInput } | { type: "ACH"; bank: { routingNumber: string; accountNumber: string; holderName: string } } | { type: "SETUP"; setupIntentId: string },
 ) {
   if (!paymentsEnabled()) throw new UserFacingError(PAYMENTS_COMING_SOON);
   const provider = getPaymentsProvider();
   let saved;
   try {
-    saved = input.type === "CARD" ? await provider.addCard(input.card) : await provider.verifyBank(input.bank);
+    if (input.type === "SETUP") {
+      if (!provider.methodFromSetup) throw new UserFacingError("Saving cards this way isn't available.");
+      const tenant = await db.tenant.findFirst({ where: { id: tenantId }, select: { paymentsCustomerRef: true } });
+      const r = await provider.methodFromSetup(input.setupIntentId);
+      // Only accept a setup made for this tenant's own customer record.
+      if (!tenant?.paymentsCustomerRef || r.customerRef !== tenant.paymentsCustomerRef) throw new UserFacingError("That card or bank couldn't be saved. Please try again.");
+      saved = r;
+      if (await db.paymentMethod.findFirst({ where: { tenantId, providerRef: r.providerRef } })) throw new UserFacingError("That card or bank is already saved.");
+    } else if (input.type === "CARD") {
+      if (provider.name !== "mock" && !("token" in input.card)) throw new UserFacingError("Card details must be entered in the secure card form.");
+      saved = await provider.addCard(input.card);
+    } else {
+      if (provider.name !== "mock") throw new UserFacingError("Link your bank in the secure form.");
+      saved = await provider.verifyBank(input.bank);
+    }
   } catch (e) {
     if (e instanceof PaymentDeclinedError) throw new UserFacingError(e.message);
     throw e;
@@ -225,6 +240,28 @@ export async function savePaymentMethod(
   });
   await audit(db, { action: "payment_method.added", entityType: "Tenant", entityId: tenantId, after: { type: pm.type, last4: pm.last4 } });
   return pm;
+}
+
+/** Stripe: a SetupIntent so the tenant's browser can save a card or bank (Payment Element). */
+export async function startPaymentSetup(db: ScopedDb, tenantId: string) {
+  if (!paymentsEnabled()) throw new UserFacingError(PAYMENTS_COMING_SOON);
+  const provider = getPaymentsProvider();
+  if (!provider.startSetup) throw new UserFacingError("Saving cards this way isn't available.");
+  const t = await db.tenant.findFirst({ where: { id: tenantId } });
+  if (!t) throw new UserFacingError("Tenant not found");
+  try {
+    const r = await provider.startSetup({ customerRef: t.paymentsCustomerRef, name: [t.firstName, t.lastName].filter(Boolean).join(" ") || t.companyName || "Tenant", email: t.email, idempotencyKey: t.id });
+    if (r.customerRef !== t.paymentsCustomerRef) await db.tenant.update({ where: { id: t.id }, data: { paymentsCustomerRef: r.customerRef } });
+    return r.clientSecret;
+  } catch (e) {
+    if (e instanceof PaymentDeclinedError) throw new UserFacingError(e.message);
+    throw e;
+  }
+}
+
+/** What the browser needs to show secure card/bank fields (null = the built-in test forms). */
+export function paymentsClientKey(): string | null {
+  return getPaymentsProvider().name === "stripe" ? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || null : null;
 }
 
 export async function removePaymentMethod(db: ScopedDb, tenantId: string, id: string) {

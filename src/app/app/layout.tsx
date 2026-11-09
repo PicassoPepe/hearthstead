@@ -8,6 +8,9 @@ import { VerifyEmailBanner } from "@/components/shell/verify-email-banner";
 import { localLicense } from "@/server/license/local";
 import { hostedBillingNotice } from "@/server/billing/subscription";
 
+/** Private pages: never in search results (robots.txt and the X-Robots-Tag header say so too). */
+export const metadata = { robots: { index: false, follow: false } };
+
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const ctx = await requireContext();
   const lic = localLicense();

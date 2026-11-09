@@ -96,6 +96,19 @@ export async function runAgents(db: ScopedDb, now = new Date()) {
 }
 
 /** Execute an action (approval by a person, or automatically). */
+/**
+ * Who a renewal offer comes from: the person who approved it, else the company's first Admin, else
+ * the company email. Never a made-up address — with none of those it stops and says what to fix.
+ */
+export async function renewalSender(orgId: string, decidedById: string | null): Promise<{ name: string; email: string }> {
+  const approver = decidedById ? await adminDb.membership.findFirst({ where: { organizationId: orgId, userId: decidedById, status: "ACTIVE" }, include: { user: true } }) : null;
+  const admin = approver ?? (await adminDb.membership.findFirst({ where: { organizationId: orgId, status: "ACTIVE", role: { key: "ADMIN" } }, include: { user: true }, orderBy: { createdAt: "asc" } }));
+  if (admin?.user.email) return { name: admin.user.name ?? admin.user.email, email: admin.user.email };
+  const org = await adminDb.organization.findUnique({ where: { id: orgId }, select: { name: true, email: true } });
+  if (org?.email) return { name: org.name, email: org.email };
+  throw new UserFacingError("Add a company email in Settings → Company before sending renewal offers.");
+}
+
 export async function execute(db: ScopedDb, actionId: string, decidedById: string | null) {
   const a = await db.agentAction.findFirst({ where: { id: actionId } });
   if (!a) throw new UserFacingError("Action not found");
@@ -114,8 +127,7 @@ export async function execute(db: ScopedDb, actionId: string, decidedById: strin
       result = "Request triaged";
     } else if (a.kind === "RENEWAL_OFFER") {
       const { sendRenewalOffer } = await import("@/server/funnel/renewals");
-      const admin = await adminDb.membership.findFirst({ where: { organizationId: db.ctx.orgId, role: { key: "ADMIN" } }, include: { user: true }, orderBy: { createdAt: "asc" } });
-      await sendRenewalOffer(db, { leaseId: String(p.leaseId), newRentCents: Number(p.newRentCents), termMonths: Number(p.termMonths) }, { name: admin?.user.name ?? "Manager", email: admin?.user.email ?? "office@example.com" });
+      await sendRenewalOffer(db, { leaseId: String(p.leaseId), newRentCents: Number(p.newRentCents), termMonths: Number(p.termMonths) }, await renewalSender(db.ctx.orgId, decidedById));
       result = "Renewal offer sent for signature";
     } else throw new Error("Unknown action");
     await db.agentAction.update({ where: { id: a.id }, data: { status: "EXECUTED", result, decidedById, decidedAt: new Date() } });

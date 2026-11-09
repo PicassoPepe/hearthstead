@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 type Method = { id: string; type: "CARD" | "ACH"; label: string; detail: string; isDefault: boolean; verified: boolean };
 
-export function PayForm({ balanceCents, methods, allowPartial, passThroughCard, passThroughAch, readOnly }: { balanceCents: number; methods: Method[]; allowPartial: boolean; passThroughCard: boolean; passThroughAch: boolean; readOnly: boolean }) {
+export function PayForm({ balanceCents, methods, allowPartial, passThroughCard, passThroughAch, readOnly, stripeKey }: { balanceCents: number; methods: Method[]; allowPartial: boolean; passThroughCard: boolean; passThroughAch: boolean; readOnly: boolean; stripeKey?: string | null }) {
   const router = useRouter();
   const [mode, setMode] = React.useState<"FULL" | "OTHER">(balanceCents > 0 ? "FULL" : "OTHER");
   const [other, setOther] = React.useState<number | null>(null);
@@ -92,7 +92,7 @@ export function PayForm({ balanceCents, methods, allowPartial, passThroughCard, 
           </label>
         ))}
         {adding ? (
-          <Card className="p-4"><AddMethodForm disabled={readOnly} onAdded={(id) => { setMethodId(id); setAdding(false); }} /></Card>
+          <Card className="p-4"><AddMethodForm disabled={readOnly} stripeKey={stripeKey} onAdded={(id) => { setMethodId(id); setAdding(false); }} /></Card>
         ) : (
           <Button type="button" variant="secondary" onClick={() => setAdding(true)}>Add a bank account or card</Button>
         )}

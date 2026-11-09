@@ -9,6 +9,7 @@ import { Assistant } from "@/components/platform/assistant";
 import { AgentActivity, AgentCards } from "@/components/platform/agents";
 import { AGENTS, agentConfigs, type AgentKey } from "@/server/ai/agents";
 import { getLlmProvider } from "@/adapters/llm";
+import { PROVIDER_LABEL } from "@/adapters/llm/free";
 
 export const metadata = { title: "AI" };
 
@@ -25,7 +26,9 @@ export default async function AiPage({ searchParams }: { searchParams: Promise<{
   ]);
   return (
     <>
-      <PageHeader icon={<SparklesIcon aria-hidden />} title="AI" description={`Assistant and background agents · model: ${llm.name === "mock" ? "built-in demo model (set LLM_PROVIDER=anthropic for Claude)" : llm.model}. Every AI action is audit-logged.`} />
+      <PageHeader icon={<SparklesIcon aria-hidden />} title="AI" description={llm.name === "mock"
+        ? "AI assistant (preview). Ask questions about your rentals and let helpers draft replies, triage repairs and suggest renewals. You approve anything they want to send. Every AI action is recorded."
+        : `AI assistant (preview), powered by ${PROVIDER_LABEL[llm.name] ?? "an AI service"}. Drafts are suggestions — you approve anything sent. Every AI action is recorded.`} />
       <EntityTabs base="/app/ai" active={tab} tabs={[{ id: "assistant", label: "Assistant" }, { id: "agents", label: "Agents", count: pending || undefined }]} />
       {tab === "assistant" ? <Assistant /> : (
         <div className="grid gap-6">

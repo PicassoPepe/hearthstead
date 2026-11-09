@@ -11,6 +11,10 @@ COPY prisma ./prisma
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+# Railway passes service variables into the build only for declared ARGs. Marketing pages are
+# rendered when served, but anything prerendered still gets the real address, never localhost.
+ARG SITE_URL
+ARG AUTH_URL
 RUN pnpm build
 
 ENV NODE_ENV=production PORT=3000 STORAGE_LOCAL_DIR=/data/storage

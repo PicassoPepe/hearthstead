@@ -3,6 +3,8 @@ import { securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // The website export ("Make Website Folder") builds into its own folder so it never replaces the app's build.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   serverExternalPackages: ["@prisma/client", "bcryptjs", "nodemailer", "embedded-postgres"],
   typedRoutes: false,

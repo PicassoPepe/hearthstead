@@ -73,7 +73,7 @@ export function stripeLine(planKey: string, interval: "month" | "year", units: n
     case "hosted_growth": if (interval !== "month") throw new UserFacingError("Growth is billed monthly"); return { lookupKey: "growth_unit_monthly", quantity: Math.max(u, Math.ceil((p.monthlyMinCents ?? 0) / (p.monthlyPerUnitCents ?? 1))) };
     case "hosted_scale":
       if (interval === "year") return { lookupKey: "scale_unit_yearly_tiered", quantity: minQuantityFor(p, u, "year") };
-      return { lookupKey: "scale_unit_monthly", quantity: Math.max(u, Math.ceil((p.monthlyMinCents ?? 0) / (p.monthlyPerUnitCents ?? 1))) };
+      return { lookupKey: "scale_unit_monthly_tiered", quantity: minQuantityFor(p, u, "month") };
     case "local_annual": return { lookupKey: "local_unit_yearly", quantity: Math.max(u, Math.ceil((p.annualMinCents ?? 0) / (p.annualPerUnitCents ?? 1))) };
     default: throw new UserFacingError("That plan can't be bought online yet");
   }
@@ -82,8 +82,9 @@ export function stripeLine(planKey: string, interval: "month" | "year", units: n
 /**
  * Stripe charges per unit (graduated tiers for Scale yearly) with no minimum of its own, so the app
  * enforces the plan minimum by raising the quantity to the smallest count whose tiered price
- * reaches it. Scale yearly: $17.40 × 101 = $1,757.40 is the first count over the $1,750 minimum —
- * only companies under 101 units (below Scale's range) are affected.
+ * reaches it. Scale monthly ($1.75 → $1.50 above 250): 100 units = the $175 minimum exactly.
+ * Scale yearly: $17.40 × 101 = $1,757.40 is the first count over the $1,750 minimum — only
+ * companies under 101 units (below Scale's range) are affected.
  */
 function minQuantityFor(p: (typeof DEFAULT_PLANS)[number], units: number, interval: "month" | "year") {
   const min = (interval === "year" ? p.annualMinCents : p.monthlyMinCents) ?? 0;
