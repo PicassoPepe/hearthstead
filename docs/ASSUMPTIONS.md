@@ -444,10 +444,13 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Each company has one `Subscription` (platform table). New companies get a 14-day trial; every
   company that existed before billing was switched on was marked complimentary.
 - Stripe Billing via REST (no SDK), prices resolved by `lookup_key` from the sandbox catalog
-  (`starter_monthly/yearly`, `growth_unit_monthly`, `scale_unit_monthly`, `local_unit_yearly`,
+  (`starter_monthly/yearly`, `growth_unit_monthly`, `scale_unit_monthly`, `scale_unit_yearly_tiered`, `local_unit_yearly`,
   `local_care_yearly`). Per-unit plans use quantity = units, raised to cover the plan minimum
-  (Growth 40, Scale 100, Local 14). Scale's cheaper rate above 250 units isn't modeled in Stripe
-  yet (one flat per-unit price); the app's quote shows the volume price.
+  (Growth 40, Scale 100, Local 14). Scale yearly uses the graduated price
+  `scale_unit_yearly_tiered` ($17.40/unit/yr for units 1–250, $15.00 above): quantity = units,
+  Stripe applies the tiers, and the app enforces the $1,750/yr minimum by raising the quantity to
+  the first count that reaches it (101 → $1,757.40; only below Scale's 101-unit range). Scale
+  monthly is still one flat $1.75/unit price, so its $1.50 rate above 250 units isn't in Stripe yet.
 - Checkout allows promotion codes (`DEEDWOODBETA`). Customer portal handles cards, receipts and
   cancel. Webhooks (`/api/webhooks/stripe`) are signature-checked (5-minute tolerance) and
   idempotent (`StripeEvent`).

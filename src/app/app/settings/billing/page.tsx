@@ -75,13 +75,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   <div className="text-sm">
                     <p className="font-semibold">{p.displayName}{p.key === suggested ? <Badge tone="success" className="ml-2">Best fit</Badge> : null}</p>
                     <p className="text-muted-foreground">{p.description}</p>
-                    <p className="tabular mt-1">{Number.isFinite(m) ? `${formatMoney(m)}/month` : ""}{Number.isFinite(m) && Number.isFinite(y) && p.key === "hosted_starter" ? " · " : ""}{Number.isFinite(y) && p.key === "hosted_starter" ? `${formatMoney(y)}/year` : ""}</p>
+                    <p className="tabular mt-1">{Number.isFinite(m) ? `${formatMoney(m)}/month` : ""}{Number.isFinite(m) && Number.isFinite(y) && SOLD_YEARLY.has(p.key) ? " · " : ""}{Number.isFinite(y) && SOLD_YEARLY.has(p.key) ? `${formatMoney(y)}/year` : ""}</p>
                     {!fits ? <p className="text-xs text-muted-foreground">Made for {p.unitMin}{p.unitMax ? `–${p.unitMax}` : "+"} units.</p> : null}
                   </div>
                   {canEdit && ready && fits ? (
                     <div className="flex flex-wrap gap-2">
                       <ChoosePlanButton planKey={p.key} interval="month" label="Pay monthly" primary={p.key === suggested} />
-                      {p.key === "hosted_starter" ? <ChoosePlanButton planKey={p.key} interval="year" label="Pay yearly" /> : null}
+                      {SOLD_YEARLY.has(p.key) ? <ChoosePlanButton planKey={p.key} interval="year" label="Pay yearly" /> : null}
                     </div>
                   ) : null}
                 </div>
@@ -94,6 +94,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     </div>
   );
 }
+
+/** Plans with a yearly Stripe price (Starter flat; Scale graduated per unit). */
+const SOLD_YEARLY = new Set(["hosted_starter", "hosted_scale"]);
 
 const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
