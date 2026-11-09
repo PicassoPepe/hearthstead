@@ -20,6 +20,8 @@ export async function runAction<T>(fn: () => Promise<T>, successMessage?: string
     }
     if (e instanceof UserFacingError) return { ok: false, error: e.message, fieldErrors: e.fieldErrors };
     console.error(e);
+    // Server-only reporting (dynamic import keeps database code out of anything that imports this file).
+    void import("@/server/ops/errors").then((m) => m.recordError("action", e)).catch(() => undefined);
     return { ok: false, error: "Something went wrong. Please try again." };
   }
 }

@@ -156,6 +156,7 @@ export function apiRoute(opts: { write?: boolean }, handler: Handler) {
       if (e instanceof ZodError) return json({ error: { type: "invalid_request_error", message: "Invalid request body", details: e.issues.map((i) => ({ path: i.path.join("."), message: i.message })) } }, 400, rl);
       if (e instanceof UserFacingError) return json({ error: { type: "invalid_request_error", message: e.message, ...(e.fieldErrors ? { details: e.fieldErrors } : {}) } }, 400, rl);
       console.error("[api]", e);
+      void import("@/server/ops/errors").then((m) => m.recordError("api", e, { path: new URL(req.url).pathname })).catch(() => undefined);
       return json({ error: { type: "api_error", message: "Something went wrong on our side." } }, 500, rl);
     }
   };
