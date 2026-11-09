@@ -12,23 +12,42 @@ if errorlevel 1 goto :installnode
 for /f "tokens=1 delims=." %%v in ('node -p "process.versions.node"') do set NODEMAJOR=%%v
 if %NODEMAJOR% LSS 22 goto :installnode
 
+REM Close any DeedWood that is still running from this folder (it locks files during an update).
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$here = (Get-Location).Path;" ^
+  "Get-CimInstance Win32_Process | Where-Object { ($_.Name -in 'node.exe','postgres.exe','pg_ctl.exe') -and (($_.ExecutablePath -like ($here + '*')) -or ($_.CommandLine -like ('*' + $here + '*'))) } | ForEach-Object { Write-Host ('  Closing an older DeedWood that was still running (' + $_.Name + ')'); Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue };" ^
+  "Start-Sleep -Seconds 2" 2>nul
+
 echo.
 echo  Getting DeedWood ready (first time: a few minutes)...
 echo.
+set TRIES=0
+:install
+set /a TRIES+=1
 where corepack >nul 2>nul
 if errorlevel 1 (
   call npx -y pnpm@10.28.0 install --frozen-lockfile
 ) else (
   call corepack pnpm install --frozen-lockfile
 )
-if errorlevel 1 (
+if not errorlevel 1 goto :installed
+if %TRIES% LSS 2 (
   echo.
-  echo  Installing packages failed. Check your internet connection and double-click "Start DeedWood" again.
-  pause
-  exit /b 1
+  echo  That didn't work - trying once more...
+  timeout /t 5 /nobreak >nul
+  goto :install
 )
+echo.
+echo  Installing packages failed.
+echo  1. Close every other DeedWood window (and restart the computer if this keeps happening).
+echo  2. Check your internet connection.
+echo  3. Double-click "Start DeedWood" again.
+pause
+exit /b 1
 
-node scripts\start.mjs
+:installed
+
+node "%CD%\scripts\start.mjs"
 echo.
 pause
 exit /b 0

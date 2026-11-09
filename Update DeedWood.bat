@@ -2,6 +2,11 @@
 REM DeedWood: download the latest version. Keeps your settings (.env) and your data (.deedwood folder).
 title Update DeedWood
 cd /d "%~dp0"
+REM Close any DeedWood that is still running from this folder (it locks files during an update).
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$here = (Get-Location).Path;" ^
+  "Get-CimInstance Win32_Process | Where-Object { ($_.Name -in 'node.exe','postgres.exe','pg_ctl.exe') -and (($_.ExecutablePath -like ($here + '*')) -or ($_.CommandLine -like ('*' + $here + '*'))) } | ForEach-Object { Write-Host ('  Closing an older DeedWood that was still running (' + $_.Name + ')'); Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue };" ^
+  "Start-Sleep -Seconds 2" 2>nul
 echo.
 if exist ".git" (
   where git >nul 2>nul

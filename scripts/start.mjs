@@ -15,13 +15,14 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createServer, connect } from "node:net";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const ROOT = process.cwd();
 const DATA = join(ROOT, ".deedwood");
 const PG_PORT = Number(process.env.DEEDWOOD_PG_PORT ?? 54329);
 const node = process.execPath;
-const bin = { prisma: "node_modules/prisma/build/index.js", tsx: "node_modules/tsx/dist/cli.mjs", next: "node_modules/next/dist/bin/next" };
+// Absolute paths so "Start DeedWood" can find and close an older copy that is still running.
+const bin = { prisma: resolve("node_modules/prisma/build/index.js"), tsx: resolve("node_modules/tsx/dist/cli.mjs"), next: resolve("node_modules/next/dist/bin/next") };
 
 const children = [];
 let pg = null;
