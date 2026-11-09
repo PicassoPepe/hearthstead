@@ -1,4 +1,5 @@
 import "server-only";
+import { flagEnabled } from "@/server/platform-admin/flags";
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ZodError, type z } from "zod";
@@ -36,6 +37,7 @@ export async function authenticate(req: Request): Promise<ApiContext> {
   if (!m) throw new ApiError(401, "authentication_error", "Provide an API key: Authorization: Bearer dw_live_…");
   const key = await adminDb.apiKey.findUnique({ where: { secretHash: hashSecret(m[1]!) } });
   if (!key || key.revokedAt) throw new ApiError(401, "authentication_error", "Invalid or revoked API key");
+  if (!(await flagEnabled("api", key.organizationId))) throw new ApiError(403, "permission_error", "The API is turned off for this account. Contact DeedWood support.");
   let orgId = key.organizationId;
   if (key.environment === "test") {
     const org = await adminDb.organization.findUnique({ where: { id: key.organizationId }, select: { sandboxOrgId: true } });

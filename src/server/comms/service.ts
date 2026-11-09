@@ -1,4 +1,5 @@
 import type { ScopedDb } from "@/server/dal";
+import { flagEnabled } from "@/server/platform-admin/flags";
 import { adminDb } from "@/server/db";
 import { forOrg } from "@/server/dal/for-org";
 import { UserFacingError } from "@/server/action-result";
@@ -72,6 +73,7 @@ async function record(db: ScopedDb, conversationId: string, m: { direction: "IN"
 
 /** Send one SMS, enforcing the on/off switch, opt-outs and the monthly limit. Returns the provider result. */
 async function sendSms(db: ScopedDb, to: string | null, body: string) {
+  if (!(await flagEnabled("sms", db.ctx.orgId))) throw new UserFacingError("Text messaging isn't available for your account right now. Contact DeedWood support.");
   const usage = await smsUsage(db);
   if (!usage.enabled) throw new UserFacingError("Text messaging is turned off in Settings → Communications & SMS.");
   if (!to) throw new UserFacingError("This contact has no valid mobile number.");

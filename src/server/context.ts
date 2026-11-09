@@ -6,6 +6,7 @@ import { auth } from "@/server/auth";
 import { adminDb } from "@/server/db";
 import { forOrg } from "@/server/dal/for-org";
 import type { ScopedDb } from "@/server/dal";
+import { IMPERSONATE_COOKIE, activeImpersonation, isPlatformAdmin } from "@/server/platform-admin/service";
 import {
   can,
   parsePermissions,
@@ -19,11 +20,13 @@ export const ORG_COOKIE = "dw_org";
 
 export type AppContext = {
   user: { id: string; email: string; name: string | null; preferences: Record<string, unknown> };
-  org: { id: string; name: string; slug: string; brandColor: string; logoUrl: string | null; sandbox: boolean };
+  org: { id: string; name: string; slug: string; brandColor: string; logoUrl: string | null; sandbox: boolean; suspended: boolean };
   membership: { id: string; roleId: string; roleName: string; roleKey: string | null; propertyScope: string[] };
   permissions: PermissionSet;
   orgs: { id: string; name: string; slug: string }[];
   db: ScopedDb;
+  /** Set while the platform owner is viewing this company as `user` (from /admin). */
+  impersonation?: { id: string; adminUserId: string; adminEmail: string; reason: string; expiresAt: string };
 };
 
 /**
@@ -41,6 +44,21 @@ export const getContext = cache(async (): Promise<AppContext | null> => {
     data: { status: "ACTIVE", acceptedAt: new Date() },
   });
 
+  // Platform owner "view as": act as a member of one company, for a limited time, with a reason.
+  const jar = await cookies();
+  const impId = jar.get(IMPERSONATE_COOKIE)?.value;
+  if (impId) {
+    const imp = await activeImpersonation(userId, impId);
+    if (imp) {
+      const admin = await adminDb.user.findUnique({ where: { id: userId }, select: { email: true } });
+      const ctx = await buildContext(imp.asUserId, imp.orgId, { onlyOrg: imp.orgId, impersonatorId: userId });
+      if (ctx) return { ...ctx, impersonation: { id: imp.id, adminUserId: userId, adminEmail: admin?.email ?? "", reason: imp.reason, expiresAt: imp.expiresAt.toISOString() } };
+    }
+  }
+  return buildContext(userId, jar.get(ORG_COOKIE)?.value);
+});
+
+async function buildContext(userId: string, wantedOrg: string | undefined, opts: { onlyOrg?: string; impersonatorId?: string } = {}): Promise<AppContext | null> {
   // System lookup scoped explicitly by userId (the user may belong to several orgs).
   const user = await adminDb.user.findUnique({
     where: { id: userId },
@@ -54,9 +72,9 @@ export const getContext = cache(async (): Promise<AppContext | null> => {
   });
   if (!user || user.deletedAt || user.memberships.length === 0) return null;
 
-  const jar = await cookies();
-  const wanted = jar.get(ORG_COOKIE)?.value ?? user.lastOrgId;
-  const m = user.memberships.find((x) => x.organizationId === wanted) ?? user.memberships[0]!;
+  const wanted = opts.onlyOrg ?? wantedOrg ?? user.lastOrgId;
+  const m = user.memberships.find((x) => x.organizationId === wanted) ?? (opts.onlyOrg ? undefined : user.memberships[0]);
+  if (!m) return null;
 
   return {
     user: {
@@ -72,6 +90,7 @@ export const getContext = cache(async (): Promise<AppContext | null> => {
       brandColor: m.organization.brandColor,
       logoUrl: m.organization.logoUrl,
       sandbox: m.organization.sandbox,
+      suspended: Boolean(m.organization.suspendedAt),
     },
     membership: {
       id: m.id,
@@ -81,10 +100,10 @@ export const getContext = cache(async (): Promise<AppContext | null> => {
       propertyScope: m.propertyScope,
     },
     permissions: parsePermissions(m.role.permissions),
-    orgs: user.memberships.map((x) => ({ id: x.organization.id, name: x.organization.name, slug: x.organization.slug })),
-    db: forOrg({ orgId: m.organizationId, userId: user.id }),
+    orgs: (opts.onlyOrg ? [m] : user.memberships).map((x) => ({ id: x.organization.id, name: x.organization.name, slug: x.organization.slug })),
+    db: forOrg({ orgId: m.organizationId, userId: user.id, impersonatorId: opts.impersonatorId ?? null }),
   };
-});
+}
 
 /** For pages: redirect to sign-in when there's no context. */
 export async function requireContext(): Promise<AppContext> {
@@ -93,8 +112,10 @@ export async function requireContext(): Promise<AppContext> {
     const session = await auth();
     if (session?.user?.id && (await adminDb.tenantUser.count({ where: { userId: session.user.id, deletedAt: null } }))) redirect("/portal/tenant");
     if (session?.user?.id && (await adminDb.ownerUser.count({ where: { userId: session.user.id, deletedAt: null } }))) redirect("/portal/owner");
+    if (session?.user?.id && (await isPlatformAdmin(session.user.id))) redirect("/admin");
     redirect(session?.user ? "/signup?step=org" : "/login");
   }
+  if (ctx.org.suspended && !ctx.impersonation) redirect("/suspended");
   return ctx;
 }
 
@@ -102,6 +123,7 @@ export async function requireContext(): Promise<AppContext> {
 export async function requirePermission(module: Module, level: Exclude<Level, "none"> = "view"): Promise<AppContext> {
   const ctx = await getContext();
   if (!ctx) throw new PermissionError(module, level);
+  if (ctx.org.suspended && !ctx.impersonation) throw new PermissionError(module, level);
   if (!can(ctx.permissions, module, level)) throw new PermissionError(module, level);
   return ctx;
 }

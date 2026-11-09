@@ -25,6 +25,7 @@
     "worker": "tsx --conditions=react-server scripts/worker.ts",
     "jobs:nightly": "tsx --conditions=react-server scripts/run-nightly.ts",
     "check-env": "node scripts/check-env.mjs",
+    "platform:owner": "tsx scripts/seed-platform-owner.ts",
     "ledger:check": "tsx --conditions=react-server scripts/check-ledger.ts"
   },
   "prisma": {

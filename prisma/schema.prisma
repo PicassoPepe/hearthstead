@@ -47,6 +47,9 @@ model Organization {
   supportAccessUntil DateTime?
   /// Year-end close: no journal entries may be dated on or before this day.
   booksClosedThrough DateTime? @db.Date
+  /// Platform owner suspended this company (staff can't use /app until reinstated). Data is kept.
+  suspendedAt        DateTime?
+  suspendedReason    String?
 }
 
 model User {
@@ -196,6 +199,8 @@ model AuditLog {
   id             String    @id @default(cuid())
   organizationId String
   actorId        String?
+  /// Set when the platform owner made this change while viewing the company as a member.
+  impersonatorId String?
   actorType      String    @default("USER") // USER | SYSTEM | AI | API
   action         String
   entityType     String
@@ -2098,4 +2103,93 @@ model SecurityEvent {
 
   @@index([kind, createdAt])
   @@index([emailHash, createdAt])
+}
+
+// ─── Platform (DeedWood's own control plane) ────────────────────────────────
+// None of these tables has an organizationId, and the app's database role has no access to them
+// (prisma/rls.sql). Only the admin connection used by /admin reads or writes them.
+
+/// Someone who runs the DeedWood platform (above every company). Not an org role.
+model PlatformAdmin {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  /// OWNER (David) | STAFF
+  role      String   @default("OWNER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Every change made in /admin: who, what, to what, why, from where.
+model PlatformAuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String
+  action      String
+  targetType  String
+  targetId    String?
+  reason      String?
+  ip          String?
+  userAgent   String?
+  before      Json?
+  after       Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+/// A time-limited "view as" session: the platform owner acting as a company member, with a reason.
+model Impersonation {
+  id          String    @id @default(cuid())
+  adminUserId String
+  orgId       String
+  asUserId    String
+  reason      String
+  startedAt   DateTime  @default(now())
+  expiresAt   DateTime
+  endedAt     DateTime?
+
+  @@index([adminUserId, endedAt])
+}
+
+/// On/off switches for features, for everyone (orgId null) or one company (overrides global).
+model FeatureFlag {
+  id        String   @id @default(cuid())
+  key       String
+  /// null = everyone
+  orgId     String?
+  enabled   Boolean  @default(true)
+  note      String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([key, orgId])
+}
+
+/// Notice shown at the top of the staff app for all companies, or only the ones listed.
+model PlatformAnnouncement {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  /// INFO | WARNING
+  level       String    @default("INFO")
+  /// empty = every company
+  orgIds      String[]  @default([])
+  startsAt    DateTime  @default(now())
+  endsAt      DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+}
+
+/// Published app versions. Local installs compare against `minVersion` / the latest release.
+model Release {
+  id          String   @id @default(cuid())
+  version     String   @unique
+  /// stable | beta
+  channel     String   @default("stable")
+  notes       String
+  /// Installs older than this must update (shown as a required update).
+  minVersion  String?
+  publishedAt DateTime @default(now())
+  createdById String
 }

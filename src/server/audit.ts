@@ -20,6 +20,7 @@ export async function audit(db: ScopedDb, input: AuditInput): Promise<void> {
     data: {
       organizationId: db.ctx.orgId,
       actorId: db.ctx.userId,
+      impersonatorId: db.ctx.impersonatorId ?? null,
       actorType: input.actorType ?? "USER",
       action: input.action,
       entityType: input.entityType,

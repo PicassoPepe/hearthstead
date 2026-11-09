@@ -11,7 +11,7 @@ import { CommandPalette } from "./command-palette";
 import { ShellProvider, type ShellData } from "./shell-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-export function AppShell({ data, children, modal }: { data: ShellData; children: React.ReactNode; modal?: React.ReactNode }) {
+export function AppShell({ data, children, modal, banners }: { data: ShellData; children: React.ReactNode; modal?: React.ReactNode; banners?: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const pathname = usePathname();
   React.useEffect(() => setMobileOpen(false), [pathname]);
@@ -40,6 +40,7 @@ export function AppShell({ data, children, modal }: { data: ShellData; children:
 
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
+            {banners}
             <div className="page-wash flex-1">
               <main id="main" key={pathname} tabIndex={-1} className="page-enter mx-auto w-full max-w-[1400px] px-4 pb-28 pt-6 focus:outline-none sm:px-6 md:pb-6 lg:px-8">
                 {children}

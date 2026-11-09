@@ -50,6 +50,7 @@ Optional, for land records (parcel maps and owner of record) outside Louisville/
 | Name | Value |
 | --- | --- |
 | `REGRID_TOKEN` | Your Regrid API token (regrid.com/api — paid, per parcel; each property is looked up once and refreshed every 90 days) |
+| `PLATFORM_OWNER_EMAIL` | Your email — used once by `pnpm platform:owner` to create the owner-console login |
 | `GOOGLE_MAPS_API_KEY` | Optional. Google Street View pictures of each property (Street View Static API key). Aerial photos are free and need nothing. |
 
 ## 5. Keep uploaded files
@@ -66,6 +67,22 @@ address:
   (Settings → Account & security) or sign up your real company.
 - Without demo data: click **Sign up** to create your company — the setup guide walks you through
   the rest.
+
+## 7. Set up the owner console (DeedWood's own control panel)
+
+The owner console at `/admin` manages every company on the server: pause or turn on a company,
+sign people out, reset someone's two-factor, "view as" a member to help them (time-limited, with a
+reason, fully logged), feature switches, announcements, releases and system health.
+
+1. In Railway → Variables add `PLATFORM_OWNER_EMAIL` = your email, and redeploy.
+2. Railway → your service → **⋯ → Shell**, run `pnpm platform:owner`. It prints a one-time sign-in
+   link (30 minutes).
+3. Open the link, choose a password, turn on two-factor authentication, sign out and back in, and
+   open `/admin`.
+
+Optional: `PLATFORM_ADMIN_IP_ALLOWLIST` (comma-separated addresses allowed into `/admin`) and
+`PLATFORM_BREAK_GLASS_SECRET` (24+ random characters, needed only to hand ownership to another
+email: `pnpm platform:owner --rotate --secret=…`). Company admins can never reach `/admin`.
 
 ## Updates
 
