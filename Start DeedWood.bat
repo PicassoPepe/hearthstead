@@ -3,6 +3,9 @@ REM DeedWood: double-click to start. Installs what it needs the first time, then
 title DeedWood
 cd /d "%~dp0"
 set COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+REM Never stop to ask questions while installing (e.g. "reinstall node_modules? Y/n").
+set npm_config_confirm_modules_purge=false
+set CI=true
 
 where node >nul 2>nul
 if errorlevel 1 goto :installnode

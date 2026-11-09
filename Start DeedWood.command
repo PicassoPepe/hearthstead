@@ -2,6 +2,8 @@
 # DeedWood: double-click to start (macOS; on Linux run ./"Start DeedWood.command").
 cd "$(dirname "$0")" || exit 1
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# Never stop to ask questions while installing.
+export npm_config_confirm_modules_purge=false CI=true
 if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
   echo
   echo " DeedWood needs Node.js 22 or newer."
