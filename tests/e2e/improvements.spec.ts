@@ -1,4 +1,4 @@
-import { test, expect, signIn, stubMapTiles } from "./fixtures";
+import { test, expect, signIn, stubMapTiles, signUpNewAccount } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 // A tiny valid PNG (1×1) for upload tests.
@@ -15,14 +15,7 @@ async function passwordSignIn(page: Page, email: string, landing: string) {
 
 test("signup → setup wizard → company details → sample data sandbox", async ({ page }) => {
   test.setTimeout(180_000);
-  await page.goto("/signup");
-  await page.waitForLoadState("networkidle");
-  await page.getByRole("textbox", { name: "Your name" }).fill("Dana Newco");
-  await page.getByRole("textbox", { name: "Company name" }).fill("Newco Rentals");
-  await page.getByRole("textbox", { name: "Work email" }).fill(`dana.${Date.now()}@example.com`);
-  await page.getByRole("textbox", { name: "Password" }).fill("Demo1234!xyz");
-  await page.getByRole("button", { name: /Create/ }).click();
-  await page.waitForURL("**/app/setup", { timeout: 60_000 });
+  await signUpNewAccount(page, { name: "Dana Newco", org: "Newco Rentals", email: `dana.${Date.now()}@example.com`, password: "Demo1234!xyz" });
   await expect(page.getByRole("heading", { name: "Let's set up Newco Rentals" })).toBeVisible();
   await page.getByRole("textbox", { name: "Office phone" }).fill("312-555-0100");
   await page.getByRole("button", { name: "Save and continue" }).click();

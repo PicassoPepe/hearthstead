@@ -3,11 +3,14 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { sendSiteMessageAction } from "@/server/actions/website";
+import { Captcha } from "@/components/auth/captcha";
 
 const input = "h-11 w-full rounded-[var(--site-radius)] border border-[var(--site-border)] bg-[var(--site-surface)] px-3 text-base text-[var(--site-text)] placeholder:text-[var(--site-muted)] focus:outline-2 focus:outline-[var(--site-primary)]";
 
 /** Contact or tour-request form. Messages land in the company's "People interested" list. */
-export function SiteMessageForm({ orgSlug, kind, preview }: { orgSlug: string; kind: "contact" | "tour"; preview?: boolean }) {
+export function SiteMessageForm({ orgSlug, kind, preview, captchaSiteKey = null }: { orgSlug: string; kind: "contact" | "tour"; preview?: boolean; captchaSiteKey?: string | null }) {
+  const [captcha, setCaptcha] = React.useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = React.useState(0);
   const [v, setV] = React.useState({ name: "", email: "", phone: "", message: "", when: "", website: "" });
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [busy, setBusy] = React.useState(false);
@@ -25,10 +28,11 @@ export function SiteMessageForm({ orgSlug, kind, preview }: { orgSlug: string; k
     <form noValidate className="grid gap-3" onSubmit={async (e) => {
       e.preventDefault();
       if (preview) return void toast.info("This is a preview — forms work once the site is published.");
+      if (captchaSiteKey && !captcha) return void toast.error("Please complete the “I'm human” check.");
       setBusy(true);
-      const r = await sendSiteMessageAction(orgSlug, { kind, ...v });
+      const r = await sendSiteMessageAction(orgSlug, { kind, ...v, captcha: captcha ?? undefined });
       setBusy(false);
-      if (!r.ok) { setErrors(r.fieldErrors ?? {}); return void toast.error(r.error); }
+      if (!r.ok) { setErrors(r.fieldErrors ?? {}); setCaptcha(null); setCaptchaReset((n) => n + 1); return void toast.error(r.error); }
       setSent(true);
     }}>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -44,6 +48,7 @@ export function SiteMessageForm({ orgSlug, kind, preview }: { orgSlug: string; k
       </div>
       {/* Honeypot for spam bots — hidden from people and screen readers. */}
       <div aria-hidden className="absolute -left-[9999px] h-0 overflow-hidden"><label>Website<input tabIndex={-1} autoComplete="off" value={v.website} onChange={(e) => setV({ ...v, website: e.target.value })} /></label></div>
+      {preview ? null : <Captcha siteKey={captchaSiteKey} onToken={setCaptcha} resetKey={captchaReset} />}
       <div><button type="submit" disabled={busy} className="rounded-[var(--site-radius)] bg-[var(--site-primary)] px-5 py-3 font-semibold text-[var(--site-on-primary)] hover:opacity-90 disabled:opacity-60">{busy ? "Sending…" : kind === "tour" ? "Request a tour" : "Send message"}</button></div>
     </form>
   );

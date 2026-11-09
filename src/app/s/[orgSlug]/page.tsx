@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getContext } from "@/server/context";
 import { publicSite } from "@/server/site/service";
 import { SiteView } from "@/components/site/site-view";
+import { captchaSiteKey } from "@/server/auth/captcha";
 import { siteSchema } from "@/lib/site/blocks";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,7 @@ export default async function SitePage(p: P) {
       {/* JSON-LD: data only, escaped so it can't close the script tag. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       {d.site.analytics.plausibleDomain ? <script defer data-domain={d.site.analytics.plausibleDomain} src="https://plausible.io/js/script.js" /> : null}
-      <SiteView d={d} preview={draft} />
+      <SiteView d={{ ...d, captchaSiteKey: captchaSiteKey() }} preview={draft} />
     </>
   );
 }

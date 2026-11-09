@@ -6,18 +6,20 @@
  */
 const MAP_TILES = ["https://tile.openstreetmap.org", "https://server.arcgisonline.com"];
 const STRIPE = { script: ["https://js.stripe.com"], frame: ["https://js.stripe.com", "https://hooks.stripe.com"], connect: ["https://api.stripe.com"] };
+/** Cloudflare Turnstile — the "I'm human" check on sign-up and public forms. */
+const CAPTCHA = "https://challenges.cloudflare.com";
 
 /** `site`: company websites (/s/…) — may be shown in the staff editor's preview, and may load Plausible analytics. */
 export function contentSecurityPolicy(dev = false, site = false): string {
   const d: Record<string, string[]> = {
     "default-src": ["'self'"],
     // Next.js inlines small bootstrap scripts; nonces can replace 'unsafe-inline' in a later pass.
-    "script-src": ["'self'", "'unsafe-inline'", ...STRIPE.script, ...(site ? ["https://plausible.io"] : []), ...(dev ? ["'unsafe-eval'"] : [])],
+    "script-src": ["'self'", "'unsafe-inline'", ...STRIPE.script, CAPTCHA, ...(site ? ["https://plausible.io"] : []), ...(dev ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "data:", "blob:", ...MAP_TILES],
     "font-src": ["'self'", "data:"],
-    "connect-src": ["'self'", ...STRIPE.connect, ...(site ? ["https://plausible.io"] : []), ...(dev ? ["ws:", "wss:"] : [])],
-    "frame-src": ["'self'", ...STRIPE.frame],
+    "connect-src": ["'self'", ...STRIPE.connect, CAPTCHA, ...(site ? ["https://plausible.io"] : []), ...(dev ? ["ws:", "wss:"] : [])],
+    "frame-src": ["'self'", ...STRIPE.frame, CAPTCHA],
     "worker-src": ["'self'", "blob:"],
     "manifest-src": ["'self'"],
     "frame-ancestors": [site ? "'self'" : "'none'"],

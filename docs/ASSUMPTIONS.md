@@ -424,3 +424,17 @@ Decisions made without asking, per the brief. Each can be changed later.
 - Errors: `ErrorEvent` (platform-only) from server actions, API 500s, jobs, and Next's
   `onRequestError`; alert email ≤ 1/hour; optional Sentry via its store endpoint (no SDK).
 - `/api/health` for uptime monitors. Go-live steps: docs/LAUNCH.md.
+
+## Sign-up codes, CAPTCHA and "Sign in with…"
+
+- Sign-up is two steps: details → 6-digit code by email (default) or text (when an SMS provider
+  is set up; in test mode the code is shown on screen). Nothing is created until the code is
+  right (`PendingSignup`: code hashed with its id, 15 minutes, 5 tries, 4 sends, deleted on use).
+  Email codes confirm the email; text codes confirm the phone and a confirm-email link is sent.
+- CAPTCHA: Cloudflare Turnstile on sign-up, email sign-in links, forgot password and company
+  website forms — skipped until both keys are set; verification fails closed if Cloudflare
+  can't be reached.
+- Google / Microsoft sign-in (Auth.js providers) appear only when configured. Google may link to
+  an existing account with the same email (Google confirms emails); Microsoft creates new
+  accounts only. Accounts with two-factor must use password + code. New OAuth users name their
+  company on /signup.

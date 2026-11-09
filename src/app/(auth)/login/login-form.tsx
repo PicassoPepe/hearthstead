@@ -1,5 +1,8 @@
 "use client";
 
+import { Captcha } from "@/components/auth/captcha";
+import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import type { OAuthProvider } from "@/server/auth/oauth";
 import * as React from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -16,8 +19,10 @@ import { loginWithPassword, requestMagicLink } from "@/server/actions/auth";
 const pwSchema = z.object({ email: z.email("Enter a valid email"), password: z.string().min(1, "Enter your password"), code: z.string().optional() });
 const linkSchema = z.object({ email: z.email("Enter a valid email") });
 
-export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, error }: { defaultEmail: string; invited: boolean; portal?: boolean; callbackUrl: string; error?: string }) {
+export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, error, oauth = [], captchaSiteKey = null }: { defaultEmail: string; invited: boolean; portal?: boolean; callbackUrl: string; error?: string; oauth?: OAuthProvider[]; captchaSiteKey?: string | null }) {
   const [serverError, setServerError] = React.useState<string | undefined>(error);
+  const [captcha, setCaptcha] = React.useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = React.useState(0);
   const [needCode, setNeedCode] = React.useState(false);
   const pw = useForm<z.infer<typeof pwSchema>>({ resolver: zodResolver(pwSchema), defaultValues: { email: defaultEmail, password: "" } });
   const link = useForm<z.infer<typeof linkSchema>>({ resolver: zodResolver(linkSchema), defaultValues: { email: defaultEmail } });
@@ -35,6 +40,7 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
         </div>
       ) : null}
 
+      {!portal && oauth.length ? <div className="mt-6"><OAuthButtons providers={oauth} callbackUrl={callbackUrl} /></div> : null}
       <Card className="mt-6">
         <CardContent className="pt-5">
           <Tabs defaultValue={invited || portal ? "link" : "password"}>
@@ -78,13 +84,15 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
                 className="grid gap-4"
                 onSubmit={link.handleSubmit(async (v) => {
                   setServerError(undefined);
-                  const r = await requestMagicLink(v, callbackUrl);
-                  if (r && !r.ok) setServerError(r.error);
+                  if (captchaSiteKey && !captcha) return setServerError("Please complete the “I'm human” check.");
+                  const r = await requestMagicLink({ ...v, captcha: captcha ?? undefined }, callbackUrl);
+                  if (r && !r.ok) { setServerError(r.error); setCaptcha(null); setCaptchaReset((n) => n + 1); }
                 })}
               >
                 <Field label="Email" description="We'll email you a one-time sign-in link." error={link.formState.errors.email?.message} required>
                   {(a) => <Input type="email" autoComplete="email" {...a} {...link.register("email")} />}
                 </Field>
+                <Captcha siteKey={captchaSiteKey} onToken={setCaptcha} resetKey={captchaReset} />
                 <Button type="submit" size="lg" loading={link.formState.isSubmitting}>Email me a link</Button>
               </form>
             </TabsContent>

@@ -4,6 +4,8 @@ import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { verifyTotp } from "@/server/platform/totp";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import type { EmailConfig } from "next-auth/providers/email";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { PrismaClient } from "@prisma/client";
@@ -124,7 +126,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
     magicLink,
+    // "Sign in with …" — only when keys are set. Google confirms emails, so it may sign in to an
+    // existing account with the same email; Microsoft only creates new accounts.
+    ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET ? [Google({ allowDangerousEmailAccountLinking: true })] : []),
+    ...(process.env.AUTH_MICROSOFT_ENTRA_ID_ID && process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET ? [MicrosoftEntraID({ issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER ?? "https://login.microsoftonline.com/common/v2.0" })] : []),
   ],
+  events: {
+    // Google has already confirmed the email address.
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.id) await adminDb.user.updateMany({ where: { id: user.id, emailVerified: null }, data: { emailVerified: new Date() } });
+    },
+  },
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user, account }) {
@@ -136,6 +148,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Email links don't satisfy two-factor: those accounts sign in with password + code.
         if (existing?.twoFactorEnabled) return "/login?error=2fa_password";
         return Boolean(existing && !existing.deletedAt);
+      }
+      if (account?.provider === "google" || account?.provider === "microsoft-entra-id") {
+        const email = user.email?.toLowerCase();
+        if (!email) return false;
+        const existing = await adminDb.user.findUnique({ where: { email } });
+        // Two-factor accounts always sign in with password + code.
+        if (existing?.twoFactorEnabled) return "/login?error=2fa_password";
+        if (existing?.deletedAt) return false;
+        return true;
       }
       return true;
     },

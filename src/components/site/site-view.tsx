@@ -7,7 +7,7 @@ export { siteTheme };
 
 type Org = { name: string; slug: string; phone: string | null; email: string | null; logoUrl: string | null; city: string | null; state: string | null };
 type Listing = { id: string; slug: string; title: string; rentCents: number; availableOn: Date | null; beds: number | null; bathsTenths: number | null; sqft: number | null; address: string; photo: string | null };
-export type SiteData = { org: Org; site: SiteContent; listings: Listing[]; propertyPhotos: { url: string; alt: string }[] };
+export type SiteData = { org: Org; site: SiteContent; listings: Listing[]; propertyPhotos: { url: string; alt: string }[]; captchaSiteKey?: string | null };
 
 export function targetHref(t: Target, org: Org, listings: Listing[]) {
   switch (t) {
@@ -106,7 +106,7 @@ function BlockView({ b, d, preview, i }: { b: Block; d: SiteData; preview?: bool
         </Section>
       );
     case "showing":
-      return <Section id="tour" title={b.title || "Book a tour"} alt={alt}><Para text={b.body} className="-mt-3 mb-6 max-w-2xl" /><div className="max-w-2xl"><SiteMessageForm orgSlug={org.slug} kind="tour" preview={preview} /></div></Section>;
+      return <Section id="tour" title={b.title || "Book a tour"} alt={alt}><Para text={b.body} className="-mt-3 mb-6 max-w-2xl" /><div className="max-w-2xl"><SiteMessageForm orgSlug={org.slug} kind="tour" preview={preview} captchaSiteKey={d.captchaSiteKey} /></div></Section>;
     case "about":
       return (
         <Section id="about" title={b.title || "About us"} alt={alt}>
@@ -171,7 +171,7 @@ function BlockView({ b, d, preview, i }: { b: Block; d: SiteData; preview?: bool
               {b.showEmail && org.email ? <a href={`mailto:${org.email}`} className="flex items-center gap-2 font-semibold"><Mail className="size-4" aria-hidden />{org.email}</a> : null}
               {b.hours ? <p className="flex items-start gap-2 whitespace-pre-line text-[var(--site-muted)]"><Clock className="mt-0.5 size-4 shrink-0" aria-hidden />{b.hours}</p> : null}
             </div>
-            <SiteMessageForm orgSlug={org.slug} kind="contact" preview={preview} />
+            <SiteMessageForm orgSlug={org.slug} kind="contact" preview={preview} captchaSiteKey={d.captchaSiteKey} />
           </div>
         </Section>
       );
