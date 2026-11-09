@@ -90,7 +90,8 @@ if (!external) {
     const dir = join(DATA, "postgres");
     const fresh = !existsSync(join(dir, "PG_VERSION"));
     mkdirSync(DATA, { recursive: true });
-    pg = new EmbeddedPostgres({ databaseDir: dir, user: "postgres", password: "postgres", port: PG_PORT, persistent: true, onLog: () => {}, onError: () => {} });
+    // UTF-8 so any character (emoji, "→", accents) can be saved; Windows would otherwise pick WIN1252.
+    pg = new EmbeddedPostgres({ databaseDir: dir, user: "postgres", password: "postgres", port: PG_PORT, persistent: true, initdbFlags: ["--encoding=UTF8", "--locale=C"], onLog: () => {}, onError: () => {} });
     try {
       if (fresh) await pg.initialise();
       await pg.start();
@@ -107,8 +108,11 @@ const run = (args, label) => {
 };
 
 say("Preparing the database…");
+run([bin.tsx, "prisma/recover-migrations.ts"], "Database check");
 run([bin.prisma, "migrate", "deploy"], "Database update");
 run([bin.tsx, "prisma/apply-rls.ts"], "Database security setup");
+// Older Windows installs: move the data into a UTF-8 database once (the old one is kept).
+if (!external) run([bin.tsx, "prisma/convert-utf8.ts"], "Database upgrade");
 run([bin.tsx, "prisma/backfill.ts"], "Database backfill");
 
 const { PrismaClient } = (await import("@prisma/client")).default;
