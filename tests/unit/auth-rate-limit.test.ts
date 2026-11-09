@@ -42,5 +42,8 @@ describe("sign-in rate limits", () => {
     expect(clientIp(h({ "x-forwarded-for": "203.0.113.9, 10.0.0.2" }))).toBe("203.0.113.9");
     expect(clientIp(h({ "x-real-ip": "198.51.100.7" }))).toBe("198.51.100.7");
     expect(clientIp(h({}))).toBe("local");
+    expect(clientIp(h({ "x-forwarded-for": "127.0.0.1" }))).toBe("local");
+    expect(clientIp(h({ "x-forwarded-for": "::1" }))).toBe("local");
+    expect(clientIp(h({ "x-forwarded-for": "::ffff:127.0.0.1" }))).toBe("local");
   });
 });

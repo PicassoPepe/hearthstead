@@ -102,7 +102,13 @@ export async function clear(rule: RuleName, who: string): Promise<void> {
   await store().del(keyFor(rule, who)).catch(() => memoryStore.del(keyFor(rule, who)));
 }
 
-/** The visitor's address (first hop of X-Forwarded-For behind a proxy). */
+const LOOPBACK = /^(127\.\d+\.\d+\.\d+|::1|::ffff:127\.\d+\.\d+\.\d+|localhost)$/i;
+
+/**
+ * The visitor's address (first hop of X-Forwarded-For behind a proxy). "local" when it's this
+ * computer itself (the one-click install, tests) — per-address limits don't apply to that.
+ */
 export function clientIp(h: { get(name: string): string | null }): string {
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim() || "";
+  return !ip || LOOPBACK.test(ip) ? "local" : ip;
 }
