@@ -34,7 +34,9 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
   // `browsing` lets the user pop back to the top-level list without navigating away.
   const [browsingTop, setBrowsingTop] = React.useState(false);
   React.useEffect(() => setBrowsingTop(false), [pathname]);
-  const sub = !collapsed && !browsingTop && routeSection?.children ? routeSection : undefined;
+  // Vendors only see their work orders and invoices — never a submenu.
+  const hasSub = (s?: NavSection) => Boolean(s?.children && shell.roleKey !== "VENDOR");
+  const sub = !collapsed && !browsingTop && hasSub(routeSection) ? routeSection : undefined;
 
   const toggleCollapsed = () => {
     const next = !collapsedPref;
@@ -66,7 +68,7 @@ export function SidebarNav({ onNavigate, forceExpanded = false }: { onNavigate?:
       >
         <Icon className="size-[18px] shrink-0" aria-hidden />
         {collapsed ? <span className="sr-only">{s.label}</span> : <span className="flex-1 truncate">{s.label}</span>}
-        {!collapsed && s.children ? <ChevronRight className="size-4 opacity-60" aria-hidden /> : null}
+        {!collapsed && hasSub(s) ? <ChevronRight className="size-4 opacity-60" aria-hidden /> : null}
       </Link>
     );
     return <li key={s.id}>{collapsed ? <Tooltip content={s.label}>{content}</Tooltip> : content}</li>;

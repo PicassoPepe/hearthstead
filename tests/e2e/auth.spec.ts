@@ -47,6 +47,6 @@ test("signup creates a workspace with the user as Admin", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Let's set up Starter Rentals LLC" })).toBeVisible();
   await page.getByRole("button", { name: "Skip setup for now" }).click();
   await page.waitForURL("**/app/overview");
-  await expect(page.getByText("Here's what's happening at Starter Rentals LLC.")).toBeVisible();
+  await expect(page.getByText("This is your home page for Starter Rentals LLC.", { exact: false })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Getting started" })).toBeVisible();
 });
