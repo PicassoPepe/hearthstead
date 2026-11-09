@@ -72,3 +72,21 @@ export function NewFlagOverride({ flags }: { flags: { key: string; label: string
     </form>
   );
 }
+
+/** Make a company free (beta / partner) with a reason and an optional end date. */
+export function CompButton({ orgId, action }: { orgId: string; action: (orgId: string, v: { reason: string; until: string | null; kind?: "COMPLIMENTARY" | "BETA" }) => Promise<import("@/server/action-result").ActionResult<void>> }) {
+  const [until, setUntil] = React.useState("");
+  const [kind, setKind] = React.useState<"BETA" | "COMPLIMENTARY">("BETA");
+  return (
+    <AdminAction label="Make free (beta)" title="Make this company free"
+      description="They can use DeedWood without a card. If you pick an end date, they get a 14-day trial after it to choose a plan. Nothing is ever deleted."
+      action={(reason) => action(orgId, { reason, until: until || null, kind })}>
+      <Field label="Type">{(a) => (
+        <NativeSelect {...a} value={kind} onChange={(e) => setKind(e.target.value as "BETA" | "COMPLIMENTARY")} className="w-56">
+          <option value="BETA">Beta tester</option><option value="COMPLIMENTARY">Complimentary (partner, friend…)</option>
+        </NativeSelect>
+      )}</Field>
+      <Field label="Free until (optional)" description="Leave empty for no end date.">{(a) => <Input {...a} type="date" className="w-48" value={until} onChange={(e) => setUntil(e.target.value)} />}</Field>
+    </AdminAction>
+  );
+}

@@ -77,6 +77,7 @@ export async function purgeOrganizations(db: PrismaClient, orgIds: string[]): Pr
     for (const table of PURGE_ORDER) {
       await tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE "organizationId" = ANY($1::text[])`, orgIds);
     }
+    await tx.$executeRawUnsafe(`DELETE FROM "Subscription" WHERE "orgId" = ANY($1::text[])`, orgIds);
     await tx.organization.deleteMany({ where: { id: { in: orgIds } } });
   }, { timeout: 60_000 });
 }

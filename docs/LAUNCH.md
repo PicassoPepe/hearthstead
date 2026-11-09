@@ -68,7 +68,19 @@ The buttons and checks appear automatically once their keys are set; nothing els
 ## 6. Before charging anyone — you + lawyer
 
 - [ ] Attorney reviews the Terms and Privacy pages (they're marked as drafts until then).
-- [ ] Stripe account (test mode first) → tell Claude; billing gets built and tested in test mode.
+- [x] Stripe sandbox catalog (products, prices, `DEEDWOODBETA` promo) — done.
+- [ ] Railway → Variables: `STRIPE_SECRET_KEY` (sk_test_…) and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
+- [ ] Stripe → Developers → Webhooks → add `https://<your app>/api/webhooks/stripe` with these events:
+      `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
+      `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`,
+      `invoice.paid`, `invoice.payment_failed`. Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
+- [ ] Stripe → Settings → Billing → Customer portal: allow updating cards and canceling.
+- [ ] Give your first beta landlord free access: owner console → Companies → their company →
+      **Make free (beta)** (no card needed). Or give them the `DEEDWOODBETA` code at checkout.
+- [ ] When you're ready for companies to pay after their 14-day trial, set `BILLING_ENFORCED=1`.
+      Until then nobody is ever locked out. Even then nothing is deleted — unpaid accounts go read-only.
+- [ ] Going live with real money: only after you approve it — switch to `sk_live_` keys and set
+      `STRIPE_LIVE_APPROVED=1`.
 
 ## 7. Practice a restore once — you + Claude (15 minutes)
 

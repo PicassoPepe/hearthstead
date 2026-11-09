@@ -74,3 +74,32 @@ test("health endpoint answers for uptime monitors", async ({ request }) => {
   expect(r.status()).toBe(200);
   expect(await r.json()).toMatchObject({ ok: true });
 });
+
+test("platform owner makes a company free for the beta, then ends it", async ({ page }) => {
+  const o = JSON.parse(execSync("pnpm -s tsx tests/e2e/helpers/make-owner.ts", { encoding: "utf8" }).trim().split("\n").pop()!) as { email: string; password: string; secret: string };
+  await page.goto("/login?callbackUrl=/admin/orgs");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("textbox", { name: "Email" }).fill(o.email);
+  await page.locator("input[type=password]").fill(o.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("textbox", { name: "Authentication code" }).fill(totp(o.secret));
+  await page.getByRole("button", { name: "Verify and sign in" }).click();
+  await page.waitForURL(/\/admin\/orgs$/);
+  await page.getByRole("textbox", { name: "Search companies" }).fill("Harbor");
+  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("link", { name: "Harbor Light Rentals" }).click();
+
+  await page.getByRole("button", { name: "Make free (beta)" }).click();
+  const dlg = page.getByRole("dialog");
+  await dlg.getByRole("button", { name: "Make free (beta)" }).click();
+  await expect(page.getByText("Write a short reason")).toBeVisible();
+  await dlg.getByRole("textbox", { name: "Reason" }).fill("First beta landlord");
+  await dlg.getByRole("button", { name: "Make free (beta)" }).click();
+  await expect(page.getByTestId("admin-billing-state")).toContainText("Free (beta)");
+  await expect(page.getByTestId("admin-billing-state")).toContainText("First beta landlord");
+
+  await page.getByRole("button", { name: "End free plan" }).click();
+  await page.getByRole("dialog").getByRole("textbox", { name: "Reason" }).fill("Beta finished");
+  await page.getByRole("dialog").getByRole("button", { name: "End free plan" }).click();
+  await expect(page.getByTestId("admin-billing-state")).toContainText("Free trial");
+});

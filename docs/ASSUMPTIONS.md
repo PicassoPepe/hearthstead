@@ -213,14 +213,14 @@ Decisions made without asking, per the brief. Each can be changed later.
   act when confidence ≥ the threshold; legal/safety/repair messages get low confidence by design.
 - 2FA is TOTP (RFC 6238) with 8 single-use recovery codes (hashed). Email-link sign-in is refused
   for 2FA accounts. Sessions are recorded per sign-in; revoking one takes effect within a minute.
-- Billing is illustrative (plan math and usage only); no charges are made.
+- Billing was illustrative at this point; real subscriptions arrived in Phase 2c (see below).
 
 **Known limitations (deliberate scope cuts)**
 - Real-provider adapters (Stripe, Twilio, Plaid, QuickBooks OAuth, Anthropic) are implemented
   against their documented REST APIs but exercised in tests only through the mocks.
 - PDFs are produced by the browser's print-to-PDF from print-styled pages; there is no server-side
   PDF renderer. Signed e-sign copies are stored as self-contained HTML with the audit certificate.
-- Billing shows plan math and usage only; it doesn't charge.
+- Billing showed plan math only at this point (see "Subscriptions (Phase 2c)").
 
 ## Improvement round (after Phase 10)
 
@@ -289,7 +289,7 @@ Decisions made without asking, per the brief. Each can be changed later.
 - PDFs come from the browser's print-to-PDF; signed e-sign copies are self-contained HTML.
 - Images aren't resized server-side (8 MB cap per image).
 - The 1099 export needs full TINs added by hand (only last 4 are stored by design).
-- Billing shows plan math and usage only; it doesn't charge.
+- Billing showed plan math only at this point (see "Subscriptions (Phase 2c)").
 
 ## Land records (parcels, owner of record, deeds)
 
@@ -438,3 +438,22 @@ Decisions made without asking, per the brief. Each can be changed later.
   an existing account with the same email (Google confirms emails); Microsoft creates new
   accounts only. Accounts with two-factor must use password + code. New OAuth users name their
   company on /signup.
+
+## Subscriptions (Phase 2c) and free beta
+
+- Each company has one `Subscription` (platform table). New companies get a 14-day trial; every
+  company that existed before billing was switched on was marked complimentary.
+- Stripe Billing via REST (no SDK), prices resolved by `lookup_key` from the sandbox catalog
+  (`starter_monthly/yearly`, `growth_unit_monthly`, `scale_unit_monthly`, `local_unit_yearly`,
+  `local_care_yearly`). Per-unit plans use quantity = units, raised to cover the plan minimum
+  (Growth 40, Scale 100, Local 14). Scale's cheaper rate above 250 units isn't modeled in Stripe
+  yet (one flat per-unit price); the app's quote shows the volume price.
+- Checkout allows promotion codes (`DEEDWOODBETA`). Customer portal handles cards, receipts and
+  cancel. Webhooks (`/api/webhooks/stripe`) are signature-checked (5-minute tolerance) and
+  idempotent (`StripeEvent`).
+- Failed payment → past due with a grace period (`BILLING_GRACE_DAYS`, 3) → read-only. Trial
+  ended / canceled → read-only. Only when `BILLING_ENFORCED=1` on hosted installs; Settings →
+  Billing always works so they can fix it. Nothing is ever deleted for non-payment.
+- Owner console → company → "Make free (beta)": Beta or Complimentary, required reason,
+  optional end date, platform-audited. Ending it (or the end date passing) gives a fresh 14-day
+  trial; a company with a Stripe subscription goes back to it.
