@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { adminDb } from "@/server/db";
 
-export type SecurityEventKind = "LOGIN_FAILED" | "LOGIN_LOCKED" | "LOGIN_LIMITED" | "SIGNUP_LIMITED" | "MAGIC_LINK_LIMITED" | "TOTP_LIMITED";
+export type SecurityEventKind = "LOGIN_FAILED" | "LOGIN_LOCKED" | "LOGIN_LIMITED" | "SIGNUP_LIMITED" | "MAGIC_LINK_LIMITED" | "TOTP_LIMITED" | "PASSWORD_RESET_REQUESTED" | "PASSWORD_RESET" | "RESET_LIMITED";
 
 /** SHA-256 of the lowercased email, so the log never stores who typed what. */
 export const emailHash = (email: string) => createHash("sha256").update(email.trim().toLowerCase()).digest("hex");

@@ -28,3 +28,19 @@ export function inviteEmail(opts: { orgName: string; inviterName: string; roleNa
     text: `${opts.inviterName} invited you to join ${opts.orgName} as ${opts.roleName}. Accept: ${opts.url}`,
   };
 }
+
+export function passwordResetEmail(url: string) {
+  return {
+    subject: `Reset your ${APP} password`,
+    html: layout("Reset your password", `<p>Someone (hopefully you) asked to reset the password for this account. Click the button to choose a new one. The link works once and expires in 30 minutes.</p>${button(url, "Choose a new password")}<p style="color:#475569;font-size:13px">If you didn't ask for this, ignore this email — your password stays the same.</p>`),
+    text: `Reset your ${APP} password: ${url}\nThis link works once and expires in 30 minutes. If you didn't ask for this, ignore this email.`,
+  };
+}
+
+export function verifyEmailEmail(url: string) {
+  return {
+    subject: `Confirm your email for ${APP}`,
+    html: layout("Confirm your email", `<p>Thanks for signing up! Please confirm this is your email address.</p>${button(url, "Confirm my email")}<p style="color:#475569;font-size:13px">The link expires in 3 days.</p>`),
+    text: `Confirm your email for ${APP}: ${url}\nThe link expires in 3 days.`,
+  };
+}

@@ -62,6 +62,7 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
                 <Field label="Password" error={pw.formState.errors.password?.message} required>
                   {(a) => <Input type="password" autoComplete="current-password" {...a} {...pw.register("password")} />}
                 </Field>
+                <p className="-mt-2 text-right text-sm"><a href="/login/forgot" className="font-medium text-primary underline-offset-4 hover:underline">Forgot password?</a></p>
                 {needCode ? (
                   <Field label="Authentication code" description="6 digits from your authenticator app, or a recovery code." required>
                     {(a) => <Input autoComplete="one-time-code" inputMode="numeric" autoFocus {...a} {...pw.register("code")} />}

@@ -1,5 +1,6 @@
 "use server";
 
+import { requireVerifiedEmail } from "@/server/auth/verified";
 import { cookieOptions } from "@/lib/cookies";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -17,6 +18,7 @@ import { getPaymentsProvider } from "@/adapters/payments";
 export async function connectPayments(): Promise<ActionResult<{ onboardingUrl?: string }>> {
   return runAction(async () => {
     const ctx = await requirePermission("settings", "edit");
+    await requireVerifiedEmail(ctx.user.id);
     const org = await ctx.db.organization.findUniqueOrThrow({ where: { id: ctx.org.id } });
     const r = await P.connectProcessor(ctx.db, org.name, org.email);
     revalidatePath("/app/settings/payments");

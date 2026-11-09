@@ -2338,3 +2338,18 @@ model WebsiteVersion {
 
   @@index([organizationId, publishedAt])
 }
+
+/// One-time links for "forgot password" and "confirm your email". Only a hash of the token is
+/// stored; each link works once and expires. Platform-only table.
+model AccountToken {
+  id        String    @id @default(cuid())
+  userId    String
+  /// RESET_PASSWORD | VERIFY_EMAIL
+  purpose   String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, purpose])
+}
