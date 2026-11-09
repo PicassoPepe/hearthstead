@@ -15,6 +15,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
+import { checkEnv } from "./check-env.mjs";
 
 if (existsSync(".env")) loadEnvFile(".env");
 const env = { ...process.env, NODE_ENV: "production" };
@@ -25,6 +26,11 @@ if (!env.DATABASE_ADMIN_URL && env.DATABASE_URL && !/deedwood_app/.test(env.DATA
 if (!env.DATABASE_ADMIN_URL) fail("Set DATABASE_ADMIN_URL to your Postgres connection string.");
 if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || /dev-only/.test(env.AUTH_SECRET)) fail("Set AUTH_SECRET to a long random string (32+ characters).");
 if (!env.AUTH_URL) fail("Set AUTH_URL to your public address, e.g. https://your-app.up.railway.app");
+{
+  const { errors, warnings } = checkEnv(env);
+  for (const w of warnings) console.warn(`[deedwood] warning: ${w}`);
+  if (errors.length) fail(errors.join("\n[deedwood] "));
+}
 
 env.APP_DB_PASSWORD ??= createHash("sha256").update(`${env.AUTH_SECRET}:deedwood-app-db`).digest("base64url").slice(0, 32);
 const app = new URL(env.DATABASE_ADMIN_URL);

@@ -82,3 +82,15 @@ in the database and the `/data` volume.
 - **Payments, texting, AI:** they run in demo mode until you add the provider keys (see the
   "Adapters" section of the README).
 - **Never** set `ENABLE_DEV_TOOLS` on an online install.
+- **Settings check:** on every start the server runs `scripts/check-env.mjs` and refuses to start if
+  `AUTH_SECRET` is short or a placeholder, `AUTH_URL` isn't `https://…`, a provider key is a
+  placeholder, or a live Stripe key is set before going live is approved (`STRIPE_LIVE_APPROVED=1`).
+  Run it yourself any time with `pnpm check-env`.
+- **Secrets live only in the host's settings** (Railway → Variables): `AUTH_SECRET`, `DATABASE_*`,
+  `STRIPE_*`, `TWILIO_*`, `S3_*`, `ANTHROPIC_API_KEY`, `REGRID_TOKEN`, `GOOGLE_MAPS_API_KEY`. Never put
+  them in GitHub.
+- **Built-in protections:** security headers (no framing, content security policy, HTTPS-only
+  cookies when the address is https), sign-in limits (an account locks for 15 minutes after 8 wrong
+  passwords or codes; per-address limits on sign-in, sign-up and email links), and a security log of
+  failed sign-ins that stores a fingerprint of the email, never the email itself. Add `REDIS_URL`
+  if you run more than one server so the limits are shared.

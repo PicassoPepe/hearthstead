@@ -1,5 +1,6 @@
 "use server";
 
+import { cookieOptions } from "@/lib/cookies";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -35,7 +36,7 @@ export async function startApplicationAction(orgSlug: string, listingSlug: strin
     const listing = await db.listing.findFirst({ where: { slug: listingSlug, status: "PUBLISHED" } });
     if (!listing) throw new UserFacingError("This home is no longer available");
     const s = await A.startApplication(db, listing.id, email);
-    (await cookies()).set(APPLY_COOKIE, s.token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/apply", maxAge: 60 * 60 * 24 * 30 });
+    (await cookies()).set(APPLY_COOKIE, s.token, cookieOptions({ path: "/apply", maxAge: 60 * 60 * 24 * 30 }));
   });
   if (!r.ok) return r;
   redirect(`/apply/${orgSlug}/${listingSlug}/form`);

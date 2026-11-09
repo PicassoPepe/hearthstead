@@ -52,3 +52,6 @@ CREATE POLICY tenant_isolation ON "Organization" USING ("id" = app_org_id()) WIT
 
 -- Auth tables are global; the app role can only read users (writes go through the admin client).
 REVOKE INSERT, UPDATE, DELETE ON "AuthAccount", "Session", "VerificationToken" FROM deedwood_app;
+
+-- Platform-only tables: never reachable by the app role (written/read through the admin connection).
+REVOKE ALL ON "SecurityEvent" FROM deedwood_app;
