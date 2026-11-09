@@ -4,14 +4,14 @@ test.beforeEach(async ({ page }) => signIn(page, "admin@example.com"));
 
 test("two-level sidebar swaps to a section submenu and back", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" });
-  await nav.getByRole("link", { name: "Accounting" }).click();
-  await page.waitForURL("**/app/accounting");
-  await expect(nav.getByRole("button", { name: /Accounting.*back to all sections/ })).toBeVisible();
-  await nav.getByRole("link", { name: "Bills" }).click();
+  await nav.getByRole("link", { name: "Rent & Money" }).click();
+  await page.waitForURL("**/app/money");
+  await expect(nav.getByRole("button", { name: /Rent & Money.*back to all sections/ })).toBeVisible();
+  await nav.getByRole("link", { name: "Bills to pay" }).click();
   await page.waitForURL("**/app/accounting/bills");
-  await expect(page.getByRole("heading", { name: "Bills", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bills to pay", exact: true })).toBeVisible();
   await nav.getByRole("button", { name: /back to all sections/ }).click();
-  await expect(nav.getByRole("link", { name: "Overview" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Home" })).toBeVisible();
 });
 
 test("sidebar collapses to icons and remembers it", async ({ page }) => {

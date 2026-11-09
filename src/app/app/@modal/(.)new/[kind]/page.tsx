@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createItem } from "@/lib/nav";
+import { createItem, createTitle } from "@/lib/nav";
 import { requireContext } from "@/server/context";
 import { CreateModal } from "@/components/create/create-modal";
 import { CreateBody } from "@/components/create/create-body";
@@ -12,7 +12,7 @@ export default async function InterceptedCreate({ params, searchParams }: { para
   if (!item) notFound();
   const ctx = await requireContext();
   return (
-    <CreateModal title={`New ${item.label.toLowerCase()}`} size={item.kind === "property" || item.kind === "lease" ? "wizard" : ["journal-entry", "task", "work-order", "vendor", "bill", "expense"].includes(item.kind) ? "wide" : "default"}>
+    <CreateModal title={createTitle(item)} size={item.kind === "property" || item.kind === "lease" ? "wizard" : ["journal-entry", "task", "work-order", "repair", "vendor", "bill", "expense"].includes(item.kind) ? "wide" : "default"}>
       <CreateBody kind={item.kind} ctx={ctx} mode="modal" query={query} />
     </CreateModal>
   );

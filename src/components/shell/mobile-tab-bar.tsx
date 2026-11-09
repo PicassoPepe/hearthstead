@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as D from "@radix-ui/react-dialog";
-import { CalendarDays, CreditCard, FileSignature, LayoutDashboard, ListChecks, Menu, MessagesSquare, Plus, Receipt, Wrench, X, Building2, ClipboardCheck } from "lucide-react";
+import { CalendarDays, CreditCard, FileSignature, Home, ListChecks, Menu, MessagesSquare, Plus, Receipt, Wrench, X, Building2, ClipboardCheck } from "lucide-react";
 import { can } from "@/server/permissions";
 import { useShell } from "./shell-context";
 import { cn } from "@/lib/utils";
@@ -27,9 +27,9 @@ export function MobileTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         { href: "/app/invoices", label: "Invoices", icon: Receipt },
       ]
     : [
-        { href: "/app/overview", label: "Home", icon: LayoutDashboard },
-        ...(perm("tasks") ? [{ href: "/app/tasks", label: "Tasks", icon: ListChecks }] : []),
-        ...(perm("communications") ? [{ href: "/app/communications", label: "Inbox", icon: MessagesSquare }] : []),
+        { href: "/app/overview", label: "Home", icon: Home },
+        ...(perm("tasks") ? [{ href: "/app/tasks", label: "Repairs", icon: Wrench }] : []),
+        ...(perm("communications") ? [{ href: "/app/communications", label: "Messages", icon: MessagesSquare }] : []),
         { href: "/app/calendar", label: "Calendar", icon: CalendarDays },
       ].slice(0, 4);
   const left = tabs.slice(0, Math.ceil(tabs.length / 2));
@@ -38,7 +38,7 @@ export function MobileTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const actions = (vendor
     ? [{ href: "/app/invoices#new-invoice", label: "Submit an invoice", icon: Receipt, ok: true }]
     : [
-        { href: "/app/new/task", label: "New task or request", icon: Wrench, ok: perm("tasks", "edit") },
+        { href: "/app/new/repair", label: "Report a repair", icon: Wrench, ok: perm("tasks", "edit") },
         { href: "/app/new/payment", label: "Record a payment", icon: CreditCard, ok: perm("leasing", "edit") },
         { href: "/app/communications", label: "Send a message", icon: MessagesSquare, ok: perm("communications", "edit") },
         { href: "/app/new/task?type=INSPECTION", label: "Start an inspection", icon: ClipboardCheck, ok: perm("tasks", "edit") },

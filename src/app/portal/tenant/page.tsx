@@ -104,9 +104,16 @@ export default async function PortalHome() {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Card className="p-4">
-          <h2 className="flex items-center gap-2 font-semibold"><Wrench className="size-4" aria-hidden /> Maintenance</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{h.settings.allowRequests ? "No open requests." : "Contact the office for repairs."}</p>
-          {h.settings.allowRequests ? <Link href="/portal/tenant/requests" className="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">Request a repair</Link> : null}
+          <h2 className="flex items-center gap-2 font-semibold"><Wrench className="size-4" aria-hidden /> Something broken?</h2>
+          {h.settings.allowRequests ? (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">Tell us what&apos;s wrong and add photos.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild size="lg"><Link href="/portal/tenant/requests/new"><Wrench aria-hidden /> Report a repair</Link></Button>
+                <Button asChild variant="ghost"><Link href="/portal/tenant/requests">My repairs</Link></Button>
+              </div>
+            </>
+          ) : <p className="mt-1 text-sm text-muted-foreground">Call the office for repairs.</p>}
         </Card>
         <Card className="p-4">
           <h2 className="flex items-center gap-2 font-semibold"><Megaphone className="size-4" aria-hidden /> Announcements</h2>

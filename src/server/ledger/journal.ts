@@ -34,7 +34,7 @@ export async function postEntry(tx: ScopedTx, orgId: string, userId: string | nu
     const org = await tx.organization.findFirst({ where: { id: orgId }, select: { booksClosedThrough: true } });
     if (org?.booksClosedThrough && input.date <= org.booksClosedThrough) {
       const { UserFacingError } = await import("@/server/action-result");
-      throw new UserFacingError(`The books are closed through ${org.booksClosedThrough.toISOString().slice(0, 10)}. Use a later date, or reopen the year in Accounting → Year-end close.`);
+      throw new UserFacingError(`The books are closed through ${org.booksClosedThrough.toISOString().slice(0, 10)}. Use a later date, or reopen the year in Rent & Money → Close the year.`);
     }
   }
   const resolved = await Promise.all(

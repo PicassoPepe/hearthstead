@@ -56,7 +56,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   ];
   return (
     <>
-      <PageHeader icon={<MessagesSquareIcon aria-hidden />} eyebrow="Communications" title="Inbox" description="Portal messages, texts and emails with tenants, owners and vendors — in one place." />
+      <PageHeader icon={<MessagesSquareIcon aria-hidden />} title="Messages" description="All your texts, emails and portal messages with tenants, owners and repair companies. Click a conversation on the left to read and reply." />
       <Inbox rows={rows} thread={thread} filter={filter} contacts={contacts} usage={usage} canEdit={can(ctx.permissions, "communications", "edit")} presetTo={sp.to} />
     </>
   );

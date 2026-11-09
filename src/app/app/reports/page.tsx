@@ -15,7 +15,7 @@ export default async function ReportsPage() {
   const cats = [...new Set(REPORT_CATALOG.map((r) => r.category))];
   return (
     <>
-      <PageHeader icon={<BarChart3Icon aria-hidden />} title="Reports" description="Every number is computed live from the ledger. Filter, compare, export to CSV or PDF, or ask for an AI summary." />
+      <PageHeader icon={<BarChart3Icon aria-hidden />} title="Reports" description="Ready-made reports about rent, money and your properties. Click a report to open it, then print it or save it as a PDF or spreadsheet." />
       <div className="grid gap-6 lg:grid-cols-2">
         {cats.map((c) => (
           <section key={c} aria-labelledby={`cat-${c}`} className="rounded-card border border-border bg-surface shadow-card">

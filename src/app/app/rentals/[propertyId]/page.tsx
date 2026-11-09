@@ -190,7 +190,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
       ) : tab === "transactions" ? (
         <PropertyTransactions ctx={ctx} propertyId={p.id} />
       ) : (
-        <EntityTasks ctx={ctx} where={{ propertyId: p.id }} newHref={`/app/new/task?propertyId=${p.id}`} tableId="property-tasks" />
+        <EntityTasks ctx={ctx} where={{ propertyId: p.id }} newHref={`/app/new/repair?propertyId=${p.id}`} tableId="property-tasks" />
       )}
     </>
   );

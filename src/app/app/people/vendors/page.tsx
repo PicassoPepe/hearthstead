@@ -25,9 +25,9 @@ export default async function VendorsPage() {
   const canEdit = can(ctx.permissions, "people", "edit");
   return (
     <>
-      <PageHeader icon={<HardHatIcon aria-hidden />} title="Vendors" description="Contractors and service companies, their trades, compliance and open work." actions={canEdit ? <Button asChild><Link href="/app/new/vendor" scroll={false}><Plus aria-hidden /> Add vendor</Link></Button> : null} />
+      <PageHeader icon={<HardHatIcon aria-hidden />} title="Repair companies" description="Plumbers, electricians, handymen and other companies that do work for you. Pick one on a repair and they get the job by email." actions={canEdit ? <Button asChild><Link href="/app/new/vendor" scroll={false}><Plus aria-hidden /> Add a repair company</Link></Button> : null} />
       {vendors.length === 0 ? (
-        <EmptyState icon={<Wrench />} title="Add your vendors" description="Plumbers, electricians, cleaners — assign them work orders, email the details, and turn their invoices into bills." action={canEdit ? <Button asChild><Link href="/app/new/vendor" scroll={false}><Plus aria-hidden /> Add vendor</Link></Button> : undefined} />
+        <EmptyState icon={<Wrench />} title="Add your vendors" description="Plumbers, electricians, cleaners — assign them work orders, email the details, and turn their invoices into bills." action={canEdit ? <Button asChild><Link href="/app/new/vendor" scroll={false}><Plus aria-hidden /> Add a repair company</Link></Button> : undefined} />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {vendors.map((v) => {

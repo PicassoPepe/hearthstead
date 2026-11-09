@@ -1,16 +1,16 @@
 import {
-  LayoutDashboard, Building2, FileSignature, Users, Landmark, ListChecks, MessagesSquare,
+  Home, Wrench, Wallet, MoreHorizontal, Building2, Users, MessagesSquare,
   BarChart3, StickyNote, FolderOpen, Workflow, Sparkles, Settings, LifeBuoy, CalendarDays, Receipt, type LucideIcon,
 } from "lucide-react";
 import type { IconName } from "@/lib/nav";
 
 export const NAV_ICONS: Record<IconName, LucideIcon> = {
-  overview: LayoutDashboard,
+  overview: Home,
   rentals: Building2,
-  leasing: FileSignature,
+  leasing: Users,
   people: Users,
-  accounting: Landmark,
-  tasks: ListChecks,
+  accounting: Wallet,
+  tasks: Wrench,
   communications: MessagesSquare,
   reports: BarChart3,
   notes: StickyNote,
@@ -21,4 +21,5 @@ export const NAV_ICONS: Record<IconName, LucideIcon> = {
   help: LifeBuoy,
   calendar: CalendarDays,
   invoices: Receipt,
+  more: MoreHorizontal,
 };

@@ -19,8 +19,8 @@ export default async function UnitsPage() {
   return (
     <>
       <PageHeader icon={<DoorOpenIcon aria-hidden />}
-        title="Units"
-        description="Every rentable unit across your properties."
+        title="Units (apartments & homes)"
+        description="Each apartment, house or space you rent out. A house is one unit; an apartment building has one unit per apartment."
         actions={canEdit ? <Button asChild><Link href="/app/new/unit" scroll={false}><Plus aria-hidden /> Add unit</Link></Button> : null}
       />
       <UnitsTable rows={rows} canEdit={canEdit} canDelete={can(ctx.permissions, "rentals", "delete")} />

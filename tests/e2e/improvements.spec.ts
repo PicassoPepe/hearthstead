@@ -168,12 +168,12 @@ test.describe("phone", () => {
     await signIn(page, "admin@example.com", "/app/overview");
     const bar = page.getByRole("navigation", { name: "Quick navigation" });
     await expect(bar).toBeVisible();
-    await bar.getByRole("link", { name: "Tasks" }).click();
+    await bar.getByRole("link", { name: "Repairs" }).click();
     await page.waitForURL("**/app/tasks");
     await expect(page.getByTestId("table-cards")).toBeVisible();
     await bar.getByRole("button", { name: "Quick actions" }).click();
-    await page.getByRole("dialog", { name: "Quick actions" }).getByRole("link", { name: "New task or request" }).click();
-    await expect(page.getByRole("dialog", { name: /New task/ })).toBeVisible();
+    await page.getByRole("dialog", { name: "Quick actions" }).getByRole("link", { name: "Report a repair" }).click();
+    await expect(page.getByRole("dialog", { name: "Report a repair" })).toBeVisible();
   });
 });
 
@@ -199,4 +199,23 @@ test("land records: staff see the county record and attach a deed; the owner see
   await expect(owner.getByTestId("land-docs")).toContainText("cedar-deed.pdf");
   await expect(owner.getByRole("button", { name: /Refresh from county/ })).toHaveCount(0); // read-only
   await owner.close();
+});
+
+test("simple home page and Report a repair with a photo", async ({ page }) => {
+  await signIn(page, "admin@example.com", "/app/overview");
+  await expect(page.getByRole("heading", { name: "What do you want to do?" })).toBeVisible();
+  await expect(page.getByTestId("needs-attention").getByText(/tenants? owes? rent/)).toBeVisible();
+  await page.getByRole("link", { name: /Report a repair/ }).first().click();
+  const dlg = page.getByRole("dialog", { name: "Report a repair" });
+  await dlg.getByRole("combobox", { name: /Which property/ }).selectOption({ label: "Maple Court" });
+  await dlg.getByRole("textbox", { name: /What's wrong/ }).fill("Bathroom ceiling has a water stain");
+  await dlg.getByText("Soon", { exact: true }).click();
+  await dlg.locator('input[type="file"]').setInputFiles({ name: "stain.png", mimeType: "image/png", buffer: PNG });
+  await expect(dlg.getByRole("img", { name: "Photo 1" })).toBeVisible();
+  await dlg.getByRole("button", { name: "Report repair" }).click();
+  await expect(page.getByText(/Repair #\d+ reported/)).toBeVisible();
+  await page.getByRole("button", { name: "Open" }).click();
+  await page.waitForURL(/\/app\/tasks\/[^/?]+$/);
+  await expect(page.getByRole("heading", { name: /Bathroom ceiling has a water stain/ })).toBeVisible();
+  await expect(page.getByTestId("repair-photos").getByRole("img")).toHaveCount(1);
 });

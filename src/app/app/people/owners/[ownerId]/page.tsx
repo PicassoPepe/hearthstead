@@ -135,7 +135,7 @@ export default async function OwnerPage({ params, searchParams }: { params: Prom
 async function OwnerTransactions({ ctx, ownerId }: { ctx: AppContext; ownerId: string }) {
   const rows = await ctx.db.ownerDistribution.findMany({ where: { ownerId }, orderBy: { date: "desc" }, take: 200 });
   const props = new Map((await ctx.db.property.findMany({ select: { id: true, name: true } })).map((p) => [p.id, p.name]));
-  if (!rows.length) return <EmptyState icon={<Receipt />} title="No distributions yet" description="Pay owners from Accounting → Owner distributions." action={<Link className="text-sm font-medium text-primary hover:underline" href="/app/accounting/distributions">Owner distributions</Link>} />;
+  if (!rows.length) return <EmptyState icon={<Receipt />} title="No distributions yet" description="Pay owners from Rent &amp; Money → Pay owners." action={<Link className="text-sm font-medium text-primary hover:underline" href="/app/accounting/distributions">Pay owners</Link>} />;
   return (
     <div className="grid gap-2">
       <p className="text-sm"><Link className="text-primary hover:underline" href={`/app/reports/owner-statement?ownerId=${ownerId}`}>Open owner statement →</Link></p>

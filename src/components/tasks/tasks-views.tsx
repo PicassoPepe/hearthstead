@@ -33,10 +33,10 @@ function Empty({ canEdit }: { canEdit: boolean }) {
   return (
     <EmptyState
       icon={<ListChecks />}
-      title="No tasks here"
-      description="Tasks, tenant requests, work orders and inspections all live here. Tenants submit requests from their portal."
-      action={canEdit ? <Button asChild><Link href="/app/new/task" scroll={false}><Plus aria-hidden /> New task</Link></Button> : undefined}
-      secondary={canEdit ? <Button asChild variant="secondary"><Link href="/app/new/work-order" scroll={false}>New work order</Link></Button> : undefined}
+      title="Nothing here"
+      description="Repairs, tenant requests and to-dos all show up here. Tenants can also report repairs from their own page."
+      action={canEdit ? <Button asChild><Link href="/app/new/repair" scroll={false}><Plus aria-hidden /> Report a repair</Link></Button> : undefined}
+      secondary={canEdit ? <Button asChild variant="secondary"><Link href="/app/new/task" scroll={false}>New to-do</Link></Button> : undefined}
     />
   );
 }

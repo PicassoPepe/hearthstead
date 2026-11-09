@@ -14,6 +14,7 @@ import { LeaseWizard } from "@/components/leasing/lease-wizard";
 import { TenantForm } from "@/components/leasing/tenant-form";
 import { MoneyForm } from "@/components/leasing/money-form";
 import { JournalEntryForm } from "@/components/accounting/journal-entry-form";
+import { RepairForm } from "@/components/tasks/repair-form";
 import { TaskForm } from "@/components/tasks/task-form";
 import { VendorForm } from "@/components/tasks/vendor-form";
 import { taskFormOptions } from "@/server/maintenance/queries";
@@ -53,6 +54,9 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
       }
     case "tenant":
       return <TenantForm />;
+    case "repair":
+      if (ctx.membership.roleKey === "VENDOR") return <Forbidden what="reporting repairs" />;
+      return <RepairForm options={await taskFormOptions(ctx)} preset={{ propertyId: query.propertyId, unitId: query.unitId }} />;
     case "task":
     case "work-order":
       if (ctx.membership.roleKey === "VENDOR") return <Forbidden what="creating tasks" />;
@@ -88,7 +92,7 @@ export async function CreateBody({ kind, ctx, mode: _mode, query = {} }: { kind:
             <ul className="divide-y divide-border rounded-lg border border-border">
               {listings.map((l) => <li key={l.id} className="px-3 py-2"><div className="font-medium">{l.title}</div><code className="break-all text-xs">{base}/apply/{org.slug}/{l.slug}</code></li>)}
             </ul>
-          ) : <p className="text-muted-foreground">Publish a listing first (Rentals → Listings).</p>}
+          ) : <p className="text-muted-foreground">Put up a for-rent ad first (Properties → For-rent ads).</p>}
         </div>
       );
     }

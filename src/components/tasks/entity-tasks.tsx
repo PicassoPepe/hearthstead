@@ -15,7 +15,7 @@ export async function EntityTasks({ ctx, where, newHref, tableId }: { ctx: AppCo
   return (
     <div className="grid gap-3">
       {canEdit && rows.length ? (
-        <div><Button asChild variant="secondary"><Link href={newHref} scroll={false}><Plus aria-hidden /> New task</Link></Button></div>
+        <div><Button asChild variant="secondary"><Link href={newHref} scroll={false}><Plus aria-hidden /> {newHref.startsWith("/app/new/repair") ? "Report a repair" : "New task"}</Link></Button></div>
       ) : null}
       <TasksTable rows={rows} canEdit={canEdit} tableId={tableId} />
     </div>

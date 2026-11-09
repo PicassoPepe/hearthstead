@@ -97,7 +97,7 @@ export default async function UnitPage({ params, searchParams }: { params: Promi
       ) : tab === "leases" || tab === "transactions" ? (
         <LeasesTable rows={leases} tab={`unit-${u.id}`} canEdit={can(ctx.permissions, "leasing", "edit")} />
       ) : (
-        <EntityTasks ctx={ctx} where={{ unitId: u.id }} newHref={`/app/new/task?unitId=${u.id}`} tableId="unit-tasks" />
+        <EntityTasks ctx={ctx} where={{ unitId: u.id }} newHref={`/app/new/repair?unitId=${u.id}`} tableId="unit-tasks" />
       )}
     </>
   );

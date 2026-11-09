@@ -3,8 +3,8 @@ import { test, expect, signIn } from "./fixtures";
 test("vendor sees only what their role allows", async ({ page }) => {
   await signIn(page, "vendor@example.com");
   const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByRole("link", { name: "Tasks" })).toBeVisible();
-  for (const hidden of ["Accounting", "Rentals", "Leasing", "Reports", "Settings"]) {
+  await expect(nav.getByRole("link", { name: "Repairs" })).toBeVisible();
+  for (const hidden of ["Rent & Money", "Properties", "Tenants", "Reports", "Settings"]) {
     await expect(nav.getByRole("link", { name: hidden })).toHaveCount(0);
   }
   await page.goto("/app/settings/users");

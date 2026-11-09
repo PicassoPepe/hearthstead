@@ -36,7 +36,7 @@ export default async function LeasingPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader icon={<FileSignatureIcon aria-hidden />}
         title="Leases"
-        description="Every lease, its rent and its balance."
+        description="A lease is the rental agreement: who lives where, the rent, and the dates. Click one to see payments and what the tenant owes. To move someone in, press “New lease”."
         actions={
           <>
             {can(ctx.permissions, "accounting", "delete") ? <RunJobsButton /> : null}

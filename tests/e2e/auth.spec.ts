@@ -16,7 +16,7 @@ test("wrong password shows an inline error", async ({ page }) => {
 
 test("password sign-in lands on the overview, sign-out returns to login", async ({ page }) => {
   await signIn(page, "admin@example.com");
-  await expect(page.getByRole("heading", { name: /Good to see you, Avery/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Hi, Avery/ })).toBeVisible();
   await page.getByRole("button", { name: /Account menu/ }).click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login/);
@@ -32,7 +32,7 @@ test("magic link sign-in via the mock email outbox", async ({ page }) => {
   const msg = page.getByTestId("outbox-message").filter({ hasText: "pm@example.com" }).first();
   await msg.getByTestId("outbox-link").first().click();
   await page.waitForURL("**/app/overview");
-  await expect(page.getByRole("heading", { name: /Good to see you, Priya/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Hi, Priya/ })).toBeVisible();
 });
 
 test("signup creates a workspace with the user as Admin", async ({ page }) => {

@@ -58,8 +58,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader icon={<CalendarDays aria-hidden />} title="Calendar" description="Showings, move-ins and move-outs, lease ends, inspections, tasks and renewal deadlines in one place."
-        actions={canTask ? <Button asChild><Link href="/app/new/task" scroll={false}><Plus aria-hidden /> New task</Link></Button> : undefined} />
+      <PageHeader icon={<CalendarDays aria-hidden />} title="Calendar" description="Everything with a date: move-ins, move-outs, leases ending, showings, inspections and repairs. Click anything to open it."
+        actions={canTask ? <Button asChild><Link href="/app/new/task" scroll={false}><Plus aria-hidden /> New to-do</Link></Button> : undefined} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1">
           <Button asChild variant="secondary" size="icon" aria-label="Previous month"><Link href={q({ month: ym(addMonths(month, -1)) })}><ChevronLeft aria-hidden /></Link></Button>

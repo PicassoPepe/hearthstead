@@ -37,9 +37,9 @@ export default async function BillsPage() {
   return (
     <>
       <PageHeader icon={<ReceiptIcon aria-hidden />}
-        eyebrow="Accounting"
-        title="Bills"
-        description="What you owe vendors. Select bills to pay them in one go — each payment posts to the ledger."
+        eyebrow="Rent & Money"
+        title="Bills to pay"
+        description="Bills you owe — from repair companies, utilities and others. Tick the ones you want to pay, then press Pay. Add a new one with “New bill”."
         actions={canEdit ? <Button asChild><Link href="/app/new/bill" scroll={false}><Plus aria-hidden /> New bill</Link></Button> : null}
       />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

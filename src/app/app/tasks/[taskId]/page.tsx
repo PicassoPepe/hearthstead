@@ -40,20 +40,21 @@ export default async function TaskPage({ params }: { params: Promise<{ taskId: s
     ctx.db.account.findMany({ where: { type: "EXPENSE", active: true }, orderBy: { code: "asc" } }),
   ]);
   const where = d.property ? `${d.property.name}${d.unit && d.unit.name !== "Main" ? ` · ${d.unit.name}` : ""}` : "No property";
+  const images = photos.filter((f) => f.contentType?.startsWith("image/"));
   const repairs = expense.find((a) => a.systemKey === "REPAIRS") ?? expense[0];
 
   return (
     <>
       <EntityHeader
-        breadcrumb={<><Link href="/app/tasks" className="hover:underline">Tasks</Link>{t.parent ? <> / <Link href={`/app/tasks/${t.parent.id}`} className="hover:underline">#{t.parent.number}</Link></> : null} / #{t.number}</>}
+        breadcrumb={<><Link href="/app/tasks" className="hover:underline">Repairs</Link>{t.parent ? <> / <Link href={`/app/tasks/${t.parent.id}`} className="hover:underline">#{t.parent.number}</Link></> : null} / #{t.number}</>}
         title={`#${t.number} ${t.title}`}
         status={<><StatusBadge status={t.status} label={STATUS_LABEL[t.status]} /> <PriorityBadge p={t.priority} /></>}
         subtitle={<>{TASK_TYPE_LABEL[t.type]} · {where}{t.category ? ` · ${categoryLabel(t.category)}` : ""}</>}
         stats={[
           { label: "Due", value: t.dueDate ? formatDate(t.dueDate) : "—" },
-          { label: "Vendor", value: t.vendor?.name ?? "—" },
+          { label: "Who\u2019s fixing it", value: t.vendor?.name ?? "Not chosen yet" },
           { label: "Estimate", value: t.estimateCents != null ? formatMoney(t.estimateCents) : "—" },
-          { label: "Assignees", value: d.assigneeNames.join(", ") || "Unassigned" },
+          { label: "Staff on it", value: d.assigneeNames.join(", ") || "No one yet" },
         ]}
         actions={
           <>
@@ -67,8 +68,27 @@ export default async function TaskPage({ params }: { params: Promise<{ taskId: s
       />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="grid gap-4 lg:col-span-2">
+          {images.length ? (
+            <Card>
+              <CardHeader><CardTitle>Photos ({images.length})</CardTitle></CardHeader>
+              <CardContent>
+                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" data-testid="repair-photos">
+                  {images.map((f) => (
+                    <li key={f.id}>
+                      <a href={`/api/files/${f.id}`} target="_blank" rel="noopener" className="block overflow-hidden rounded-lg border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`/api/files/${f.id}`} alt={f.name} loading="lazy" className="aspect-square w-full object-cover transition hover:opacity-90" />
+                        <span className="sr-only"> (open full size in a new tab)</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs text-muted-foreground">Tap a photo to see it full size.</p>
+              </CardContent>
+            </Card>
+          ) : null}
           <Card>
-            <CardHeader><CardTitle>Details</CardTitle></CardHeader>
+            <CardHeader><CardTitle>What&apos;s wrong</CardTitle></CardHeader>
             <CardContent className="grid gap-3 text-sm">
               <p className="whitespace-pre-wrap">{t.description || <span className="text-muted-foreground">No description.</span>}</p>
               {t.type === "TENANT_REQUEST" ? (
@@ -109,12 +129,12 @@ export default async function TaskPage({ params }: { params: Promise<{ taskId: s
           ) : null}
 
           <Card>
-            <CardHeader><CardTitle>Photos & files</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Add photos or files</CardTitle></CardHeader>
             <CardContent><FilesPanel entityType="Task" entityId={t.id} files={photos} canEdit={canEdit || isVendor} /></CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Activity</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Notes & updates</CardTitle></CardHeader>
             <CardContent>
               <ActivityFeed
                 taskId={t.id}

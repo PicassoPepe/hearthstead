@@ -290,7 +290,7 @@ export function BillFromInvoice({ taskId, expenseAccounts, defaultAccountId, tod
         <DialogContent aria-describedby="inv-desc">
           <DialogHeader>
             <DialogTitle>Convert vendor invoice to a bill</DialogTitle>
-            <DialogDescription id="inv-desc">Posts Dr expense / Cr Accounts Payable, tagged to this property and unit. Pay it from Accounting → Bills.</DialogDescription>
+            <DialogDescription id="inv-desc">Saves the repair company’s bill so you remember to pay it. Pay it later from Rent &amp; Money → Bills to pay.</DialogDescription>
           </DialogHeader>
           <form className="contents" onSubmit={async (e) => {
             e.preventDefault();

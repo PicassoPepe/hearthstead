@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createItem } from "@/lib/nav";
+import { createItem, createTitle } from "@/lib/nav";
 import { requireContext } from "@/server/context";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,7 +14,7 @@ export default async function CreatePage({ params, searchParams }: { params: Pro
   const ctx = await requireContext();
   return (
     <div className={["property", "lease", "journal-entry"].includes(item.kind) ? "mx-auto max-w-3xl" : "mx-auto max-w-2xl"}>
-      <PageHeader title={`New ${item.label.toLowerCase()}`} />
+      <PageHeader title={createTitle(item)} />
       <Card className={["property", "lease"].includes(item.kind) ? "flex min-h-[600px] flex-col overflow-hidden" : undefined}>
         {["property", "lease"].includes(item.kind) ? (
           <CreateBody kind={item.kind} ctx={ctx} mode="page" query={query} />

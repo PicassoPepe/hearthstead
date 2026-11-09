@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Rocket, Building2, CircleDollarSign, DoorOpen, FileSignature, MessageSquare, PieChart, Wallet, Wrench } from "lucide-react";
+import { Rocket, Building2, CircleDollarSign, DoorOpen, FileSignature, MessageSquare, PieChart, Wallet, Wrench, UserPlus, CheckCircle2, ChevronRight, Receipt, Siren } from "lucide-react";
+import { BigActions, type BigAction } from "@/components/patterns/big-actions";
+import { addDays } from "@/lib/dates";
 import { requireContext } from "@/server/context";
 import { StatCard } from "@/components/patterns/stat-card";
 import { GettingStarted, type ChecklistItem } from "@/components/overview/getting-started";
@@ -11,7 +13,7 @@ import { Dashboard } from "@/components/overview/dashboard";
 import { widgetData } from "@/server/overview/widgets";
 import { PRESETS, WIDGET_IDS, WIDGET_META, redactWidgetData, sanitizeLayout } from "@/lib/widgets";
 
-export const metadata = { title: "Overview" };
+export const metadata = { title: "Home" };
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ propertyId?: string; portfolioId?: string }> }) {
   const sp = await searchParams;
@@ -58,13 +60,33 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
   const showChecklist = ctx.user.preferences.checklistDismissed !== true && checklist.some((c) => !c.done);
   const firstName = ctx.user.name?.split(" ")[0];
-  const quickActions = [
-    { label: "Add property", href: "/app/new/property", icon: Building2, ok: can(ctx.permissions, "rentals", "edit") },
-    { label: "New lease", href: "/app/new/lease", icon: FileSignature, ok: can(ctx.permissions, "leasing", "edit") },
-    { label: "Record payment", href: "/app/new/payment", icon: Wallet, ok: can(ctx.permissions, "leasing", "edit") },
-    { label: "New task", href: "/app/new/task", icon: Wrench, ok: can(ctx.permissions, "tasks", "edit") },
-    { label: "Message", href: "/app/communications", icon: MessageSquare, ok: can(ctx.permissions, "communications", "view") },
-  ].filter((q) => q.ok);
+  const doThings: BigAction[] = ([
+    { label: "Report a repair", hint: "Something is broken — add photos", href: "/app/new/repair", icon: Wrench, tone: "primary", ok: can(ctx.permissions, "tasks", "edit") },
+    { label: "Record a rent payment", hint: "A tenant paid you (cash, check, etc.)", href: "/app/new/payment", icon: Wallet, tone: "primary", ok: can(ctx.permissions, "leasing", "edit") },
+    { label: "Add a tenant", hint: "Someone is moving in — set up their lease", href: "/app/new/lease", icon: UserPlus, ok: can(ctx.permissions, "leasing", "edit") },
+    { label: "Add a property", hint: "A house or building you rent out", href: "/app/new/property", icon: Building2, ok: can(ctx.permissions, "rentals", "edit") },
+    { label: "Send a message", hint: "Text or email a tenant or owner", href: "/app/communications", icon: MessageSquare, ok: can(ctx.permissions, "communications", "view") },
+    { label: "See who owes rent", hint: "Everyone who is behind", href: "/app/money#who-owes", icon: CircleDollarSign, ok: can(ctx.permissions, "accounting", "view") || can(ctx.permissions, "leasing", "view") },
+  ] as (BigAction & { ok: boolean })[]).filter((a) => a.ok);
+
+  const canTasks = can(ctx.permissions, "tasks", "view");
+  const scopeTask = scope.length ? { propertyId: { in: scope } } : {};
+  const [newRequests, emergencies, unreadConvos, billsDue, endingSoon] = await Promise.all([
+    canTasks ? ctx.db.task.count({ where: { ...scopeTask, type: "TENANT_REQUEST", status: "NOT_STARTED" } }) : 0,
+    canTasks ? ctx.db.task.count({ where: { ...scopeTask, priority: "URGENT", status: { in: ["NOT_STARTED", "IN_PROGRESS", "WAITING"] } } }) : 0,
+    can(ctx.permissions, "communications", "view") ? ctx.db.conversation.count({ where: { unreadCount: { gt: 0 } } }) : 0,
+    can(ctx.permissions, "accounting", "view") ? ctx.db.bill.count({ where: { status: { in: ["OPEN", "PARTIALLY_PAID"] }, dueDate: { lte: addDays(today, 7) } } }) : 0,
+    can(ctx.permissions, "leasing", "view") ? ctx.db.lease.count({ where: { status: "ACTIVE", endDate: { gte: today, lte: addDays(today, 60) }, ...(scope.length ? { propertyId: { in: scope } } : {}) } }) : 0,
+  ]);
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const attention = [
+    { n: emergencies, text: `${plural(emergencies, "emergency repair is", "emergency repairs are")} not finished`, href: "/app/tasks?show=emergencies", icon: Siren, danger: true },
+    { n: owed.length, text: `${plural(owed.length, "tenant owes", "tenants owe")} rent (${formatMoney(owed.reduce((s, b) => s + b, 0), { showCents: false })} total)`, href: "/app/money#who-owes", icon: CircleDollarSign, danger: false },
+    { n: newRequests, text: `${plural(newRequests, "new repair request", "new repair requests")} from tenants`, href: "/app/tasks?show=requests", icon: Wrench, danger: false },
+    { n: unreadConvos, text: `${plural(unreadConvos, "conversation has", "conversations have")} new messages`, href: "/app/communications", icon: MessageSquare, danger: false },
+    { n: billsDue, text: `${plural(billsDue, "bill is", "bills are")} due this week or late`, href: "/app/accounting/bills", icon: Receipt, danger: false },
+    { n: endingSoon, text: `${plural(endingSoon, "lease ends", "leases end")} in the next 60 days`, href: "/app/leasing/renewals", icon: FileSignature, danger: false },
+  ].filter((a) => a.n > 0);
 
   return (
     <>
@@ -72,15 +94,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-white/10 blur-2xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-24 right-24 size-56 rounded-full bg-amber-300/20 blur-2xl" />
         <p className="relative text-sm text-teal-100">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
-        <h1 id="hero-h" className="relative mt-1 font-display text-3xl font-bold tracking-tight">{firstName ? `Good to see you, ${firstName}` : "Overview"}</h1>
-        <p className="relative mt-1 max-w-2xl text-teal-50">Here&apos;s what&apos;s happening at {ctx.org.name}.</p>
-        <div className="relative mt-5 flex flex-wrap gap-2">
-          {quickActions.map((q) => (
-            <Link key={q.href} href={q.href} scroll={false} className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-2 text-sm font-medium text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-white/25 focus-visible:outline-white">
-              <q.icon className="size-4" aria-hidden /> {q.label}
-            </Link>
-          ))}
-        </div>
+        <h1 id="hero-h" className="relative mt-1 font-display text-3xl font-bold tracking-tight">{firstName ? `Hi, ${firstName}` : "Home"}</h1>
+        <p className="relative mt-1 max-w-2xl text-teal-50">This is your home page for {ctx.org.name}. Pick a big button below to get something done.</p>
       </section>
       {propertyCount === 0 && ctx.user.preferences.setupDone !== true && can(ctx.permissions, "settings", "edit") ? (
         <section aria-labelledby="welcome-h" className="mb-6 flex flex-col gap-4 rounded-card border border-primary/30 bg-primary-soft/40 p-5 sm:flex-row sm:items-center">
@@ -99,13 +114,41 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       ) : null}
       {showChecklist ? <GettingStarted items={checklist} /> : null}
 
+      {doThings.length ? (
+        <section aria-labelledby="do-h" className="mb-6">
+          <h2 id="do-h" className="mb-3 text-xl font-bold">What do you want to do?</h2>
+          <BigActions items={doThings} />
+        </section>
+      ) : null}
+
+      <section aria-labelledby="attn-h" className="mb-6" data-testid="needs-attention">
+        <h2 id="attn-h" className="mb-3 text-xl font-bold">Needs your attention</h2>
+        {attention.length ? (
+          <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface shadow-card">
+            {attention.map((a) => (
+              <li key={a.href}>
+                <Link href={a.href} className="flex items-center gap-3 px-4 py-3.5 text-base hover:bg-surface-muted focus-visible:outline-2">
+                  <a.icon className={a.danger ? "size-5 shrink-0 text-danger" : "size-5 shrink-0 text-primary"} aria-hidden />
+                  <span className={a.danger ? "flex-1 font-semibold text-danger" : "flex-1"}>{a.text}</span>
+                  <span className="flex items-center text-sm font-medium text-primary">Look <ChevronRight className="size-4" aria-hidden /></span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="flex items-center gap-2 rounded-card border border-border bg-surface px-4 py-3.5 text-base"><CheckCircle2 className="size-5 text-success" aria-hidden /> All caught up — nothing needs you right now.</p>
+        )}
+      </section>
+
+      <h2 className="mb-3 text-xl font-bold">Your numbers</h2>
+
       <section aria-labelledby="kpis" className="mb-6">
         <h2 id="kpis" className="sr-only">Key numbers</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard icon={<Building2 />} label="Properties" value={propertyCount} href="/app/rentals" hint={propertyCount ? `${ownerCount} owner${ownerCount === 1 ? "" : "s"}` : "Add your first property"} />
-          <StatCard icon={<DoorOpen />} label="Units" value={unitAgg._count} href="/app/rentals/units" hint={unitAgg._count ? `${formatMoney(unitAgg._sum.marketRentCents ?? 0, { showCents: false })} / mo market rent` : "No units yet"} />
-          <StatCard icon={<PieChart />} label="Occupancy" value={unitAgg._count ? `${Math.round((occupied.size / unitAgg._count) * 100)}%` : "—"} hint={`${occupied.size} of ${unitAgg._count} units occupied`} href="/app/rentals/units" />
-          <StatCard icon={<CircleDollarSign />} label="Collected this month" value={formatMoney(collected._sum.amountCents ?? 0, { showCents: false })} hint={`${collected._count} payments · ${formatMoney(owed.reduce((s, b) => s + b, 0), { showCents: false })} outstanding`} href="/app/leasing" />
+          <StatCard icon={<DoorOpen />} label="Units (homes & apartments)" value={unitAgg._count} href="/app/rentals/units" hint={unitAgg._count ? `${formatMoney(unitAgg._sum.marketRentCents ?? 0, { showCents: false })} / mo market rent` : "No units yet"} />
+          <StatCard icon={<PieChart />} label="Rented out" value={unitAgg._count ? `${Math.round((occupied.size / unitAgg._count) * 100)}%` : "—"} hint={`${occupied.size} of ${unitAgg._count} have a tenant`} href="/app/rentals/units" />
+          <StatCard icon={<CircleDollarSign />} label="Collected this month" value={formatMoney(collected._sum.amountCents ?? 0, { showCents: false })} hint={`${collected._count} payments · ${formatMoney(owed.reduce((s, b) => s + b, 0), { showCents: false })} outstanding`} href="/app/money" />
         </div>
       </section>
 

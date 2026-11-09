@@ -23,7 +23,7 @@ export default async function PropertiesPage() {
     <>
       <PageHeader icon={<Building2Icon aria-hidden />}
         title="Properties"
-        description="Every building and home you manage."
+        description="Every house or building you rent out. Click one to see its units, tenants, repairs, money and land records. To add a new one, press “Add property”."
         actions={
           canEdit ? (
             <>
