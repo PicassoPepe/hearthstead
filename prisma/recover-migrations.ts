@@ -8,6 +8,7 @@
  *  - migrations listed in SAFE_TO_RETRY (single statements that either fully ran or didn't).
  * Anything else is left alone and Start DeedWood stops with Prisma's message, as before.
  */
+import { createNodePrisma } from "./node-client.mjs";
 import { PrismaClient } from "@prisma/client";
 
 export const SAFE_TO_RETRY = new Set(["20261114000000_scale_yearly_prices"]);
@@ -26,7 +27,7 @@ export async function recoverFailedMigrations(db: PrismaClient): Promise<string[
 }
 
 if (process.argv[1]?.endsWith("recover-migrations.ts")) {
-  const db = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
+  const db = createNodePrisma(process.env.DATABASE_ADMIN_URL);
   recoverFailedMigrations(db)
     .then((names) => { for (const n of names) console.log(`Retrying the database update "${n}" that didn't finish last time.`); })
     .catch((e) => { console.error(e); process.exitCode = 1; })

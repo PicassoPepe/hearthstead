@@ -14,10 +14,10 @@
  *
  * Every demo password is: Demo1234!x
  */
-import { PrismaClient } from "@prisma/client";
 // Demo data includes online-payment history and autopays, so the loader may use them even while
 // online payments are "coming soon" for real use (this only affects this seeding process).
 process.env.PAYMENTS_ENABLED = "1";
+import { createNodePrisma } from "./node-client.mjs";
 import bcrypt from "bcryptjs";
 import { provisionOrganization, purgeOrganizations } from "../src/server/orgs";
 import { seedRentals } from "./seed-rentals";
@@ -33,7 +33,7 @@ import { seedOps } from "./seed-ops";
 import { seedWebsite } from "./seed-website";
 import { todayIn } from "../src/lib/dates";
 
-const db = new PrismaClient();
+const db = createNodePrisma();
 export const DEMO_PASSWORD = "Demo1234!x";
 
 const PEOPLE = [

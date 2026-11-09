@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { createScopedClient } from "../src/server/dal";
 import { getStorage } from "../src/adapters/storage";
 import { imageUrl } from "../src/server/images/service";
@@ -9,7 +9,7 @@ import { illustration, logoPng } from "../src/server/images/illustrations";
  * windows, door, lawn) encoded as PNG. Each property gets a cover + two variations, and the org a logo.
  */
 export async function seedImages(appUrl: string, orgId: string, adminId: string) {
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const app = createNodePrisma(appUrl);
   const db = createScopedClient(app, { orgId, userId: adminId });
   const store = async (name: string, bytes: Buffer, category: string, link: { type: string; id: string } | null) => {
     const key = `${orgId}/seed-${category.toLowerCase()}-${name}`;

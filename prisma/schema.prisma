@@ -7,9 +7,11 @@
 // Phase 1 models live here; later phases append to this file.
 
 generator client {
-  provider = "prisma-client-js"
-  // Driver adapters (Neon / Hyperdrive) are stable in Prisma 6.19. The old
-  // previewFeatures = ["driverAdapters"] flag now warns and is not required.
+  provider   = "prisma-client-js"
+  // JS query compiler. The Rust query engine does not run on Workers, and the
+  // edge build throws if code touches Prisma.dmmf. Node uses the `pg` adapter
+  // (same URLs as before). Workers use the Neon adapter.
+  engineType = "client"
 }
 
 datasource db {

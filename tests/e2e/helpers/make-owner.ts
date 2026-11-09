@@ -1,10 +1,10 @@
 /** Test-only: create a platform owner with a password and two-factor already on. Prints JSON. */
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "../../../prisma/node-client.mjs";
 import { hashPassword } from "../../../src/server/auth/password";
 import { newTotpSecret } from "../../../src/server/platform/totp";
 
 async function main() {
-  const db = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
+  const db = createNodePrisma(process.env.DATABASE_ADMIN_URL);
   const email = `owner-console-${Date.now()}@example.org`;
   const password = "Owner-Console-Test-1";
   const secret = newTotpSecret();

@@ -1,4 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
+import { MODEL_META } from "@/server/dal/model-meta.generated";
 import { CrossTenantError, scopeArgs } from "@/server/dal/scope";
 
 const ORG = "org_a";
@@ -56,5 +58,14 @@ describe("scopeArgs (data-access layer tenant pinning)", () => {
   it("leaves global models (User, auth tables) untouched", () => {
     expect(scopeArgs("User", "findMany", { where: { email: "a" } }, ORG)).toEqual({ where: { email: "a" } });
     expect(scopeArgs("VerificationToken", "deleteMany", {}, ORG)).toEqual({});
+  });
+
+  it("matches Prisma.dmmf so Workers do not need the edge-blocked getter", () => {
+    const fromDmmf = Object.fromEntries(Prisma.dmmf.datamodel.models.map((m) => {
+      const names = new Set(m.fields.map((f) => f.name));
+      const orgField = m.name === "Organization" ? "id" : names.has("organizationId") ? "organizationId" : null;
+      return [m.name, { orgField, softDelete: names.has("deletedAt") }];
+    }));
+    expect(MODEL_META).toEqual(fromDmmf);
   });
 });

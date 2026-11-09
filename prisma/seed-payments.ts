@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import bcrypt from "bcryptjs";
 import { createScopedClient } from "../src/server/dal";
 import * as P from "../src/server/payments/service";
@@ -10,8 +10,8 @@ import { addDays } from "../src/lib/dates";
  * saved methods, autopay for a handful of tenants, and recent online payments in every status.
  */
 export async function seedPayments(adminUrl: string, appUrl: string, orgId: string, staffUserId: string, today: Date, password: string) {
-  const admin = new PrismaClient({ datasources: { db: { url: adminUrl } } });
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const admin = createNodePrisma(adminUrl);
+  const app = createNodePrisma(appUrl);
   const db = createScopedClient(app, { orgId, userId: staffUserId });
   await P.connectProcessor(db, "Maple & Main Property Co.", "office@maplemain.example");
   // Payments are on: pass card fees through, ACH free; partial payments allowed company-wide.

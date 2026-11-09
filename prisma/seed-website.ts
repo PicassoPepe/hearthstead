@@ -1,11 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { createScopedClient } from "../src/server/dal";
 import { getWebsite, publish, saveDraft } from "../src/server/site/service";
 import { siteSchema, type Block } from "../src/lib/site/blocks";
 
 /** A published demo website for Maple & Main (Modern Apartments design + a few real-looking touches). */
 export async function seedWebsite(appUrl: string, orgId: string, adminId: string) {
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const app = createNodePrisma(appUrl);
   const db = createScopedClient(app, { orgId, userId: adminId });
   const w = await getWebsite(db);
   const c = siteSchema.parse(w.draft);

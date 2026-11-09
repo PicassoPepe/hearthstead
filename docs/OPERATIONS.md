@@ -30,6 +30,8 @@ Cloudflare account: the same account as Oozlings. DeedWood does not have its own
 | `DATABASE_ADMIN_URL` | Neon **direct** connection string (host does **not** contain `-pooler`), user `deedwood_owner` | GitHub Actions secret, and a Worker secret (`wrangler secret put`) |
 | `DATABASE_URL` | Neon **pooled** connection string (host contains `-pooler`), user `deedwood_app` | GitHub Actions secret, and a Worker secret |
 
+The Worker uses Prisma's JavaScript query compiler and the Neon driver (not the Rust database engine, which cannot run on Workers). `Prisma.dmmf` is not read at runtime on the Worker.
+
 `deedwood_app` already exists. `prisma/rls.sql` creates that role only when it is missing, and only with the laptop password `deedwood_app`. The GitHub Action sets `DEEDWOOD_RLS_MODE=production`, which **removes** that statement before running. Any admin URL on `*.neon.tech` does the same, including if someone runs the script by hand. The Action does **not** take `APP_DB_PASSWORD` and does **not** run `ALTER ROLE`. Grants and policies are still applied. The password on `deedwood_app` stays the one already in Neon, which is the password inside `DATABASE_URL`.
 
 Do not point `scripts/serve.mjs` (the old Railway start) at Neon. That script refuses a `*.neon.tech` host because it would replace the app role's password.

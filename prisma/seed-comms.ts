@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { createScopedClient } from "../src/server/dal";
 import * as C from "../src/server/comms/service";
 import { saveAnnouncement } from "../src/server/comms/announcements";
@@ -8,8 +8,8 @@ import { saveAnnouncement } from "../src/server/comms/announcements";
  * conversations across portal and SMS, an owner thread, one sent and one scheduled announcement.
  */
 export async function seedComms(adminUrl: string, appUrl: string, orgId: string, users: Record<string, string>) {
-  const admin = new PrismaClient({ datasources: { db: { url: adminUrl } } });
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const admin = createNodePrisma(adminUrl);
+  const app = createNodePrisma(appUrl);
   const staffId = users["pm@example.com"]!;
   const db = createScopedClient(app, { orgId, userId: staffId });
   const pm = { userId: staffId, name: "Priya Manager" };

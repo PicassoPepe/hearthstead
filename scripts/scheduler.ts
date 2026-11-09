@@ -5,7 +5,7 @@
  * it hasn't run today, so a computer that was off overnight catches up. Both jobs are idempotent.
  * (With Redis available, `pnpm worker` does the same through BullMQ.)
  */
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "../prisma/node-client.mjs";
 import { loadEnvFile } from "node:process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { runMinutelyForAllOrgs, runNightlyForAllOrgs } from "../src/server/jobs/runner";
@@ -14,8 +14,8 @@ import { runBackup } from "../src/server/ops/backup-job";
 import { recordError } from "../src/server/ops/errors";
 
 if (existsSync(".env")) loadEnvFile(".env");
-const admin = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
-const app = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+const admin = createNodePrisma(process.env.DATABASE_ADMIN_URL);
+const app = createNodePrisma(process.env.DATABASE_URL);
 
 const STAMP = ".deedwood/last-nightly";
 const today = () => new Date().toLocaleDateString("en-CA"); // local YYYY-MM-DD

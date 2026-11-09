@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { createNodePrisma } from "./node-client.mjs";
 import { createHash } from "node:crypto";
 import { createScopedClient } from "../src/server/dal";
 import { saveWebhookEndpoint } from "../src/server/platform/events";
@@ -10,7 +10,7 @@ export const DEMO_API_KEY = "dw_live_00dea100_localDemoKeyDoNotUseInProduction";
 
 /** Phase 10 demo data: demo API key, a webhook endpoint (dev sink), two workflows, agents with proposals. */
 export async function seedPlatform(appUrl: string, orgId: string, users: Record<string, string>) {
-  const app = new PrismaClient({ datasources: { db: { url: appUrl } } });
+  const app = createNodePrisma(appUrl);
   const admin = users["admin@example.com"]!;
   const db = createScopedClient(app, { orgId, userId: admin });
   await db.apiKey.create({ data: { organizationId: orgId, name: "Demo key (local only)", prefix: "dw_live_00dea100", secretHash: createHash("sha256").update(DEMO_API_KEY).digest("hex"), scope: "write", environment: "live", createdById: admin } });

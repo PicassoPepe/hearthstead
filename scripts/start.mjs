@@ -11,6 +11,7 @@
  *
  * Use your own Postgres instead: set DEEDWOOD_DB=external and the two DATABASE_* URLs in .env.
  */
+import { createNodePrisma } from "../prisma/node-client.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -115,8 +116,7 @@ run([bin.tsx, "prisma/apply-rls.ts"], "Database security setup");
 if (!external) run([bin.tsx, "prisma/convert-utf8.ts"], "Database upgrade");
 run([bin.tsx, "prisma/backfill.ts"], "Database backfill");
 
-const { PrismaClient } = (await import("@prisma/client")).default;
-const db = new PrismaClient({ datasources: { db: { url: env.DATABASE_ADMIN_URL } } });
+const db = createNodePrisma(env.DATABASE_ADMIN_URL);
 const orgs = await db.organization.count().catch(() => 0);
 await db.$disconnect();
 if (orgs === 0) {
