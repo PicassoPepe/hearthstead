@@ -409,3 +409,18 @@ Decisions made without asking, per the brief. Each can be changed later.
   can be submitted without paying the fee online. Tests and the demo seed switch it on.
 - Not yet (later SEO phases): MDX content engine, Kentucky guide, calculators, comparisons,
   glossary, Spanish hreflang, IndexNow, listing-page JSON-LD, builder SEO score.
+
+## Launch-critical: password reset, email confirmation, backups, alerts
+
+- Password reset / email confirmation use `AccountToken` (SHA-256 of the token stored; newest
+  link only; 30 min / 3 days; single use claimed atomically). Reset revokes all sessions, clears
+  the lockout and confirms the email. Existing users were backfilled as confirmed. API keys and
+  connecting payments need a confirmed email. (2FA-required-for-admins and passkeys: later.)
+- Backups: no pg_dump dependency — every table is read with `row_to_json` and restored with
+  `json_populate_recordset` in foreign-key order inside one transaction, gzip + optional
+  AES-256-GCM (`BACKUP_KEY`). Stored through the storage adapter (Railway `/data` volume or S3),
+  nightly before the jobs, newest `BACKUP_KEEP` kept. A test restores a full backup and compares
+  every table's row count.
+- Errors: `ErrorEvent` (platform-only) from server actions, API 500s, jobs, and Next's
+  `onRequestError`; alert email ≤ 1/hour; optional Sentry via its store endpoint (no SDK).
+- `/api/health` for uptime monitors. Go-live steps: docs/LAUNCH.md.

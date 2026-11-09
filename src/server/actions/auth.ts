@@ -91,6 +91,7 @@ export async function signupAction(input: z.input<typeof signupSchema>): Promise
     data: { email, name: parsed.data.name, passwordHash: await hashPassword(parsed.data.password) },
   });
   const { orgId } = await provisionOrganization(adminDb, { name: parsed.data.orgName, ownerUserId: user.id });
+  await sendVerification(user.id, email);
   (await cookies()).set(ORG_COOKIE, orgId, cookieOptions());
   await signIn("password", { email, password: parsed.data.password, redirect: false });
   redirect("/app/setup");
@@ -114,4 +115,75 @@ export async function switchOrganization(orgId: string): Promise<ActionResult> {
 
 function safeCallback(url: string): string {
   return url.startsWith("/") && !url.startsWith("//") ? url : "/app/overview";
+}
+
+// ─── Forgot password & email confirmation ──────────────────────────────────────
+
+const appBase = () => (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+
+/** Always answers the same way, so it can't be used to find out who has an account. */
+export async function requestPasswordResetAction(raw: { email: string }): Promise<ActionResult> {
+  const parsed = magicSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Enter a valid email", fieldErrors: { email: "Enter a valid email" } };
+  const email = parsed.data.email.toLowerCase();
+  const h = await headers();
+  const ip = clientIp(h);
+  try {
+    if (ip !== "local") await RL.hit("magicIp", `reset:${ip}`);
+    await RL.hit("resetEmail", email);
+  } catch (e) {
+    if (!(e instanceof RL.RateLimited)) throw e;
+    await securityEvent("RESET_LIMITED", { email, ip, userAgent: h.get("user-agent") });
+    return { ok: true, data: undefined as void };
+  }
+  const user = await adminDb.user.findUnique({ where: { email } });
+  if (user && !user.deletedAt) {
+    const { issueToken } = await import("@/server/auth/account-tokens");
+    const { passwordResetEmail } = await import("@/server/emails");
+    const { getEmailProvider } = await import("@/adapters");
+    const token = await issueToken(user.id, "RESET_PASSWORD");
+    const m = passwordResetEmail(`${appBase()}/login/reset?token=${encodeURIComponent(token)}`);
+    await getEmailProvider().send({ to: email, organizationId: null, subject: m.subject, html: m.html, text: m.text }).catch((e) => console.error("[reset] email failed", e));
+    await securityEvent("PASSWORD_RESET_REQUESTED", { email, userId: user.id, ip, userAgent: h.get("user-agent") });
+  }
+  return { ok: true, data: undefined as void };
+}
+
+export async function resetPasswordAction(token: string, password: string): Promise<ActionResult> {
+  try {
+    const { resetPassword } = await import("@/server/auth/account-tokens");
+    const user = await resetPassword(token, password);
+    await RL.clear("loginFailEmail", user.email);
+    const h = await headers();
+    await securityEvent("PASSWORD_RESET", { email: user.email, userId: user.id, ip: clientIp(h), userAgent: h.get("user-agent") });
+    return { ok: true, data: undefined as void, message: "Password changed — sign in with your new password." };
+  } catch (e) {
+    const { UserFacingError } = await import("@/server/action-result");
+    if (e instanceof UserFacingError) return { ok: false, error: e.message, fieldErrors: e.fieldErrors };
+    throw e;
+  }
+}
+
+async function sendVerification(userId: string, email: string) {
+  const { issueToken } = await import("@/server/auth/account-tokens");
+  const { verifyEmailEmail } = await import("@/server/emails");
+  const { getEmailProvider } = await import("@/adapters");
+  const token = await issueToken(userId, "VERIFY_EMAIL");
+  const m = verifyEmailEmail(`${appBase()}/login/verify?token=${encodeURIComponent(token)}`);
+  await getEmailProvider().send({ to: email, organizationId: null, subject: m.subject, html: m.html, text: m.text }).catch((e) => console.error("[verify] email failed", e));
+}
+
+export async function resendVerificationAction(): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "Sign in first" };
+  const u = await adminDb.user.findUnique({ where: { id: session.user.id } });
+  if (!u) return { ok: false, error: "Sign in first" };
+  if (u.emailVerified) return { ok: true, data: undefined as void, message: "Your email is already confirmed" };
+  try {
+    await RL.hit("verifyUser", u.id);
+  } catch {
+    return { ok: false, error: "We've sent a few already — check your inbox and spam folder, or try again in an hour." };
+  }
+  await sendVerification(u.id, u.email);
+  return { ok: true, data: undefined as void, message: `Sent — check ${u.email}` };
 }

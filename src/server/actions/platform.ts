@@ -1,5 +1,6 @@
 "use server";
 
+import { requireVerifiedEmail } from "@/server/auth/verified";
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -24,6 +25,7 @@ const done = (p: string) => revalidatePath(p, "layout");
 export async function createApiKeyAction(raw: { name: string; scope: "read" | "write"; environment: "live" | "test" }): Promise<ActionResult<{ key: string }>> {
   return runAction(async () => {
     const ctx = await requirePermission("settings", "edit");
+    await requireVerifiedEmail(ctx.user.id);
     const v = z.object({ name: z.string().max(60), scope: z.enum(["read", "write"]), environment: z.enum(["live", "test"]) }).parse(raw);
     const r = await I.createApiKey(ctx.db, v);
     done("/app/settings/integrations");
@@ -280,3 +282,4 @@ export async function installLicenseAction(text: string): Promise<ActionResult<{
     return { customer: c.customer, validUntil: c.validUntil, maxUnits: c.maxUnits };
   }, "License added");
 }
+

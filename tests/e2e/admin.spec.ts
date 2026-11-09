@@ -68,3 +68,9 @@ test("platform owner edits a price; licenses page explains setup", async ({ page
   await page.getByRole("navigation", { name: "Owner console" }).getByRole("link", { name: "Licenses" }).click();
   await expect(page.getByRole("heading", { name: "Licenses (computer installs)" })).toBeVisible();
 });
+
+test("health endpoint answers for uptime monitors", async ({ request }) => {
+  const r = await request.get("/api/health");
+  expect(r.status()).toBe(200);
+  expect(await r.json()).toMatchObject({ ok: true });
+});

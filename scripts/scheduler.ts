@@ -10,6 +10,8 @@ import { loadEnvFile } from "node:process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { runMinutelyForAllOrgs, runNightlyForAllOrgs } from "../src/server/jobs/runner";
 import { licenseCheckIn } from "../src/server/license/local";
+import { runBackup } from "../src/server/ops/backup-job";
+import { recordError } from "../src/server/ops/errors";
 
 if (existsSync(".env")) loadEnvFile(".env");
 const admin = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_ADMIN_URL } } });
@@ -24,6 +26,9 @@ async function nightly() {
   if (busy) return;
   busy = true;
   try {
+    // Back up the whole database first (kept: the newest 14), then run the nightly jobs.
+    const b = await runBackup(admin);
+    console.log(b.ok ? `[jobs] backup saved (${Math.round(b.bytes / 1024)} KB)` : `[jobs] backup FAILED: ${b.error}`);
     const r = await runNightlyForAllOrgs({ admin, app });
     // Computer installs: check the license in with DeedWood (skipped when offline / not set up).
     const units = await admin.unit.count({ where: { deletedAt: null, property: { deletedAt: null } } });
@@ -34,6 +39,7 @@ async function nightly() {
     console.log(`[jobs] nightly done ${JSON.stringify(r).slice(0, 300)}`);
   } catch (e) {
     console.error("[jobs] nightly failed", e);
+    await recordError("job", e, { path: "nightly" });
   } finally {
     busy = false;
   }
@@ -44,6 +50,7 @@ async function minutely() {
     await runMinutelyForAllOrgs({ admin, app });
   } catch (e) {
     console.error("[jobs] minutely failed", e);
+    await recordError("job", e, { path: "minutely" });
   }
 }
 

@@ -17,6 +17,10 @@ export const RULES = {
   signupIp: { limit: 6, windowSec: 60 * 60 },
   magicIp: { limit: 10, windowSec: 15 * 60 },
   magicEmail: { limit: 4, windowSec: 15 * 60 },
+  /** "Forgot password" emails. */
+  resetEmail: { limit: 3, windowSec: 60 * 60 },
+  /** "Confirm your email" re-sends. */
+  verifyUser: { limit: 5, windowSec: 60 * 60 },
   /** Two-factor setup / turn-off codes in Settings → Security. */
   totpUser: { limit: 10, windowSec: 15 * 60 },
 } satisfies Record<string, Rule>;

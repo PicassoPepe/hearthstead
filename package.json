@@ -26,6 +26,8 @@
     "jobs:nightly": "tsx --conditions=react-server scripts/run-nightly.ts",
     "check-env": "node scripts/check-env.mjs",
     "platform:owner": "tsx scripts/seed-platform-owner.ts",
+    "db:backup": "tsx --conditions=react-server scripts/backup.ts",
+    "db:restore": "tsx --conditions=react-server scripts/backup.ts restore",
     "license:keygen": "node scripts/license-keygen.mjs",
     "ledger:check": "tsx --conditions=react-server scripts/check-ledger.ts"
   },

@@ -2338,3 +2338,50 @@ model WebsiteVersion {
 
   @@index([organizationId, publishedAt])
 }
+
+/// One-time links for "forgot password" and "confirm your email". Only a hash of the token is
+/// stored; each link works once and expires. Platform-only table.
+model AccountToken {
+  id        String    @id @default(cuid())
+  userId    String
+  /// RESET_PASSWORD | VERIFY_EMAIL
+  purpose   String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, purpose])
+}
+
+/// Nightly whole-database backups (the file lives in file storage under `key`). Platform-only.
+model BackupRun {
+  id        String   @id @default(cuid())
+  key       String?
+  bytes     Int      @default(0)
+  tables    Int      @default(0)
+  rows      Int      @default(0)
+  encrypted Boolean  @default(false)
+  ok        Boolean  @default(true)
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Unexpected server errors, for the owner console and alert emails. Platform-only; no request bodies stored.
+model ErrorEvent {
+  id          String   @id @default(cuid())
+  /// action | route | render | job | api
+  source      String
+  message     String
+  stack       String?
+  path        String?
+  digest      String?
+  orgId       String?
+  fingerprint String
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([fingerprint, createdAt])
+}

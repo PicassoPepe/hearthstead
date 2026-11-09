@@ -111,6 +111,7 @@ export const SETTINGS_NAV: NavLeaf[] = [
   { label: "Integrations", href: "/app/settings/integrations", keywords: ["api", "webhooks", "quickbooks"] },
   { label: "Security", href: "/app/settings/security", keywords: ["2fa", "sessions", "support access"] },
   { label: "Billing", href: "/app/settings/billing" },
+  { label: "Backups", href: "/app/settings/backups", keywords: ["backup", "restore", "export", "download"] },
 ];
 
 export const NAV_BOTTOM: NavSection[] = [
