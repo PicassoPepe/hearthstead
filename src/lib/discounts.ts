@@ -66,7 +66,7 @@ export function inWindow(d: { startDate: Date; endDate: Date | null }, date: Dat
 export function describeDiscount(d: { kind: string; value: number; duration: string; months: number | null; startDate: Date; endDate: Date | null; chargeKinds: string[]; target: string }): string {
   const amt = d.kind === "PERCENT" ? `${(d.value / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}% off` : `$${(d.value / 100).toFixed(2)} off`;
   const what = d.target === "SINGLE_CHARGE" ? "one charge" : d.chargeKinds.length ? d.chargeKinds.map((k) => (DISCOUNTABLE_KINDS[k] ?? k).split(" (")[0]!.toLowerCase()).join(", ") : "every charge";
-  const when = d.duration === "ONCE" ? "" : d.duration === "MONTHS" ? ` for ${d.months} month${d.months === 1 ? "" : "s"} from ${ymd(d.startDate)}` : d.duration === "DATE_RANGE" ? ` from ${ymd(d.startDate)} to ${d.endDate ? ymd(d.endDate) : "—"}` : ` from ${ymd(d.startDate)}, until stopped`;
+  const when = d.duration === "ONCE" ? (d.target === "SINGLE_CHARGE" ? "" : `, once, on or after ${ymd(d.startDate)}`) : d.duration === "MONTHS" ? ` for ${d.months} month${d.months === 1 ? "" : "s"} from ${ymd(d.startDate)}` : d.duration === "DATE_RANGE" ? ` from ${ymd(d.startDate)} to ${d.endDate ? ymd(d.endDate) : "—"}` : ` from ${ymd(d.startDate)}, until stopped`;
   return `${amt} ${what}${when}`;
 }
 
