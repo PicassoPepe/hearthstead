@@ -9,7 +9,7 @@ import { VerifyInsuranceButton } from "./verify-insurance-button";
 
 export async function AutopayStatus({ ctx, leaseId }: { ctx: AppContext; leaseId: string }) {
   const autopays = await ctx.db.autopay.findMany({ where: { leaseId, active: true } });
-  if (!autopays.length) return <p><strong>Autopay:</strong> off. Tenants turn it on in the tenant portal.</p>;
+  if (!autopays.length) return <p><strong>Autopay:</strong> off. Tenants turn it on in the resident portal.</p>;
   const [tenants, methods] = await Promise.all([
     ctx.db.tenant.findMany({ where: { id: { in: autopays.map((a) => a.tenantId) } } }),
     ctx.db.paymentMethod.findMany({ where: { id: { in: autopays.map((a) => a.paymentMethodId) } } }),
@@ -32,7 +32,7 @@ export async function AutopayStatus({ ctx, leaseId }: { ctx: AppContext; leaseId
 
 export async function InsuranceList({ ctx, leaseId, canEdit }: { ctx: AppContext; leaseId: string; canEdit: boolean }) {
   const policies = await ctx.db.insurancePolicy.findMany({ where: { leaseId }, orderBy: { expiresOn: "desc" } });
-  if (!policies.length) return <EmptyState icon={<ShieldCheck />} title="No insurance on file" description="Tenants upload proof of renters insurance in the tenant portal. Require it per lease in Settings → Tenant portal." />;
+  if (!policies.length) return <EmptyState icon={<ShieldCheck />} title="No insurance on file" description="Tenants upload proof of renters insurance in the resident portal. Require it per lease in Settings → Resident portal." />;
   return (
     <div className="divide-y divide-border rounded-card border border-border bg-surface">
       {policies.map((p) => (

@@ -22,6 +22,11 @@ function benignAriaHiddenMismatch(text: string) {
   return diffs.length > 0 && diffs.every((l) => /aria-hidden=/.test(l));
 }
 
+/** The pg driver prints this during Prisma transactions. Next forwards it to the browser in dev. */
+function benignDriverWarning(text: string) {
+  return /DeprecationWarning: Calling client\.query\(\) when the client is already executing a query/.test(text);
+}
+
 const BLANK_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 /** Map tiles come from the internet; serve blank tiles so tests don't depend on it. */
 export async function stubMapTiles(page: Page) {
@@ -35,7 +40,7 @@ export const test = base.extend<{ consoleErrors: string[] }>({
       await stubMapTiles(page);
       const errors: string[] = [];
       page.on("console", (m) => {
-        if ((m.type() === "error" || /hydrat/i.test(m.text())) && !benignAriaHiddenMismatch(m.text())) errors.push(m.text());
+        if ((m.type() === "error" || /hydrat/i.test(m.text())) && !benignAriaHiddenMismatch(m.text()) && !benignDriverWarning(m.text())) errors.push(m.text());
       });
       page.on("pageerror", (e) => errors.push(e.message));
       await use(errors);

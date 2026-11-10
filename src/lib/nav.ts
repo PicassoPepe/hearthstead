@@ -105,7 +105,7 @@ export const SETTINGS_NAV: NavLeaf[] = [
   { label: "Maintenance", href: "/app/settings/maintenance", keywords: ["auto-assign", "requests", "work orders"] },
   { label: "Notifications", href: "/app/settings/notifications", keywords: ["reminders"] },
   { label: "Communications & SMS", href: "/app/settings/communications", keywords: ["sms", "text", "twilio"] },
-  { label: "Tenant portal", href: "/app/settings/tenant-portal" },
+  { label: "Resident portal", href: "/app/settings/tenant-portal" },
   { label: "Owner portal", href: "/app/settings/owner-portal" },
   { label: "Rental applications", href: "/app/settings/applications" },
   { label: "Document templates", href: "/app/settings/templates", keywords: ["lease", "merge fields", "e-sign", "notice"] },

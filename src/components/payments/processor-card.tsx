@@ -18,7 +18,7 @@ export function ProcessorCard({ account, provider, canEdit, comingSoon = false }
         <div>
           <CardTitle>Online payments</CardTitle>
           <CardDescription>
-            Accept card and ACH rent payments in the tenant portal. {provider === "mock" ? "Running on the built-in mock processor — no Stripe keys needed." : "Powered by Stripe Connect (Express)."}
+            Accept card and ACH rent payments in the resident portal. {provider === "mock" ? "Running on the built-in mock processor — no Stripe keys needed." : "Powered by Stripe Connect (Express)."}
           </CardDescription>
         </div>
         <Landmark className="size-5 text-muted-foreground" aria-hidden />

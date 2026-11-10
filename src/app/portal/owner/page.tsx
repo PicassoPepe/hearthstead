@@ -10,8 +10,6 @@ import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
 import { WelcomeSteps } from "@/components/onboarding/welcome-steps";
 
-export const metadata = { title: "Home" };
-
 export default async function OwnerHome() {
   const o = await requireOwnerPortal();
   const [h, news, unread] = await Promise.all([ownerHome(o), portalAnnouncements(o.db, { ownerId: o.owner.id }, 3), unreadPortalCount(o.db, { ownerId: o.owner.id })]);

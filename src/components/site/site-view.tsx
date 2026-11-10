@@ -1,5 +1,6 @@
 import { BedDouble, Bath, Ruler, Check, MapPin, Phone, Mail, Clock, KeyRound, Wrench, CreditCard, Building2 } from "lucide-react";
 import type { Block, SiteContent, Target } from "@/lib/site/blocks";
+import { portalLoginQuery } from "@/lib/login-audience";
 import { formatMoney } from "@/lib/money";
 import { SiteMessageForm } from "./site-forms";
 import { siteTheme } from "@/lib/site/theme";
@@ -15,10 +16,10 @@ export function targetHref(t: Target, org: Org, listings: Listing[]) {
     case "apply": return listings.length === 1 ? `/apply/${org.slug}/${listings[0]!.slug}` : "#homes";
     case "showing": return "#tour";
     case "contact": return "#contact";
-    case "tenantPortal": return "/login?portal=1&callbackUrl=%2Fportal%2Ftenant";
-    case "ownerPortal": return "/login?portal=1&callbackUrl=%2Fportal%2Fowner";
-    case "payRent": return "/login?portal=1&callbackUrl=%2Fportal%2Ftenant%2Fpay";
-    case "maintenance": return "/login?portal=1&callbackUrl=%2Fportal%2Ftenant%2Frequests%2Fnew";
+    case "tenantPortal": return portalLoginQuery("resident", "/portal/tenant");
+    case "ownerPortal": return portalLoginQuery("owner", "/portal/owner");
+    case "payRent": return portalLoginQuery("resident", "/portal/tenant/pay");
+    case "maintenance": return portalLoginQuery("resident", "/portal/tenant/requests/new");
   }
 }
 
@@ -183,7 +184,7 @@ function BlockView({ b, d, preview, i }: { b: Block; d: SiteData; preview?: bool
         b.ownerLogin ? { href: targetHref("ownerPortal", org, listings), label: "Owner login", Icon: Building2 } : null,
       ].filter(Boolean) as { href: string; label: string; Icon: typeof KeyRound }[];
       return (
-        <Section id="residents" title={b.title || "For residents"} alt={alt}>
+        <Section id="residents" title={b.title || "For residents and owners"} alt={alt}>
           <Para text={b.body} className="-mt-3 mb-6" />
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="site-residents">{links.map((l) => <li key={l.label}><a href={l.href} className="flex items-center gap-3 rounded-[var(--site-radius)] border border-[var(--site-border)] bg-[var(--site-surface)] p-4 font-semibold hover:border-[var(--site-primary)]"><l.Icon className="size-5 text-[var(--site-primary)]" aria-hidden />{l.label}</a></li>)}</ul>
         </Section>
@@ -192,7 +193,7 @@ function BlockView({ b, d, preview, i }: { b: Block; d: SiteData; preview?: bool
   }
 }
 
-const NAV: Partial<Record<Block["type"], [string, string]>> = { vacancies: ["#homes", "Homes"], announcements: ["#news", "News"], about: ["#about", "About"], amenities: ["#amenities", "Amenities"], faq: ["#faq", "FAQ"], residents: ["#residents", "Residents"], contact: ["#contact", "Contact"] };
+const NAV: Partial<Record<Block["type"], [string, string]>> = { vacancies: ["#homes", "Homes"], announcements: ["#news", "News"], about: ["#about", "About"], amenities: ["#amenities", "Amenities"], faq: ["#faq", "FAQ"], residents: ["#residents", "Sign in"], contact: ["#contact", "Contact"] };
 
 /** The public website. Rendered on the server; only the forms are interactive. */
 export function SiteView({ d, preview }: { d: SiteData; preview?: boolean }) {
@@ -204,7 +205,7 @@ export function SiteView({ d, preview }: { d: SiteData; preview?: boolean }) {
       <a href="#site-main" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:text-black">Skip to content</a>
       <header className="sticky top-0 z-30 border-b border-[var(--site-border)] bg-[var(--site-surface)]/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <a href="#" className="flex items-center gap-2 font-bold">
+          <a href="#site-main" className="flex items-center gap-2 font-bold">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {org.logoUrl ? <img src={org.logoUrl} alt="" className="h-9 w-auto max-w-36 object-contain" /> : null}
             <span className="text-lg">{site.title || org.name}</span>

@@ -80,7 +80,7 @@ export async function portalRedeemCodeAction(code: string): Promise<ActionResult
   return runAction(async () => {
     const ctx = await getPortalContext();
     if (!ctx) throw new UserFacingError("Please sign in again.");
-    if (ctx.preview) throw new UserFacingError("This is a read-only preview of the tenant portal.");
+    if (ctx.preview) throw new UserFacingError("This is a read-only preview of the resident portal.");
     if (!ctx.lease) throw new UserFacingError("Lease not found");
     const r = await D.redeemCode(ctx.db, { orgId: ctx.org.id, userId: ctx.user.id, name: ctx.tenant.name, ip: await ip(), permissions: {} }, { code, leaseId: ctx.lease.id, tenantId: ctx.tenant.id });
     refresh();

@@ -91,7 +91,7 @@ export async function requirePortal(): Promise<PortalContext> {
   if (!ctx) {
     const session = await auth();
     if (session?.user?.id && (await adminDb.tenantUser.count({ where: { userId: session.user.id, deletedAt: null, tenant: { portalPausedAt: { not: null } } } }))) redirect("/portal/no-access?paused=1");
-    redirect(session?.user ? "/portal/no-access" : "/login?callbackUrl=%2Fportal%2Ftenant");
+    redirect(session?.user ? "/portal/no-access" : "/login?portal=resident&callbackUrl=%2Fportal%2Ftenant");
   }
   return ctx;
 }

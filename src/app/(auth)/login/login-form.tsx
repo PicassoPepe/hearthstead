@@ -15,11 +15,14 @@ import { Field } from "@/components/ui/field";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loginWithPassword, requestMagicLink } from "@/server/actions/auth";
+import { LOGIN_COPY, type LoginAudience } from "@/lib/login-audience";
 
 const pwSchema = z.object({ email: z.email("Enter a valid email"), password: z.string().min(1, "Enter your password"), code: z.string().optional() });
 const linkSchema = z.object({ email: z.email("Enter a valid email") });
 
-export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, error, oauth = [], captchaSiteKey = null }: { defaultEmail: string; invited: boolean; portal?: boolean; callbackUrl: string; error?: string; oauth?: OAuthProvider[]; captchaSiteKey?: string | null }) {
+export function LoginForm({ defaultEmail, audience, callbackUrl, error, oauth = [], captchaSiteKey = null }: { defaultEmail: string; audience: LoginAudience; callbackUrl: string; error?: string; oauth?: OAuthProvider[]; captchaSiteKey?: string | null }) {
+  const portal = audience === "resident" || audience === "owner" || audience === "vendor";
+  const copy = LOGIN_COPY[audience];
   const [serverError, setServerError] = React.useState<string | undefined>(error);
   const [captcha, setCaptcha] = React.useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = React.useState(0);
@@ -29,10 +32,8 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
 
   return (
     <div className="w-full max-w-sm">
-      <h1 className="text-2xl font-semibold tracking-tight">{portal ? "Resident portal" : invited ? "Accept your invitation" : "Welcome back"}</h1>
-      <p className="mt-1 text-muted-foreground">
-        {portal ? "We'll email you a secure sign-in link — no password needed." : invited ? "Sign in with an email link to join your team." : "Sign in to manage your properties."}
-      </p>
+      <h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1>
+      <p className="mt-1 text-muted-foreground">{copy.blurb}</p>
 
       {serverError ? (
         <div role="alert" className="mt-4 rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-sm text-danger-soft-foreground">
@@ -43,7 +44,7 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
       {!portal && oauth.length ? <div className="mt-6"><OAuthButtons providers={oauth} callbackUrl={callbackUrl} /></div> : null}
       <Card className="mt-6">
         <CardContent className="pt-5">
-          <Tabs defaultValue={invited || portal ? "link" : "password"}>
+          <Tabs defaultValue={audience === "invited" || portal ? "link" : "password"}>
             <TabsList className="mb-5" aria-label="Sign-in method">
               <TabsTrigger value="password"><KeyRound className="mr-1.5 inline size-4" aria-hidden />Password</TabsTrigger>
               <TabsTrigger value="link"><Mail className="mr-1.5 inline size-4" aria-hidden />Email link</TabsTrigger>
@@ -100,10 +101,17 @@ export function LoginForm({ defaultEmail, invited, portal = false, callbackUrl, 
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        New to DeedWood?{" "}
-        <Link href="/signup" className="font-medium text-primary underline-offset-4 hover:underline">Create an account</Link>
-      </p>
+      {portal ? (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Property manager?{" "}
+          <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">Staff sign in</Link>
+        </p>
+      ) : (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          New to DeedWood?{" "}
+          <Link href="/signup" className="font-medium text-primary underline-offset-4 hover:underline">Create an account</Link>
+        </p>
+      )}
     </div>
   );
 }

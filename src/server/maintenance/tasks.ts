@@ -110,7 +110,7 @@ export async function createTask(db: ScopedDb, raw: TaskInput, actor: TaskActor)
         }
         return t;
       });
-      await addActivity(db, task.id, actor, "CREATED", `${TASK_TYPE_LABEL[v.type]} created${actor.kind === "TENANT" ? " from the tenant portal" : actor.kind === "OWNER" ? " from the owner portal" : ""}${rule ? " · auto-assigned by rule" : ""}`, v.type === "TENANT_REQUEST");
+      await addActivity(db, task.id, actor, "CREATED", `${TASK_TYPE_LABEL[v.type]} created${actor.kind === "TENANT" ? " from the resident portal" : actor.kind === "OWNER" ? " from the owner portal" : ""}${rule ? " · auto-assigned by rule" : ""}`, v.type === "TENANT_REQUEST");
       if (vendorId) {
         const vendor = await db.vendor.findFirstOrThrow({ where: { id: vendorId } });
         await addActivity(db, task.id, actor, "VENDOR", `Assigned to ${vendor.name}`);

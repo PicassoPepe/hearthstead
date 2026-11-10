@@ -6,7 +6,10 @@ test("public website: homes, news, resident buttons; no accessibility violations
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByTestId("site-vacancies").locator("li").first()).toBeVisible();
   await expect(page.getByTestId("site-announcements")).toContainText("Fall gutter cleaning");
-  await expect(page.getByTestId("site-residents").getByRole("link", { name: "Pay rent" })).toHaveAttribute("href", /portal%2Ftenant%2Fpay/);
+  const residents = page.getByTestId("site-residents");
+  await expect(residents.getByRole("link", { name: "Pay rent" })).toHaveAttribute("href", /portal=resident/);
+  await expect(residents.getByRole("link", { name: "Resident login" })).toHaveAttribute("href", /portal=resident/);
+  await expect(residents.getByRole("link", { name: "Owner login" })).toHaveAttribute("href", /portal=owner/);
   await expect(page.getByText(/Equal Housing Opportunity/)).toBeVisible();
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
   expect(r.violations.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);

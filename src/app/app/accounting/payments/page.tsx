@@ -34,7 +34,7 @@ export default async function IncomingPaymentsPage() {
   const sum = (s: string[]) => rows.filter((r) => s.includes(r.status)).reduce((t, r) => t + r.amountCents, 0);
   return (
     <>
-      <PageHeader eyebrow="Accounting" title="Incoming payments" description="Online payments from the tenant portal and autopay — initiated → processing → succeeded → paid out." />
+      <PageHeader eyebrow="Accounting" title="Incoming payments" description="Online payments from the resident portal and autopay — initiated → processing → succeeded → paid out." />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Processing" value={formatMoney(sum(["INITIATED", "PROCESSING"]), { showCents: false })} hint="ACH clearing" />
         <StatCard label="Succeeded, awaiting payout" value={formatMoney(sum(["SUCCEEDED"]), { showCents: false })} />

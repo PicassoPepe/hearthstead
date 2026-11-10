@@ -184,6 +184,22 @@ describe("free beta (comp)", () => {
     expect(await admin.platformAuditLog.count({ where: { action: "billing.comp_ended", targetId: o.orgId } })).toBe(1);
     await expect(endCompOrg(p, o.orgId, "Again please")).rejects.toThrow(/isn't on a free plan/);
   });
+  it("a free beta is never flipped to billed or past-due by a Stripe webhook", async () => {
+    const o = await makeOrg("beta-webhook");
+    orgs.push(o.orgId); users.push(o.userId);
+    await compOrg(p, o.orgId, { reason: "Wendy beta", until: null });
+    await admin.subscription.update({ where: { orgId: o.orgId }, data: { stripeCustomerId: "cus_beta_wendy" } });
+    const id = () => `evt_beta_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await handleStripeEvent({ id: id(), type: "invoice.paid", data: { object: { customer: "cus_beta_wendy" } } });
+    await handleStripeEvent({ id: id(), type: "invoice.payment_failed", data: { object: { customer: "cus_beta_wendy" } } });
+    await handleStripeEvent({ id: id(), type: "checkout.session.completed", data: { object: { customer: "cus_beta_wendy", subscription: "sub_beta", client_reference_id: o.orgId, metadata: { planKey: "hosted_starter", interval: "month" } } } });
+    await handleStripeEvent({ id: id(), type: "customer.subscription.updated", data: { object: { id: "sub_beta", customer: "cus_beta_wendy", status: "active", metadata: { orgId: o.orgId } } } });
+    expect(await getSubscription(o.orgId)).toMatchObject({ status: "BETA", compReason: "Wendy beta" });
+    process.env.BILLING_ENFORCED = "1";
+    expect(await billingReadOnly(o.orgId)).toBe(false);
+    await expect(startCheckout({ orgId: o.orgId, email: "wendy@example.com", planKey: "hosted_starter", interval: "month", units: 1, appUrl: "https://deedwood.com" })).rejects.toThrow(/free plan/);
+  });
+
   it("a paid company that was comped goes back to its paid plan", async () => {
     await admin.subscription.update({ where: { orgId }, data: { stripeSubscriptionId: "sub_test_2", status: "BETA" } });
     expect((await endComp(orgId)).status).toBe("ACTIVE");

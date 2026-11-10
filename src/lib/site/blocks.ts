@@ -86,6 +86,6 @@ export function newBlock(type: BlockType): Block {
     case "gallery": return blockSchema.parse({ ...b, type, title: "Photos" });
     case "neighborhood": return blockSchema.parse({ ...b, type, title: "The neighborhood", body: "", address: "" });
     case "contact": return blockSchema.parse({ ...b, type, title: "Get in touch", body: "Questions? Send us a message.", hours: "" });
-    case "residents": return blockSchema.parse({ ...b, type, title: "Already a resident?", body: "Pay rent, request repairs and message us online." });
+    case "residents": return blockSchema.parse({ ...b, type, title: "Residents and owners", body: "Pay rent, request repairs and message us online. Owners can sign in for statements." });
   }
 }

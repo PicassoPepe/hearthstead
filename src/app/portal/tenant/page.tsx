@@ -12,8 +12,6 @@ import { unreadPortalCount } from "@/server/comms/portal-queries";
 import { openSignatureFromPortal } from "@/server/actions/portal";
 import { WelcomeSteps } from "@/components/onboarding/welcome-steps";
 
-export const metadata = { title: "Home" };
-
 export default async function PortalHome() {
   const ctx = await requirePortal();
   const [h, news, unread, toSign] = await Promise.all([

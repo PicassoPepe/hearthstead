@@ -39,7 +39,7 @@ export function SignupForm({ captchaSiteKey, oauth, sms }: { captchaSiteKey: str
 
   return (
     <div className="w-full max-w-sm">
-      <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Start your free trial</h1>
       <p className="mt-1 text-muted-foreground">Set up your company workspace in about a minute.</p>
       {serverError ? <div role="alert" className="mt-4 rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-sm text-danger-soft-foreground">{serverError}</div> : null}
       {oauth.length ? <div className="mt-6"><OAuthButtons providers={oauth} callbackUrl="/app/overview" verb="Sign up" /></div> : null}

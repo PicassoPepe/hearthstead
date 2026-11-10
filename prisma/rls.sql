@@ -56,8 +56,9 @@ CREATE POLICY tenant_isolation ON "Organization" USING ("id" = app_org_id()) WIT
 -- Auth tables are global; the app role can only read users (writes go through the admin client).
 REVOKE INSERT, UPDATE, DELETE ON "AuthAccount", "Session", "VerificationToken" FROM deedwood_app;
 
--- Platform-only tables: never reachable by the app role (written/read through the admin connection).
-REVOKE ALL ON "SecurityEvent", "PlatformAdmin", "PlatformAuditLog", "Impersonation", "FeatureFlag", "PlatformAnnouncement", "Release", "Plan", "Subscription", "License", "Entitlement", "AccountToken", "BackupRun", "ErrorEvent", "PendingSignup", "StripeEvent", "JobRun" FROM deedwood_app;
+-- Platform-only tables, plus login-session rows (IP and user agent): never reachable by the
+-- app role. Those writes go through the admin connection.
+REVOKE ALL ON "SecurityEvent", "PlatformAdmin", "PlatformAuditLog", "Impersonation", "FeatureFlag", "PlatformAnnouncement", "Release", "Plan", "Subscription", "License", "Entitlement", "AccountToken", "BackupRun", "ErrorEvent", "PendingSignup", "StripeEvent", "JobRun", "UserSession" FROM deedwood_app;
 
 -- Discount history is append-only for the app: it can add events but never change or remove them.
 REVOKE UPDATE, DELETE ON "DiscountEvent" FROM deedwood_app;

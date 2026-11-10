@@ -15,7 +15,7 @@ import { toRowData } from "@/server/settings/meta";
 
 const GROUPS: Record<string, { group: SettingGroup; description: string }> = {
   "late-fees": { group: "lateFees", description: "Company-wide late-fee policy. Properties and leases can override any value." },
-  "tenant-portal": { group: "tenantPortal", description: "What tenants can see and do in their portal." },
+  "tenant-portal": { group: "tenantPortal", description: "What residents can see and do after they sign in." },
   payments: { group: "payments", description: "Fee pass-through and how payments are applied to open charges." },
   applications: { group: "applications", description: "Rental application fee and required sections." },
   notifications: { group: "notifications", description: "Automatic rent reminders sent to tenants." },
