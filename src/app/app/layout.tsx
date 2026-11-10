@@ -1,4 +1,6 @@
+import { mustChangePasswordBlocks } from "@/lib/must-change-password";
 import { requireContext } from "@/server/context";
+import { ChangePasswordScreen } from "@/components/auth/change-password-screen";
 import { AppShell } from "@/components/shell/app-shell";
 import { adminDb } from "@/server/db";
 import { activeAnnouncements } from "@/server/platform-admin/service";
@@ -13,6 +15,13 @@ export const metadata = { robots: { index: false, follow: false } };
 
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const ctx = await requireContext();
+  if (mustChangePasswordBlocks(ctx.user, Boolean(ctx.impersonation))) {
+    return (
+      <div className="grid min-h-dvh place-items-center bg-background p-6">
+        <ChangePasswordScreen />
+      </div>
+    );
+  }
   const lic = localLicense();
   const [org, user, unread, notices] = await Promise.all([
     adminDb.organization.findUnique({ where: { id: ctx.org.id }, select: { logoUrl: true } }),

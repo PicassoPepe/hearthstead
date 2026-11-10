@@ -226,6 +226,23 @@ export async function requestPasswordResetAction(raw: { email: string; captcha?:
   return { ok: true, data: undefined as void };
 }
 
+/** First sign-in after an owner created the account: replace the temporary password. */
+export async function changeRequiredPasswordAction(current: string, next: string): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "Sign in first" };
+  try {
+    const { applyRequiredPasswordChange } = await import("@/server/auth/must-change");
+    const user = await applyRequiredPasswordChange(session.user.id, current, next);
+    const h = await headers();
+    await securityEvent("PASSWORD_RESET", { email: user.email, userId: user.id, ip: clientIp(h), userAgent: h.get("user-agent") });
+    return { ok: true, data: undefined as void, message: "Password updated" };
+  } catch (e) {
+    const { UserFacingError } = await import("@/server/action-result");
+    if (e instanceof UserFacingError) return { ok: false, error: e.message, fieldErrors: e.fieldErrors };
+    throw e;
+  }
+}
+
 export async function resetPasswordAction(token: string, password: string): Promise<ActionResult> {
   try {
     const { resetPassword } = await import("@/server/auth/account-tokens");

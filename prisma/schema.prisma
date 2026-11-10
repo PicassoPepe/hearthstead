@@ -63,6 +63,8 @@ model User {
   emailVerified    DateTime?
   image            String?
   passwordHash     String?
+  /// Set when a platform owner created the account with a temporary password.
+  mustChangePassword Boolean @default(false)
   twoFactorEnabled Boolean   @default(false)
   /// Mobile number confirmed with a code at sign-up (E.164).
   phone            String?

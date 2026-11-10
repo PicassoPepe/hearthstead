@@ -9,6 +9,7 @@ import type { ScopedDb } from "@/server/dal";
 import { localLicense } from "@/server/license/local";
 import { UserFacingError } from "@/server/action-result";
 import { IMPERSONATE_COOKIE, activeImpersonation, isPlatformAdmin } from "@/server/platform-admin/service";
+import { mustChangePasswordBlocks } from "@/lib/must-change-password";
 import {
   can,
   parsePermissions,
@@ -21,7 +22,7 @@ import {
 export const ORG_COOKIE = "dw_org";
 
 export type AppContext = {
-  user: { id: string; email: string; name: string | null; preferences: Record<string, unknown> };
+  user: { id: string; email: string; name: string | null; preferences: Record<string, unknown>; mustChangePassword: boolean };
   org: { id: string; name: string; slug: string; brandColor: string; logoUrl: string | null; sandbox: boolean; suspended: boolean };
   membership: { id: string; roleId: string; roleName: string; roleKey: string | null; propertyScope: string[] };
   permissions: PermissionSet;
@@ -84,6 +85,7 @@ async function buildContext(userId: string, wantedOrg: string | undefined, opts:
       email: user.email,
       name: user.name,
       preferences: (user.preferences ?? {}) as Record<string, unknown>,
+      mustChangePassword: user.mustChangePassword,
     },
     org: {
       id: m.organization.id,
@@ -125,6 +127,7 @@ export async function requireContext(): Promise<AppContext> {
 export async function requirePermission(module: Module, level: Exclude<Level, "none"> = "view", opts: { billing?: boolean } = {}): Promise<AppContext> {
   const ctx = await getContext();
   if (!ctx) throw new PermissionError(module, level);
+  if (mustChangePasswordBlocks(ctx.user, Boolean(ctx.impersonation))) throw new UserFacingError("Choose a new password before continuing.");
   if (ctx.org.suspended && !ctx.impersonation) throw new PermissionError(module, level);
   if (!can(ctx.permissions, module, level)) throw new PermissionError(module, level);
   // Computer installs whose license or trial has ended are read-only (nothing is deleted).
