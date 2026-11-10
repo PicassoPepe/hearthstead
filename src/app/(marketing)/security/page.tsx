@@ -7,7 +7,7 @@ const ITEMS = [
   ["Two-factor sign-in", "Turn on a code from an authenticator app for every staff account. DeedWood's own administrators must use it."],
   ["Limits on guessing", "Accounts lock for 15 minutes after repeated wrong passwords, and repeated sign-in attempts are slowed down."],
   ["Everything is logged", "Changes to money, leases, settings and access are recorded with who made them and when."],
-  ["Private by default", "Tenant portals, sign-in pages and documents are never shown to search engines."],
+  ["Private by default", "Resident portals, sign-in pages and documents are never shown to search engines."],
   ["Card details never touch our servers", "When online payments are on, cards and bank accounts are handled by the payment processor."],
 ];
 

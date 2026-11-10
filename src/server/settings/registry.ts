@@ -86,9 +86,9 @@ export const SETTINGS = {
     schema: z.number().int().min(0), default: 1000, scopes: ALL, input: { kind: "money" },
   }),
 
-  // ── Tenant portal ──
+  // ── Resident portal (the screen tenants sign in to) ──
   "tenantPortal.enabled": def({
-    key: "tenantPortal.enabled", group: "tenantPortal", label: "Tenant portal access",
+    key: "tenantPortal.enabled", group: "tenantPortal", label: "Resident portal access",
     schema: z.boolean(), default: true, scopes: ALL, input: { kind: "boolean" },
   }),
   "tenantPortal.allowOnlinePayments": def({
@@ -241,7 +241,7 @@ export type SettingValue<K extends SettingKey> = z.infer<(typeof SETTINGS)[K]["s
 
 export const SETTING_GROUP_LABELS: Record<SettingGroup, string> = {
   lateFees: "Late fees",
-  tenantPortal: "Tenant portal",
+  tenantPortal: "Resident portal",
   payments: "Payments",
   applications: "Rental applications",
   notifications: "Notifications",

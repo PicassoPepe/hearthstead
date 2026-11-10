@@ -109,7 +109,11 @@ async function ensureCustomer(orgId: string, email: string) {
   return c.id;
 }
 
+const isFreePlan = (status: string) => status === "BETA" || status === "COMPLIMENTARY";
+
 export async function startCheckout(v: { orgId: string; email: string; planKey: string; interval: "month" | "year"; units: number; appUrl: string; care?: boolean }) {
+  const current = await getSubscription(v.orgId);
+  if (isFreePlan(current.status)) throw new UserFacingError("This company is on a free plan, so it isn't billed. Ask DeedWood if that should change.");
   const line = stripeLine(v.planKey, v.interval, v.units);
   const items: { price: string; quantity: number }[] = [{ price: await priceId(line.lookupKey), quantity: line.quantity }];
   if (v.care && v.planKey === "local_annual") items.push({ price: await priceId("local_care_yearly"), quantity: 1 });
@@ -158,29 +162,36 @@ export async function handleStripeEvent(e: { id: string; type: string; data: { o
     const orgId = (o.client_reference_id as string) || (o.metadata as Record<string, string> | undefined)?.orgId;
     if (orgId && o.subscription) {
       const meta = (o.metadata ?? {}) as Record<string, string>;
-      await getSubscription(orgId);
-      await adminDb.subscription.update({ where: { orgId }, data: { stripeCustomerId: o.customer as string, stripeSubscriptionId: o.subscription as string, status: "ACTIVE", planKey: meta.planKey ?? undefined, interval: meta.interval ?? undefined, pastDueSince: null, compReason: null, compUntil: null } });
+      const current = await getSubscription(orgId);
+      // A free beta or complimentary company is never turned into a paying one by a webhook.
+      if (!isFreePlan(current.status)) {
+        await adminDb.subscription.update({ where: { orgId }, data: { stripeCustomerId: o.customer as string, stripeSubscriptionId: o.subscription as string, status: "ACTIVE", planKey: meta.planKey ?? undefined, interval: meta.interval ?? undefined, pastDueSince: null, compReason: null, compUntil: null } });
+      }
     }
   } else if (e.type.startsWith("customer.subscription.")) {
     const sub = o as unknown as StripeSub;
     const orgId = await orgForCustomer(sub.customer, sub.metadata?.orgId);
     if (orgId) {
       const s = await getSubscription(orgId);
-      const status = e.type === "customer.subscription.deleted" ? "CANCELED" : STATUS[sub.status] ?? "PAST_DUE";
-      await adminDb.subscription.update({ where: { orgId }, data: {
-        stripeCustomerId: sub.customer, stripeSubscriptionId: sub.id, status,
-        currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
-        cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
-        pastDueSince: status === "PAST_DUE" ? (s.pastDueSince ?? now) : null,
-        billedUnits: sub.items?.data[0]?.quantity ?? s.billedUnits,
-        ...(sub.metadata?.planKey ? { planKey: sub.metadata.planKey } : {}),
-      } });
+      if (!isFreePlan(s.status)) {
+        const status = e.type === "customer.subscription.deleted" ? "CANCELED" : STATUS[sub.status] ?? "PAST_DUE";
+        await adminDb.subscription.update({ where: { orgId }, data: {
+          stripeCustomerId: sub.customer, stripeSubscriptionId: sub.id, status,
+          currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+          cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
+          pastDueSince: status === "PAST_DUE" ? (s.pastDueSince ?? now) : null,
+          billedUnits: sub.items?.data[0]?.quantity ?? s.billedUnits,
+          ...(sub.metadata?.planKey ? { planKey: sub.metadata.planKey } : {}),
+        } });
+      }
     }
   } else if (e.type === "invoice.payment_failed" || e.type === "invoice.paid") {
     const orgId = await orgForCustomer(o.customer as string);
     if (orgId) {
       const s = await getSubscription(orgId);
-      await adminDb.subscription.update({ where: { orgId }, data: e.type === "invoice.paid" ? { status: s.status === "COMPLIMENTARY" ? s.status : "ACTIVE", pastDueSince: null } : { status: "PAST_DUE", pastDueSince: s.pastDueSince ?? now } });
+      if (!isFreePlan(s.status)) {
+        await adminDb.subscription.update({ where: { orgId }, data: e.type === "invoice.paid" ? { status: "ACTIVE", pastDueSince: null } : { status: "PAST_DUE", pastDueSince: s.pastDueSince ?? now } });
+      }
     }
   }
   return true;

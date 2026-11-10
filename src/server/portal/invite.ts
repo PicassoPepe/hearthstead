@@ -22,7 +22,7 @@ export async function inviteTenantToPortal(db: ScopedDb, tenantId: string, orgNa
   if (t.portalStatus !== "ACTIVE") await db.tenant.update({ where: { id: tenantId }, data: { portalStatus: "INVITED" } });
 
   const base = process.env.AUTH_URL ?? "http://localhost:3000";
-  const url = `${base}/login?email=${encodeURIComponent(email)}&portal=1&callbackUrl=${encodeURIComponent("/portal/tenant")}`;
+  const url = `${base}/login?email=${encodeURIComponent(email)}&portal=resident&callbackUrl=${encodeURIComponent("/portal/tenant")}`;
   await getEmailProvider().send({
     to: email,
     organizationId: db.ctx.orgId,
@@ -47,7 +47,7 @@ export async function inviteOwnerToPortal(db: ScopedDb, ownerId: string, orgName
   else if (link.deletedAt) await db.ownerUser.update({ where: { id: link.id }, data: { deletedAt: null, invitedAt: new Date() } });
   if (o.portalStatus !== "ACTIVE") await db.owner.update({ where: { id: ownerId }, data: { portalStatus: "INVITED" } });
   const base = process.env.AUTH_URL ?? "http://localhost:3000";
-  const url = `${base}/login?email=${encodeURIComponent(email)}&portal=1&callbackUrl=${encodeURIComponent("/portal/owner")}`;
+  const url = `${base}/login?email=${encodeURIComponent(email)}&portal=owner&callbackUrl=${encodeURIComponent("/portal/owner")}`;
   await getEmailProvider().send({
     to: email,
     organizationId: db.ctx.orgId,

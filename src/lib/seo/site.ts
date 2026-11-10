@@ -11,7 +11,7 @@ export const BRAND = {
   name: "DeedWood",
   legalName: "DeedWood LLC",
   tagline: "Property management made simple",
-  description: "DeedWood is simple property management software for landlords and property managers: rent tracking, repairs with photos, tenant and owner portals, accounting, leases, county land records and your own rental website.",
+  description: "DeedWood is simple property management software for landlords and property managers: rent tracking, repairs with photos, resident and owner portals, accounting, leases, county land records and your own rental website.",
   /** Public contact email — set CONTACT_EMAIL; nothing is shown until it is. */
   email: process.env.CONTACT_EMAIL ?? null,
   region: "Kentucky, USA",

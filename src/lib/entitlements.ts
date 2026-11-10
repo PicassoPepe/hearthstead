@@ -3,7 +3,7 @@
  * console can add more (Entitlement rows). Checked on the server — never only in the UI.
  */
 export const FEATURES = {
-  "portal.tenant": "Tenant portal",
+  "portal.tenant": "Resident portal",
   "portal.owner": "Owner portal",
   "leases.ky": "Lease templates",
   "esign": "Built-in e-signatures",

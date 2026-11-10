@@ -21,7 +21,7 @@ import { receivePortalMessage } from "@/server/comms/service";
 async function writer(leaseId?: string): Promise<PortalContext & { leaseId: string }> {
   const ctx = await getPortalContext();
   if (!ctx) throw new UserFacingError("Please sign in again.");
-  if (ctx.preview) throw new UserFacingError("This is a read-only preview of the tenant portal.");
+  if (ctx.preview) throw new UserFacingError("This is a read-only preview of the resident portal.");
   const id = leaseId ?? ctx.lease?.id;
   if (!id || !ctx.leases.some((l) => l.id === id)) throw new UserFacingError("Lease not found");
   return { ...ctx, leaseId: id };
@@ -224,7 +224,7 @@ export async function sendPortalMessage(body: string): Promise<ActionResult> {
   return runAction(async () => {
     const ctx = await getPortalContext();
     if (!ctx) throw new UserFacingError("Please sign in again.");
-    if (ctx.preview) throw new UserFacingError("This is a read-only preview of the tenant portal.");
+    if (ctx.preview) throw new UserFacingError("This is a read-only preview of the resident portal.");
     await receivePortalMessage(ctx.db, { tenantId: ctx.tenant.id }, z.string().max(2000, "Keep it under 2,000 characters").parse(body), { userId: ctx.user.id, name: ctx.tenant.name });
     revalidatePath("/portal/tenant/messages");
   }, "Message sent");

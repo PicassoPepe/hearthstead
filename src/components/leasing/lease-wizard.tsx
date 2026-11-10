@@ -380,8 +380,8 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
       optional: true,
       content: (
         <label className="flex items-start gap-3 rounded-lg border border-border p-3 text-sm">
-          <Switch checked={portalInvite} onCheckedChange={setPortalInvite} aria-label="Invite tenants to the tenant portal" />
-          <span><span className="font-medium">Invite tenants to the tenant portal</span><br /><span className="text-muted-foreground">Tenants with an email address get an invitation to pay rent, set up autopay and send requests online.</span></span>
+          <Switch checked={portalInvite} onCheckedChange={setPortalInvite} aria-label="Invite tenants to the resident portal" />
+          <span><span className="font-medium">Invite tenants to the resident portal</span><br /><span className="text-muted-foreground">Tenants with an email address get an invitation to pay rent, set up autopay and send requests online.</span></span>
         </label>
       ),
     },

@@ -38,7 +38,7 @@ export function CompanyForm({ defaults, canEdit }: { defaults: CompanyInput; can
           <CardHeader>
             <div>
               <CardTitle>Company</CardTitle>
-              <CardDescription>Shown on statements, emails and the tenant portal.</CardDescription>
+              <CardDescription>Shown on statements, emails and the resident portal.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">

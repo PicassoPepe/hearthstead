@@ -64,7 +64,7 @@ export async function requireOwnerPortal(): Promise<OwnerPortalContext> {
   const ctx = await getOwnerPortalContext();
   if (!ctx) {
     const session = await auth();
-    redirect(session?.user ? "/portal/no-access" : "/login?callbackUrl=%2Fportal%2Fowner");
+    redirect(session?.user ? "/portal/no-access" : "/login?portal=owner&callbackUrl=%2Fportal%2Fowner");
   }
   return ctx;
 }

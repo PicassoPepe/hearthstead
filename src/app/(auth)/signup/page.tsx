@@ -6,7 +6,7 @@ import { captchaSiteKey } from "@/server/auth/captcha";
 import { oauthProviders } from "@/server/auth/oauth";
 import { smsAvailable } from "@/server/auth/sms-available";
 
-export const metadata = { title: "Create your account" };
+export const metadata = { title: "Start your free trial" };
 
 export default async function SignupPage() {
   // Signed in (e.g. with Google) but no company yet → just name the company.
