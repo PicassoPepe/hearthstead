@@ -5,8 +5,12 @@ test("login headings match the portal the button named", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Owner portal" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Staff sign in" })).toBeVisible();
 
-  // Older owner links used the resident flag plus an owner destination.
+  // The live Owner login button, and a signed-out visit to /portal/owner (no portal= flag).
   await page.goto("/login?portal=1&callbackUrl=%2Fportal%2Fowner");
+  await expect(page.getByRole("heading", { name: "Owner portal" })).toBeVisible();
+  await page.goto("/login?callbackUrl=%2Fportal%2Fowner");
+  await expect(page.getByRole("heading", { name: "Owner portal" })).toBeVisible();
+  await page.goto(`/login?callbackUrl=${encodeURIComponent("https://deedwood.com/portal/owner")}`);
   await expect(page.getByRole("heading", { name: "Owner portal" })).toBeVisible();
 
   await page.goto("/login?portal=resident&callbackUrl=%2Fportal%2Ftenant");

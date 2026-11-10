@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse, type NextRequest } from "next/server";
 import { authConfig } from "@/server/auth/config";
 import { siteSlugForHost } from "@/lib/site/hosts";
+import { wwwRedirectUrl } from "@/lib/www-redirect";
 
 const { auth } = NextAuth(authConfig);
 
@@ -25,21 +26,26 @@ async function resolveCustomDomain(host: string, req: NextRequest): Promise<stri
   return slug;
 }
 
-/** Sign-in protection for /app, /portal, /admin — plus company websites on their own addresses. */
+/** www.<apex> → apex, then company websites on their own addresses. */
 export default auth(async (req) => {
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
+  const apex = wwwRedirectUrl(host, req.nextUrl.pathname, req.nextUrl.search, { SITE_URL: process.env.SITE_URL, AUTH_URL: process.env.AUTH_URL });
+  if (apex) return NextResponse.redirect(apex, 301);
+
   const path = req.nextUrl.pathname;
   if (!SITE_PATHS.has(path)) return;
-  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").split(":")[0]!.toLowerCase();
-  const r = siteSlugForHost(host, { appUrl: process.env.AUTH_URL, rootDomain: process.env.SITES_ROOT_DOMAIN });
-  const slug = r.kind === "slug" ? r.slug : r.kind === "custom" ? await resolveCustomDomain(host, req) : null;
+  const siteHost = host.split(",")[0]!.trim().split(":")[0]!.toLowerCase();
+  const r = siteSlugForHost(siteHost, { appUrl: process.env.AUTH_URL, rootDomain: process.env.SITES_ROOT_DOMAIN });
+  const slug = r.kind === "slug" ? r.slug : r.kind === "custom" ? await resolveCustomDomain(siteHost, req) : null;
   if (!slug) return;
   const url = req.nextUrl.clone();
   url.pathname = `/s/${slug}${path === "/" ? "" : path}`;
   const headers = new Headers(req.headers);
-  headers.set("x-site-host", host);
+  headers.set("x-site-host", siteHost);
   return NextResponse.rewrite(url, { request: { headers } });
 });
 
 export const config = {
-  matcher: ["/", "/sitemap.xml", "/robots.txt", "/app/:path*", "/portal/:path*", "/admin/:path*", "/admin", "/select-org"],
+  // Every page, so www.deedwood.com/<anything> can 301 to the apex. Skip build assets.
+  matcher: ["/((?!_next/static|_next/image|.*\\.(?:png|jpg|jpeg|gif|webp|ico|svg|woff2)$).*)"],
 };

@@ -59,6 +59,12 @@ Workers build bakes it in):
 Do not create an `APP_DB_PASSWORD` secret. Database passwords stay in `DATABASE_URL` and
 `DATABASE_ADMIN_URL`.
 
+## Webhook endpoint (live today)
+
+`POST https://deedwood.com/api/webhooks/stripe`
+
+Until the signing secret is set, that route answers **503** with `{"error":"Webhooks aren't set up"}`. The URL is right. The missing secret is **`STRIPE_WEBHOOK_SECRET`** (the `whsec_…` value Stripe shows for this endpoint). Do not point Connect events at this URL; it only applies DeedWood subscription events, and anything else is marked handled and dropped.
+
 ## Stripe dashboard
 
 1. Stay in **test mode** for the first pass.
