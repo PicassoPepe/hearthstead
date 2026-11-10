@@ -45,6 +45,16 @@ export function verifyEmailEmail(url: string) {
   };
 }
 
+/** Owner-created company. The temporary password is not included — David shows that once, in person. */
+export function welcomeSignInEmail(opts: { companyName: string; url: string }) {
+  const company = opts.companyName.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c] ?? c);
+  return {
+    subject: `Your ${opts.companyName} account on ${APP}`,
+    html: layout("Your account is ready", `<p>A DeedWood account was created for <strong>${company}</strong>. Sign in with the email this was sent to. You'll be asked to choose your own password.</p>${button(opts.url, "Sign in")}`),
+    text: `A DeedWood account was created for ${opts.companyName}. Sign in: ${opts.url}\nYou'll be asked to choose your own password.`,
+  };
+}
+
 export function signupCodeEmail(code: string) {
   return {
     subject: `${code} is your ${APP} code`,

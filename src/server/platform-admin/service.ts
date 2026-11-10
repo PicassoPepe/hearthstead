@@ -1,6 +1,10 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
+import { z } from "zod";
 import { adminDb } from "@/server/db";
 import { UserFacingError } from "@/server/action-result";
+import { hashPassword, PASSWORD_MIN } from "@/server/auth/password";
+import { provisionOrganization } from "@/server/orgs";
 import { verifyTotp } from "@/server/platform/totp";
 
 /**
@@ -201,6 +205,80 @@ export async function compOrg(p: PlatformCtx, orgId: string, v: { reason: string
   const before = await getSubscription(orgId);
   const after = await setComp(orgId, { reason: r, until, kind: v.kind });
   await platformAudit(p, { action: "billing.comped", targetType: "Organization", targetId: orgId, reason: r, before: { status: before.status, compUntil: before.compUntil }, after: { status: after.status, compUntil: after.compUntil } });
+}
+
+const TEMP_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
+/** A password the landlord can type, with no ambiguous characters. Shown once, never stored in the audit log. */
+export function generateTempPassword(): string {
+  const bytes = randomBytes(24);
+  let out = "";
+  for (let i = 0; i < 20; i++) out += TEMP_PASSWORD_ALPHABET[bytes[i]! % TEMP_PASSWORD_ALPHABET.length];
+  return out;
+}
+
+/**
+ * Create a landlord login and company without an email/phone code. Only the platform OWNER,
+ * and only with a fresh two-factor code. The email is not marked verified (safer if it was typed
+ * wrong). The landlord must change the temporary password at first sign-in. No email is sent
+ * unless emailWelcome is set.
+ */
+export async function createCompanyForSomeone(p: PlatformCtx, v: {
+  ownerName: string;
+  email: string;
+  companyName: string;
+  password?: string;
+  freeBeta: boolean;
+  reason: string;
+  until: string | null;
+  emailWelcome: boolean;
+  code: string;
+}) {
+  if (p.role !== "OWNER") throw new UserFacingError("Only the platform owner can create a company for someone.");
+  await stepUp(p, v.code);
+  const reason = needReason(v.reason);
+  const ownerName = v.ownerName.trim();
+  if (ownerName.length < 2) throw new UserFacingError("Enter the owner's name", { ownerName: "Required" });
+  const companyName = v.companyName.trim();
+  if (companyName.length < 2) throw new UserFacingError("Enter the company name", { companyName: "Required" });
+  const email = v.email.trim().toLowerCase();
+  if (!z.email().safeParse(email).success) throw new UserFacingError("Enter a valid email", { email: "Invalid" });
+  if (await adminDb.user.findUnique({ where: { email } })) throw new UserFacingError("An account with that email already exists.", { email: "Already used" });
+  if (v.freeBeta && v.until) {
+    const until = new Date(`${v.until}T23:59:59.000Z`);
+    if (Number.isNaN(until.getTime())) throw new UserFacingError("Pick a valid end date", { until: "Invalid date" });
+    if (until <= new Date()) throw new UserFacingError("The end date must be in the future", { until: "Must be in the future" });
+  }
+  const typed = v.password?.trim() ?? "";
+  if (typed && typed.length < PASSWORD_MIN) throw new UserFacingError(`Use at least ${PASSWORD_MIN} characters`, { password: "Too short" });
+  if (typed.length > 200) throw new UserFacingError("That password is too long", { password: "Too long" });
+  const temporaryPassword = typed || generateTempPassword();
+  const user = await adminDb.user.create({
+    data: { email, name: ownerName, passwordHash: await hashPassword(temporaryPassword), emailVerified: null, mustChangePassword: true, createdById: p.userId },
+  });
+  const { orgId } = await provisionOrganization(adminDb, { name: companyName, ownerUserId: user.id });
+  if (v.freeBeta) await compOrg(p, orgId, { reason, until: v.until, kind: "BETA" });
+  let emailed = false;
+  if (v.emailWelcome) {
+    try {
+      const { welcomeSignInEmail } = await import("@/server/emails");
+      const { getEmailProvider } = await import("@/adapters");
+      const base = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+      const m = welcomeSignInEmail({ companyName, url: `${base}/login` });
+      await getEmailProvider().send({ to: email, organizationId: orgId, subject: m.subject, html: m.html, text: m.text });
+      emailed = true;
+    } catch (e) {
+      console.error("[admin] welcome email failed", e instanceof Error ? e.message : "send failed");
+    }
+  }
+  await platformAudit(p, {
+    action: "org.created_by_owner",
+    targetType: "Organization",
+    targetId: orgId,
+    reason,
+    after: { email, companyName, userId: user.id, freeBeta: Boolean(v.freeBeta), emailVerified: false, emailed, passwordGenerated: !typed },
+  });
+  return { orgId, userId: user.id, email, temporaryPassword };
 }
 
 export async function endCompOrg(p: PlatformCtx, orgId: string, reason: string) {

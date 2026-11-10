@@ -102,6 +102,13 @@ export async function revokeLicenseAction(id: string, reason: string, code: stri
   }, "License turned off — the install becomes read-only at its next check-in");
 }
 
+export async function createCompanyForSomeoneAction(v: { ownerName: string; email: string; companyName: string; password?: string; freeBeta: boolean; reason: string; until: string | null; emailWelcome: boolean; code: string }) {
+  return withAdmin(async (p) => {
+    const created = await P.createCompanyForSomeone(p, v);
+    return { orgId: created.orgId, email: created.email, temporaryPassword: created.temporaryPassword };
+  }, "Company created");
+}
+
 export async function compOrgAction(orgId: string, v: { reason: string; until: string | null; kind?: "COMPLIMENTARY" | "BETA" }) {
   return withAdmin((p) => P.compOrg(p, orgId, v), "Company is now free");
 }

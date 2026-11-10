@@ -4,11 +4,12 @@ import { adminDb } from "@/server/db";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CreateCompanyForm } from "@/components/admin/create-company-form";
 
 export const metadata = { title: "Companies" };
 
 export default async function AdminOrgs({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  await requirePlatformPage();
+  const p = await requirePlatformPage();
   const q = (await searchParams).q?.trim() ?? "";
   const orgs = await adminDb.organization.findMany({
     where: { deletedAt: null, isSandbox: false, ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { slug: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }] } : {}) },
@@ -21,6 +22,7 @@ export default async function AdminOrgs({ searchParams }: { searchParams: Promis
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Companies</h1>
+      {p.role === "OWNER" ? <CreateCompanyForm /> : null}
       <form className="flex max-w-md gap-2"><Input name="q" defaultValue={q} placeholder="Search by name, web name or email" aria-label="Search companies" /><Button type="submit">Search</Button></form>
       <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
         <table className="w-full text-sm">
