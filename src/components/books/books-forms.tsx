@@ -142,7 +142,7 @@ export function ExpenseForm({ options }: { options: BooksOptions }) {
           </NativeSelect>
         )}</Field>
         <Field label="Date" required>{(a) => <Input {...a} type="date" value={date} onChange={(e) => setDate(e.target.value)} />}</Field>
-        <Field label="Paid from" required>{(a) => <NativeSelect {...a} value={bankAccountId} onChange={(e) => setBank(e.target.value)}>{options.banks.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</NativeSelect>}</Field>
+        <Field label="Paid from" description="A bookkeeping account already in your chart. This does not connect a bank." required>{(a) => <NativeSelect {...a} value={bankAccountId} onChange={(e) => setBank(e.target.value)}>{options.banks.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</NativeSelect>}</Field>
         <Field label="Method">{(a) => <NativeSelect {...a} value={method} onChange={(e) => setMethod(e.target.value)}>{METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</NativeSelect>}</Field>
         <Field label="Reference">{(a) => <Input {...a} value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Check # or receipt #" />}</Field>
       </div>

@@ -19,8 +19,9 @@ export function setPlaceFetcher(f: Fetcher) { fetcher = f; }
 
 const NAIP = "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage";
 
-type Addr = { addressLine1: string; city: string; state: string; postalCode: string };
-const oneLine = (p: Addr) => `${p.addressLine1}, ${p.city}, ${p.state} ${p.postalCode}`;
+type Addr = { addressLine1?: string | null; city?: string | null; state?: string | null; postalCode?: string | null };
+const oneLine = (p: Addr) => [p.addressLine1, p.city, [p.state, p.postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+const hasAddress = (p: Addr) => Boolean(p.addressLine1 && p.city && p.state && p.postalCode);
 
 async function property(db: ScopedDb, id: string) {
   const p = await db.property.findFirst({ where: { id }, include: { parcelRecord: { select: { latitude: true, longitude: true } } } });
@@ -32,7 +33,8 @@ async function property(db: ScopedDb, id: string) {
 export async function locate(db: ScopedDb, id: string) {
   const p = await property(db, id);
   if (p.parcelRecord?.latitude != null && p.parcelRecord.longitude != null) return { latitude: p.parcelRecord.latitude, longitude: p.parcelRecord.longitude };
-  const g = await geocode(p).catch(() => null);
+  if (!hasAddress(p)) throw new UserFacingError("Add a street, city, state and ZIP before looking this up on the map.");
+  const g = await geocode({ addressLine1: p.addressLine1!, city: p.city!, state: p.state!, postalCode: p.postalCode! }).catch(() => null);
   if (!g) throw new UserFacingError("We couldn't find that address on the map. Check the address, or upload a photo instead.");
   return { latitude: g.latitude, longitude: g.longitude };
 }
@@ -74,7 +76,7 @@ const key = () => process.env.GOOGLE_MAPS_API_KEY ?? "";
 
 /** Does Google have a street-level picture of this address? (The metadata check is free.) */
 export async function streetViewAvailable(p: Addr) {
-  if (!streetViewEnabled()) return false;
+  if (!streetViewEnabled() || !hasAddress(p)) return false;
   const res = await fetcher(`https://maps.googleapis.com/maps/api/streetview/metadata?${new URLSearchParams({ location: oneLine(p), source: "outdoor", key: key() })}`).catch(() => null);
   if (!res?.ok) return false;
   const body = (await res.json().catch(() => ({}))) as { status?: string };
@@ -83,7 +85,7 @@ export async function streetViewAvailable(p: Addr) {
 
 /** The picture itself (for the proxy route). */
 export async function streetViewImage(p: Addr, size = "800x600") {
-  if (!streetViewEnabled()) return null;
+  if (!streetViewEnabled() || !hasAddress(p)) return null;
   const res = await fetcher(`https://maps.googleapis.com/maps/api/streetview?${new URLSearchParams({ location: oneLine(p), size, source: "outdoor", return_error_code: "true", key: key() })}`).catch(() => null);
   if (!res?.ok || !(res.headers.get("content-type") ?? "").startsWith("image/")) return null;
   return { bytes: new Uint8Array(await res.arrayBuffer()), type: res.headers.get("content-type")! };

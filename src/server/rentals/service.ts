@@ -51,18 +51,19 @@ export async function createPropertyFromWizard(db: ScopedDb, raw: PropertyWizard
 
   const orgId = db.ctx.orgId;
   const userId = db.ctx.userId;
+  const name = v.name.trim() || v.address.addressLine1.trim() || v.address.city.trim();
   const property = await db.tx(async (tx) => {
     const p = await tx.property.create({
       data: {
         organizationId: orgId,
-        name: v.name,
+        name,
         type: v.type,
         portfolioId: v.portfolioId || null,
-        addressLine1: v.address.addressLine1,
+        addressLine1: v.address.addressLine1 || null,
         addressLine2: v.address.addressLine2 || null,
-        city: v.address.city,
-        state: v.address.state,
-        postalCode: v.address.postalCode,
+        city: v.address.city || null,
+        state: v.address.state || null,
+        postalCode: v.address.postalCode || null,
         yearBuilt: v.yearBuilt ?? null,
         defaultOperatingAccountId: v.defaultOperatingAccountId || null,
         defaultDepositAccountId: v.defaultDepositAccountId || null,
@@ -109,16 +110,17 @@ export async function updateProperty(db: ScopedDb, id: string, raw: PropertyEdit
   await assertPortfolio(db, v.portfolioId);
   await assertBankAccount(db, v.defaultOperatingAccountId, "defaultOperatingAccountId");
   await assertBankAccount(db, v.defaultDepositAccountId, "defaultDepositAccountId");
+  const name = v.name.trim() || v.address.addressLine1.trim() || v.address.city.trim();
   const after = await db.property.update({
     where: { id },
     data: {
-      name: v.name,
+      name,
       portfolioId: v.portfolioId || null,
-      addressLine1: v.address.addressLine1,
+      addressLine1: v.address.addressLine1 || null,
       addressLine2: v.address.addressLine2 || null,
-      city: v.address.city,
-      state: v.address.state,
-      postalCode: v.address.postalCode,
+      city: v.address.city || null,
+      state: v.address.state || null,
+      postalCode: v.address.postalCode || null,
       yearBuilt: v.yearBuilt ?? null,
       defaultOperatingAccountId: v.defaultOperatingAccountId || null,
       defaultDepositAccountId: v.defaultDepositAccountId || null,
@@ -189,8 +191,6 @@ export async function archiveUnit(db: ScopedDb, id: string, archived: boolean): 
     if (await db.leaseUnit.count({ where: { unitId: id, lease: { status: { in: ["ACTIVE", "EVICTION", "DRAFT"] } } } })) {
       throw new UserFacingError("This unit has an active or draft lease. End it before archiving the unit.");
     }
-    const remaining = await db.unit.count({ where: { propertyId: unit.propertyId, id: { not: id } } });
-    if (remaining === 0) throw new UserFacingError("A property needs at least one unit. Archive the property instead.");
   }
   await db.unit.update({ where: { id }, data: { deletedAt: archived ? new Date() : null } });
   await audit(db, { action: archived ? "unit.archived" : "unit.restored", entityType: "Unit", entityId: id });

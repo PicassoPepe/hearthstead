@@ -24,7 +24,8 @@ export type BillingState = "comped" | "trial" | "trial_ended" | "active" | "past
 /** What the subscription means right now. */
 export function billingState(s: { status: string; trialEndsAt: Date | null; compUntil: Date | null; pastDueSince: Date | null; currentPeriodEnd: Date | null }, now = new Date()): { state: BillingState; daysLeft?: number } {
   const days = (d: Date) => Math.max(0, Math.ceil((d.getTime() - now.getTime()) / 86_400_000));
-  if (s.status === "COMPLIMENTARY" || s.status === "BETA") return s.compUntil && s.compUntil <= now ? { state: "trial_ended" } : { state: "comped", ...(s.compUntil ? { daysLeft: days(s.compUntil) } : {}) };
+  // A beta or complimentary company stays free. An end date is a note, not a paywall.
+  if (s.status === "COMPLIMENTARY" || s.status === "BETA") return { state: "comped", ...(s.compUntil && s.compUntil > now ? { daysLeft: days(s.compUntil) } : {}) };
   if (s.status === "ACTIVE") return { state: "active" };
   if (s.status === "TRIALING") return s.trialEndsAt && s.trialEndsAt <= now ? { state: "trial_ended" } : { state: "trial", ...(s.trialEndsAt ? { daysLeft: days(s.trialEndsAt) } : {}) };
   if (s.status === "PAST_DUE") {
@@ -38,14 +39,18 @@ export function billingState(s: { status: string; trialEndsAt: Date | null; comp
 /** Should this company be read-only for billing reasons? Only when enforcement is switched on. */
 export async function billingReadOnly(orgId: string, now = new Date()) {
   if (process.env.BILLING_ENFORCED !== "1" || process.env.DEEDWOOD_DEPLOYMENT === "LOCAL") return false;
-  const { state } = billingState(await getSubscription(orgId), now);
+  const sub = await getSubscription(orgId);
+  if (sub.status === "BETA" || sub.status === "COMPLIMENTARY") return false;
+  const { state } = billingState(sub, now);
   return state === "trial_ended" || state === "read_only" || state === "canceled";
 }
 
 /** The banner across the top of the staff app, for hosted companies (only once billing is enforced). */
 export async function hostedBillingNotice(orgId: string, now = new Date()): Promise<{ message: string; readOnly: boolean } | null> {
   if (process.env.BILLING_ENFORCED !== "1" || process.env.DEEDWOOD_DEPLOYMENT === "LOCAL") return null;
-  const { state, daysLeft } = billingState(await getSubscription(orgId), now);
+  const sub = await getSubscription(orgId);
+  if (sub.status === "BETA" || sub.status === "COMPLIMENTARY") return null;
+  const { state, daysLeft } = billingState(sub, now);
   if (state === "trial" && daysLeft != null && daysLeft <= 3) return { message: `Your free trial ends in ${daysLeft} day${daysLeft === 1 ? "" : "s"}. Choose a plan to keep going.`, readOnly: false };
   if (state === "past_due") return { message: `Your last payment didn't go through. Update your card within ${daysLeft} day${daysLeft === 1 ? "" : "s"} to avoid read-only mode.`, readOnly: false };
   if (state === "trial_ended" || state === "read_only" || state === "canceled") return { message: "Your account is read-only until you choose a plan. Nothing has been deleted.", readOnly: true };

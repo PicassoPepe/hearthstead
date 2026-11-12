@@ -1,3 +1,4 @@
+import { paymentsEnabled } from "@/lib/payments-flag";
 import { requireContext } from "@/server/context";
 import { can } from "@/server/permissions";
 import { Forbidden } from "@/components/patterns/forbidden";
@@ -24,6 +25,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
       org={{ name: org.name, email: org.email ?? "", phone: org.phone ?? "", addressLine1: org.addressLine1 ?? "", city: org.city ?? "", state: org.state ?? "", postalCode: org.postalCode ?? "", timezone: org.timezone, brandColor: org.brandColor, logoUrl: org.logoUrl, isSandbox: org.isSandbox }}
       propertyCount={propertyCount}
       paymentsConnected={Boolean(processor)}
+      paymentsOn={paymentsEnabled()}
       roles={roles.filter((r) => r.key !== "OWNER_PORTAL")}
       memberCount={members}
     />

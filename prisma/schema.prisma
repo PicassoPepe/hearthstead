@@ -280,11 +280,12 @@ model Property {
   portfolioId               String?
   name                      String
   type                      PropertyType
-  addressLine1              String
+  /// Optional. A property can be saved with a name and no address, or an address and no extra details.
+  addressLine1              String?
   addressLine2              String?
-  city                      String
-  state                     String
-  postalCode                String
+  city                      String?
+  state                     String?
+  postalCode                String?
   country                   String       @default("US")
   yearBuilt                 Int?
   photoUrl                  String?

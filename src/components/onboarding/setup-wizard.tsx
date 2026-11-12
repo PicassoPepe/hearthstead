@@ -28,11 +28,11 @@ const STEPS = [
   { n: 4, label: "Team", icon: Users },
 ] as const;
 
-export function SetupWizard({ initialStep, firstName, org, propertyCount, paymentsConnected, roles, memberCount }: {
-  initialStep: number; firstName: string | null; org: Org; propertyCount: number; paymentsConnected: boolean; roles: Role[]; memberCount: number;
+export function SetupWizard({ initialStep, firstName, org, propertyCount, paymentsConnected, paymentsOn, roles, memberCount }: {
+  initialStep: number; firstName: string | null; org: Org; propertyCount: number; paymentsConnected: boolean; paymentsOn: boolean; roles: Role[]; memberCount: number;
 }) {
   const router = useRouter();
-  const [step, setStep] = React.useState(initialStep);
+  const [step, setStep] = React.useState(!paymentsOn && initialStep === 3 ? 4 : initialStep);
   const [done, setDone] = React.useState(false);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   React.useEffect(() => headingRef.current?.focus(), [step, done]);
@@ -68,11 +68,11 @@ export function SetupWizard({ initialStep, firstName, org, propertyCount, paymen
     <div className="mx-auto max-w-3xl">
       <p className="text-sm font-medium text-primary">Welcome to DeedWood{firstName ? `, ${firstName}` : ""}</p>
       <h1 ref={headingRef} tabIndex={-1} className="mt-1 text-3xl font-bold tracking-tight outline-none">Let&apos;s set up {org.name}</h1>
-      <p className="mt-1 text-muted-foreground">Four quick steps. Skip anything — it&apos;s all in Settings later.</p>
+      <p className="mt-1 text-muted-foreground">{paymentsOn ? "Four" : "Three"} quick steps. Skip anything — it&apos;s all in Settings later.</p>
 
       <nav aria-label="Setup steps" className="my-6">
-        <ol className="grid grid-cols-4 gap-2">
-          {STEPS.map((s) => (
+        <ol className={cn("grid gap-2", paymentsOn ? "grid-cols-4" : "grid-cols-3")}>
+          {STEPS.filter((s) => paymentsOn || s.n !== 3).map((s) => (
             <li key={s.n}>
               <button type="button" onClick={() => go(s.n)} aria-current={s.n === step ? "step" : undefined}
                 className={cn("flex w-full flex-col items-center gap-1.5 rounded-lg p-2 text-xs font-medium transition-colors sm:flex-row sm:text-sm", s.n === step ? "bg-primary-soft text-primary-soft-foreground" : s.n < step ? "text-foreground hover:bg-surface-muted" : "text-muted-foreground hover:bg-surface-muted")}>
@@ -89,7 +89,7 @@ export function SetupWizard({ initialStep, firstName, org, propertyCount, paymen
       <div className="rounded-card border border-border bg-surface p-5 shadow-card sm:p-6 page-enter" key={step}>
         {step === 1 ? <CompanyStep org={org} onNext={() => go(2)} /> : null}
         {step === 2 ? (
-          <PropertyStep propertyCount={propertyCount} isSandbox={org.isSandbox} onNext={() => go(3)} onSample={async () => {
+          <PropertyStep propertyCount={propertyCount} isSandbox={org.isSandbox} onNext={() => go(paymentsOn ? 3 : 4)} onSample={async () => {
             const r = await exploreSampleData();
             if (!r.ok) return void toast.error(r.error);
             toast.success(r.message);
@@ -97,7 +97,7 @@ export function SetupWizard({ initialStep, firstName, org, propertyCount, paymen
             router.refresh();
           }} />
         ) : null}
-        {step === 3 ? <PaymentsStep connected={paymentsConnected} onNext={() => go(4)} /> : null}
+        {step === 3 && paymentsOn ? <PaymentsStep connected={paymentsConnected} onNext={() => go(4)} /> : null}
         {step === 4 ? <TeamStep roles={roles} memberCount={memberCount} onFinish={finish} /> : null}
       </div>
       <p className="mt-4 text-center text-sm"><button type="button" className="text-muted-foreground underline-offset-4 hover:underline" onClick={async () => { await setPreference("setupDone", true); router.push("/app/overview"); }}>Skip setup for now</button></p>
@@ -146,7 +146,10 @@ function CompanyStep({ org, onNext }: { org: Org; onNext: () => void }) {
           {(p) => <div className="flex gap-2"><input type="color" aria-label="Pick brand color" value={v.brandColor} onChange={(e) => set({ brandColor: e.target.value })} className="h-9 w-12 cursor-pointer rounded border border-border" /><Input {...p} value={v.brandColor} onChange={(e) => set({ brandColor: e.target.value })} /></div>}
         </Field>
       </div>
-      <div className="mt-6 flex justify-end"><Button type="submit" loading={busy}>Save and continue</Button></div>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onNext}>Skip for now</Button>
+        <Button type="submit" loading={busy}>Save and continue</Button>
+      </div>
     </form>
   );
 }

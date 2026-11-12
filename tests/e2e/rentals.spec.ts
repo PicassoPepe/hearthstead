@@ -178,6 +178,52 @@ test.describe("as admin", () => {
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(page.getByRole("link", { name: "Oak Street Flats" })).toBeVisible();
   });
+
+  test("a property, unit, tenant and lease can be saved with the minimum and no bank connection", async ({ page }) => {
+    await page.getByRole("link", { name: "Add property" }).first().click();
+    const dlg = page.getByRole("dialog", { name: "New property" });
+    await dlg.getByRole("radio", { name: /Multi-family/ }).click();
+    await dlg.getByRole("button", { name: "Next" }).click();
+    await dlg.getByRole("textbox", { name: "Property name" }).fill("Name Only Cottage");
+    await dlg.getByRole("button", { name: "Next" }).click();
+    await dlg.getByRole("button", { name: "Remove 101" }).click();
+    await dlg.getByRole("button", { name: "Next" }).click();
+    await expect(dlg.getByRole("heading", { name: /Bank accounts/ })).toBeVisible();
+    await dlg.getByRole("button", { name: "Skip for now" }).click();
+    await expect(dlg.getByRole("heading", { name: /Owners/ })).toBeVisible();
+    await dlg.getByRole("button", { name: "Skip for now" }).click();
+    await expect(dlg.getByText("Not set").first()).toBeVisible();
+    await dlg.getByRole("button", { name: "Create property" }).click();
+    await expect(page.getByRole("heading", { name: "Name Only Cottage" })).toBeVisible();
+    await expect(page).not.toHaveURL(/stripe|plaid|connect/i);
+
+    await page.getByRole("link", { name: "Add unit" }).click();
+    const unit = page.getByRole("dialog", { name: "New unit" });
+    await unit.getByRole("textbox", { name: "Unit name" }).fill("A");
+    await unit.getByRole("button", { name: "Add unit" }).click();
+    await expect(page.getByRole("link", { name: "Units 1" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Create new" }).click();
+    await page.getByRole("menuitem", { name: "Tenant" }).click();
+    const tenant = page.getByRole("dialog", { name: "New tenant" });
+    await tenant.getByRole("textbox", { name: "First name" }).fill("Samarra");
+    await tenant.getByRole("button", { name: "Create tenant" }).click();
+    await expect(page.getByText("Tenant created")).toBeVisible();
+
+    await page.getByRole("button", { name: "Create new" }).click();
+    await page.getByRole("menuitem", { name: "Lease" }).click();
+    const lease = page.getByRole("dialog", { name: "New lease" });
+    await lease.getByRole("combobox", { name: "Property" }).selectOption({ label: "Name Only Cottage" });
+    await lease.getByRole("checkbox", { name: /^A\b/ }).check();
+    await lease.getByRole("button", { name: "Next" }).click();
+    await lease.getByRole("radio", { name: "Existing tenant" }).check();
+    await lease.getByRole("combobox", { name: "Tenant" }).selectOption({ label: "Samarra" });
+    await lease.getByRole("button", { name: "Next" }).click();
+    for (let i = 0; i < 4; i++) await lease.getByRole("button", { name: "Skip for now" }).click();
+    await lease.getByRole("button", { name: "Create lease" }).click();
+    await expect(page.getByRole("heading", { name: "Name Only Cottage · A" })).toBeVisible();
+    await expect(page).not.toHaveURL(/stripe|plaid/i);
+  });
 });
 
 test("a member scoped to one portfolio only sees those properties", async ({ page }) => {

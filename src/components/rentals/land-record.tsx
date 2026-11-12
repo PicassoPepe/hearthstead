@@ -39,7 +39,7 @@ const sourceLabel = (s: string, county: string | null) => (s.startsWith("county:
  * `mode="owner"` is the read-only owner-portal view.
  */
 export function LandRecord({ propertyId, propertyName, address, record, ownersOnFile, match, docs, mode }: {
-  propertyId: string; propertyName: string; address: { addressLine1: string; city: string; state: string; postalCode: string }; record: LandRecordData | null; ownersOnFile: string[]; match: boolean | null; docs: LandDoc[]; mode: "staff" | "owner";
+  propertyId: string; propertyName: string; address: { addressLine1?: string | null; city?: string | null; state?: string | null; postalCode?: string | null }; record: LandRecordData | null; ownersOnFile: string[]; match: boolean | null; docs: LandDoc[]; mode: "staff" | "owner";
 }) {
   const staff = mode === "staff";
   const facts: [string, React.ReactNode][] = record ? [

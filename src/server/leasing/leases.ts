@@ -77,7 +77,6 @@ export async function activateLease(db: ScopedDb, leaseId: string, today: Date):
   const lease = await db.lease.findFirst({ where: { id: leaseId }, include: { units: true } });
   if (!lease) throw new UserFacingError("Lease not found");
   if (lease.status !== "DRAFT") throw new UserFacingError("Only draft leases can be activated");
-  if (!(await db.recurringCharge.count({ where: { leaseId, kind: "RENT" } }))) throw new UserFacingError("Add the monthly rent before activating");
   const clash = await findOverlaps(db, lease.units.map((u) => u.unitId), toISODate(lease.startDate), lease.endDate ? toISODate(lease.endDate) : null, leaseId);
   if (clash.length) throw new UserFacingError("Another active lease overlaps these dates. End it first.");
   const a = actor(db);
@@ -139,6 +138,17 @@ export async function setEviction(db: ScopedDb, leaseId: string, on: boolean): P
 
 export type ParsedLease = ReturnType<typeof leaseWizardSchema.parse>;
 
+/** The lease needs one primary resident. If nobody was marked, the first person is. Extra primaries become co-tenants. */
+function onePrimary<T extends { role: "PRIMARY" | "COTENANT" | "COSIGNER" }>(tenants: T[]): T[] {
+  let keep = tenants.findIndex((t) => t.role === "PRIMARY");
+  if (keep < 0) keep = 0;
+  return tenants.map((t, i) => {
+    if (i === keep) return { ...t, role: "PRIMARY" };
+    if (t.role === "PRIMARY") return { ...t, role: "COTENANT" };
+    return t;
+  });
+}
+
 /**
  * Create a validated lease inside an existing transaction. `opts.billFrom` lets imports skip
  * back-billing (rent starts posting from that date; history comes in as an opening balance).
@@ -148,14 +158,15 @@ export async function createLeaseInTx(tx: ScopedTx, a: Actor, v: ParsedLease, to
   const end = v.endDate || null;
 
       const tenantIds: { id: string; role: (typeof v.tenants)[number]["role"] }[] = [];
-      for (const t of v.tenants) {
+      const tenants = onePrimary(v.tenants);
+      for (const t of tenants) {
         if ("tenantId" in t) tenantIds.push({ id: t.tenantId, role: t.role });
         else {
           const n = t.newTenant;
           const created = await tx.tenant.create({
             data: {
               organizationId: a.orgId, kind: n.kind,
-              firstName: n.kind === "PERSON" ? n.firstName : null, lastName: n.kind === "PERSON" ? n.lastName : null,
+              firstName: n.kind === "PERSON" ? n.firstName || null : null, lastName: n.kind === "PERSON" ? n.lastName || null : null,
               companyName: n.companyName || null, email: n.email ? n.email.toLowerCase() : null, phone: n.phone || null,
               portalStatus: v.portalInvite && n.email ? "INVITED" : "NOT_INVITED", createdById: a.userId,
             },

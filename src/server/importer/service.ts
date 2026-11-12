@@ -42,14 +42,14 @@ async function planProperties(db: ScopedDb, recs: Record<string, string>[]) {
     const match = byName.get(key);
     let g = groups.get(key);
     if (!g) {
-      const type = (match?.type ?? parsePropertyType(r.type ?? "")) as PropertyTypeKey | null;
-      if (!type) issues.push({ row, field: "type", message: `Unknown property type "${r.type ?? ""}"` });
+      const rawType = (r.type ?? "").trim();
+      const parsedType = rawType ? parsePropertyType(rawType) : "MULTI_FAMILY";
+      const type = (match?.type ?? parsedType) as PropertyTypeKey | null;
+      if (rawType && !parsedType) issues.push({ row, field: "type", message: `Unknown property type "${r.type ?? ""}"` });
       const state = (r.state ?? "").toUpperCase();
       if (!match) {
-        if (!r.addressLine1) issues.push({ row, field: "addressLine1", message: "Street address is required" });
-        if (!r.city) issues.push({ row, field: "city", message: "City is required" });
-        if (!(US_STATES as readonly string[]).includes(state)) issues.push({ row, field: "state", message: `"${r.state ?? ""}" isn't a US state code` });
-        if (!/^\d{5}(-\d{4})?$/.test(r.postalCode ?? "")) issues.push({ row, field: "postalCode", message: `"${r.postalCode ?? ""}" isn't a valid ZIP` });
+        if (state && !(US_STATES as readonly string[]).includes(state)) issues.push({ row, field: "state", message: `"${r.state ?? ""}" isn't a US state code` });
+        if ((r.postalCode ?? "") && !/^\d{5}(-\d{4})?$/.test(r.postalCode ?? "")) issues.push({ row, field: "postalCode", message: `"${r.postalCode ?? ""}" isn't a valid ZIP` });
       }
       g = {
         key,
@@ -63,7 +63,7 @@ async function planProperties(db: ScopedDb, recs: Record<string, string>[]) {
       groups.set(key, g);
     }
     const unitName = r.unitName || (PROPERTY_TYPE_META[g.type].singleUnit ? "Main" : "");
-    if (!unitName) return void issues.push({ row, field: "unitName", message: "Unit name is required" });
+    if (!unitName) return;
     const taken = new Set([...(match?.units.map((u) => u.name.toLowerCase()) ?? []), ...g.units.map((u) => u.name.toLowerCase())]);
     if (taken.has(unitName.toLowerCase())) issues.push({ row, field: "unitName", message: `Unit "${unitName}" already exists at ${name}` });
     const bathsTenths = r.baths ? parseBaths(r.baths) : null;
@@ -121,7 +121,10 @@ async function importProperties(db: ScopedDb, recs: Record<string, string>[], co
                 name: g.name,
                 type: g.type,
                 portfolioId,
-                ...g.address,
+                addressLine1: g.address.addressLine1 || null,
+                city: g.address.city || null,
+                state: g.address.state || null,
+                postalCode: g.address.postalCode || null,
                 defaultOperatingAccountId: opCash?.id ?? null,
                 defaultDepositAccountId: depCash?.id ?? null,
                 createdById: userId,

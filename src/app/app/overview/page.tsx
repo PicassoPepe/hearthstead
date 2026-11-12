@@ -11,6 +11,7 @@ import { balancesBy, occupiedUnitIds, orgToday } from "@/server/leasing/queries"
 import { startOfMonth } from "@/lib/dates";
 import { Dashboard } from "@/components/overview/dashboard";
 import { widgetData } from "@/server/overview/widgets";
+import { paymentsEnabled } from "@/lib/payments-flag";
 import { PRESETS, WIDGET_IDS, WIDGET_META, redactWidgetData, sanitizeLayout } from "@/lib/widgets";
 
 export const metadata = { title: "Home" };
@@ -50,9 +51,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const checklist: ChecklistItem[] = [
     { id: "company", label: "Add company details", description: "Address and phone appear on statements and portals.", href: "/app/setup?step=1", done: Boolean(org.addressLine1 && org.phone) },
     { id: "logo", label: "Upload your logo", description: "Shown in the app, portals and on your listings site.", href: "/app/settings", done: Boolean(org.logoUrl) },
-    { id: "property", label: "Add your first property", description: "Units, rents, owners and bank accounts.", href: propertyCount ? "/app/rentals" : "/app/new/property", done: propertyCount > 0 },
-    { id: "lease", label: "Add a lease", description: "Tenants and rent — charges post automatically.", href: "/app/new/lease", done: leaseCount > 0 },
-    { id: "payments", label: "Turn on online payments", description: "Collect rent by ACH and card.", href: "/app/setup?step=3", done: Boolean(processor) },
+    { id: "property", label: "Add your first property", description: "A name or an address is enough.", href: propertyCount ? "/app/rentals" : "/app/new/property", done: propertyCount > 0 },
+    { id: "lease", label: "Add a lease", description: "A unit, a tenant and a start date.", href: "/app/new/lease", done: leaseCount > 0 },
+    ...(paymentsEnabled() ? [{ id: "payments", label: "Turn on online payments", description: "Collect rent by ACH and card. Optional.", href: "/app/setup?step=3", done: Boolean(processor) }] : []),
     { id: "portal", label: "Invite tenants to the portal", description: "They pay, set up autopay and send requests online.", href: "/app/people/tenants", done: invitedTenants > 0 },
     { id: "late-fees", label: "Review your late-fee policy", description: "Grace period, amount and caps.", href: "/app/settings/late-fees", done: has("lateFees.") },
     { id: "team", label: "Invite a teammate", description: "Give your team the right role.", href: "/app/setup?step=4", done: memberCount > 1 },
@@ -102,7 +103,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
           <span aria-hidden className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Rocket className="size-6" /></span>
           <div className="flex-1">
             <h2 id="welcome-h" className="text-lg font-semibold">Welcome! Let&apos;s get {ctx.org.name} set up</h2>
-            <p className="text-sm text-muted-foreground">Company details, your first property (or sample data to explore), online payments and your team — about 5 minutes.</p>
+            <p className="text-sm text-muted-foreground">Company details, your first property, and your team. Skip anything — nothing here is required.</p>
           </div>
           <Link href="/app/setup" className="inline-flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover">Start setup</Link>
         </section>

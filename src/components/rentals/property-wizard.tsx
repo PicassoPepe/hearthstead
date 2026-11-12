@@ -17,6 +17,7 @@ import {
   PROPERTY_TYPES,
   PROPERTY_TYPE_META,
   US_STATES,
+  formatAddress,
   formatPercentBps,
   nextUnitName,
   parseBaths,
@@ -49,6 +50,8 @@ export type WizardOptions = {
   portfolios: { id: string; name: string }[];
   bankAccounts: { id: string; label: string; purpose: string; systemKey: string | null }[];
   owners: { id: string; name: string }[];
+  /** Online payments are switched on. When they aren't, the bank step is hidden. */
+  paymentsOn: boolean;
 };
 
 const TYPE_ICON: Record<PropertyTypeKey, typeof Home> = {
@@ -67,8 +70,8 @@ const newKey = () => `u${Date.now().toString(36)}${keySeq++}`;
 const blankUnit = (name: string, from?: UnitRow): UnitRow => ({ key: newKey(), name, beds: from?.beds ?? "", baths: from?.baths ?? "", sqft: from?.sqft ?? "", rentCents: from?.rentCents ?? null });
 
 function initialDraft(opts: WizardOptions): Draft {
-  const op = opts.bankAccounts.find((b) => b.systemKey === "OPERATING_CASH") ?? opts.bankAccounts.find((b) => b.purpose !== "SECURITY_DEPOSIT");
-  const dep = opts.bankAccounts.find((b) => b.systemKey === "DEPOSIT_CASH") ?? opts.bankAccounts.find((b) => b.purpose === "SECURITY_DEPOSIT");
+  const op = opts.paymentsOn ? (opts.bankAccounts.find((b) => b.systemKey === "OPERATING_CASH") ?? opts.bankAccounts.find((b) => b.purpose !== "SECURITY_DEPOSIT")) : undefined;
+  const dep = opts.paymentsOn ? (opts.bankAccounts.find((b) => b.systemKey === "DEPOSIT_CASH") ?? opts.bankAccounts.find((b) => b.purpose === "SECURITY_DEPOSIT")) : undefined;
   return {
     type: "",
     name: "",
@@ -86,7 +89,7 @@ function initialDraft(opts: WizardOptions): Draft {
 const intOrNull = (s: string) => (s.trim() === "" ? null : /^\d+$/.test(s.trim()) ? Number(s.trim()) : NaN);
 
 /** Turn the editable draft into the API payload (NaN marks invalid numbers for the schema). */
-function toPayload(d: Draft): PropertyWizardInput {
+function toPayload(d: Draft, includeBanks = true): PropertyWizardInput {
   return {
     type: (d.type || undefined) as PropertyTypeKey,
     name: d.name,
@@ -101,8 +104,8 @@ function toPayload(d: Draft): PropertyWizardInput {
       marketRentCents: u.rentCents ?? 0,
       amenities: [],
     })),
-    defaultOperatingAccountId: d.defaultOperatingAccountId || null,
-    defaultDepositAccountId: d.defaultDepositAccountId || null,
+    defaultOperatingAccountId: includeBanks ? d.defaultOperatingAccountId || null : null,
+    defaultDepositAccountId: includeBanks ? d.defaultDepositAccountId || null : null,
     reserveCents: d.reserveCents,
     owners: d.owners.filter((o) => o.ownerId).map((o) => ({ ownerId: o.ownerId, percentBps: parsePercentToBps(o.percent) ?? -1 })),
   };
@@ -144,7 +147,7 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
   const setUnit = (key: string, patch: Partial<UnitRow>) => setD((p) => ({ ...p, units: p.units.map((u) => (u.key === key ? { ...u, ...patch } : u)) }));
 
   const validateStep = (stepId: string): string | null => {
-    const res = propertyWizardSchema.safeParse(toPayload(d));
+    const res = propertyWizardSchema.safeParse(toPayload(d, options.paymentsOn));
     const prefixes = STEP_PATHS[stepId] ?? [];
     const errs: Record<string, string> = {};
     if (!res.success) {
@@ -176,10 +179,14 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
   const single = d.type ? PROPERTY_TYPE_META[d.type].singleUnit : false;
   const ownerTotal = d.owners.reduce((s, o) => s + (parsePercentToBps(o.percent) ?? 0), 0);
 
-  const steps: WizardStep[] = [
+  const allSteps: WizardStep[] = [
     {
       id: "type",
       title: "Type",
+      skippable: true,
+      onSkip: () => {
+        if (!d.type) setD((p) => ({ ...p, type: "MULTI_FAMILY" }));
+      },
       validate: () => validateStep("type"),
       content: (
         <fieldset>
@@ -216,13 +223,14 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
     {
       id: "address",
       title: "Address",
+      skippable: true,
       validate: () => validateStep("address"),
       content: (
         <div className="grid gap-4 sm:grid-cols-6">
-          <Field label="Property name" description="How your team refers to it, e.g. “Maple Court”." error={err("name")} required className="sm:col-span-6">
+          <Field label="Property name" description="A name or a street address is enough. Everything else can wait." error={err("name")} className="sm:col-span-6">
             {(a) => <Input {...a} value={d.name} onChange={(e) => set("name", e.target.value)} />}
           </Field>
-          <Field label="Street address" error={err("address.addressLine1")} required className="sm:col-span-4">
+          <Field label="Street address" error={err("address.addressLine1")} className="sm:col-span-4">
             {(a) => (
               <AddressAutocomplete
                 id={a.id}
@@ -239,10 +247,10 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
           <Field label="Apt / suite" error={err("address.addressLine2")} className="sm:col-span-2">
             {(a) => <Input {...a} value={d.address.addressLine2} onChange={(e) => setAddr("addressLine2", e.target.value)} />}
           </Field>
-          <Field label="City" error={err("address.city")} required className="sm:col-span-3">
+          <Field label="City" error={err("address.city")} className="sm:col-span-3">
             {(a) => <Input {...a} autoComplete="address-level2" value={d.address.city} onChange={(e) => setAddr("city", e.target.value)} />}
           </Field>
-          <Field label="State" error={err("address.state")} required className="sm:col-span-1">
+          <Field label="State" error={err("address.state")} className="sm:col-span-1">
             {(a) => (
               <NativeSelect {...a} value={d.address.state} onChange={(e) => setAddr("state", e.target.value)}>
                 <option value="">—</option>
@@ -250,7 +258,7 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
               </NativeSelect>
             )}
           </Field>
-          <Field label="ZIP" error={err("address.postalCode")} required className="sm:col-span-2">
+          <Field label="ZIP" error={err("address.postalCode")} className="sm:col-span-2">
             {(a) => <Input {...a} inputMode="numeric" autoComplete="postal-code" value={d.address.postalCode} onChange={(e) => setAddr("postalCode", e.target.value)} />}
           </Field>
           <Field label="Portfolio" description="Group properties for reporting and filters." className="sm:col-span-3">
@@ -270,13 +278,15 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
     {
       id: "units",
       title: "Units",
+      skippable: true,
+      onSkip: () => setD((p) => ({ ...p, units: p.units.filter((u) => u.name.trim()) })),
       validate: () => validateStep("units"),
       content: (
         <div>
           {single ? (
-            <p className="mb-3 rounded-lg bg-info-soft px-3 py-2 text-sm text-info-soft-foreground">Single-family homes have exactly one unit — we created it for you.</p>
+            <p className="mb-3 rounded-lg bg-info-soft px-3 py-2 text-sm text-info-soft-foreground">Single-family homes have exactly one unit — we created it for you. Remove it if you&apos;d rather add the unit later.</p>
           ) : (
-            <p className="mb-3 text-sm text-muted-foreground">Add every rentable unit. Duplicate a row to copy its details.</p>
+            <p className="mb-3 text-sm text-muted-foreground">Add rentable units if you know them. A unit only needs a name, and you can add more later.</p>
           )}
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[640px] text-sm">
@@ -315,8 +325,7 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
                       </td>
                       <td className="whitespace-nowrap px-2 py-1.5">
                         {!single ? (
-                          <>
-                            <Button
+                          <Button
                               type="button"
                               variant="ghost"
                               size="icon-sm"
@@ -332,11 +341,10 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
                             >
                               <Copy aria-hidden />
                             </Button>
-                            <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${label}`} disabled={d.units.length === 1} onClick={() => set("units", d.units.filter((x) => x.key !== u.key))}>
+                        ) : null}
+                            <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${label}`} onClick={() => set("units", d.units.filter((x) => x.key !== u.key))}>
                               <Trash2 aria-hidden />
                             </Button>
-                          </>
-                        ) : null}
                       </td>
                     </tr>
                   );
@@ -373,9 +381,13 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
     {
       id: "bank",
       title: "Bank accounts",
+      optional: true,
+      skippable: true,
+      onSkip: () => setD((p) => ({ ...p, defaultOperatingAccountId: "", defaultDepositAccountId: "", reserveCents: 0 })),
       validate: () => validateStep("bank"),
       content: (
         <div className="grid gap-4 sm:grid-cols-2">
+          <p className="text-sm text-muted-foreground sm:col-span-2">Optional. These are bookkeeping accounts, not a bank connection. Choose later if you don&apos;t have them yet.</p>
           <Field label="Operating account" description="Rent and expenses for this property post here." error={err("defaultOperatingAccountId")}>
             {(a) => (
               <NativeSelect {...a} value={d.defaultOperatingAccountId} onChange={(e) => set("defaultOperatingAccountId", e.target.value)}>
@@ -402,6 +414,12 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
       id: "owners",
       title: "Owners",
       optional: true,
+      skippable: true,
+      onSkip: () => setD((p) => {
+        const rows = p.owners.filter((o) => o.ownerId && parsePercentToBps(o.percent) != null);
+        const total = rows.reduce((s, o) => s + (parsePercentToBps(o.percent) ?? 0), 0);
+        return { ...p, owners: rows.length > 0 && total === 10_000 ? rows : [] };
+      }),
       validate: () => validateStep("owners"),
       content: (
         <OwnersStep
@@ -417,9 +435,14 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
     {
       id: "review",
       title: "Review",
+      validate: () => {
+        const res = propertyWizardSchema.safeParse(toPayload(d, options.paymentsOn));
+        return res.success ? null : (res.error.issues[0]?.message ?? "Check the earlier steps");
+      },
       content: <Review d={d} options={options} ownerList={ownerList} />,
     },
   ];
+  const steps = options.paymentsOn ? allSteps : allSteps.filter((s) => s.id !== "bank");
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -449,13 +472,15 @@ export function PropertyWizard({ options }: { options: WizardOptions }) {
           onClose?.();
         }}
         onFinish={async () => {
-          const r = await createProperty(toPayload(d));
+          const payload = toPayload(d, options.paymentsOn);
+          const r = await createProperty(payload);
           if (!r.ok) {
             toast.error(r.error);
             return;
           }
           try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
-          toast.success(`${d.name} created with ${d.units.length} unit${d.units.length === 1 ? "" : "s"}`);
+          const label = (payload.name ?? "").trim() || payload.address?.addressLine1 || "Property";
+          toast.success(`${label} created with ${d.units.length} unit${d.units.length === 1 ? "" : "s"}`);
           router.push(`/app/rentals/${r.data.id}`);
           router.refresh();
         }}
@@ -553,13 +578,17 @@ function Review({ d, options, ownerList }: { d: Draft; options: WizardOptions; o
   const bank = (id: string) => options.bankAccounts.find((b) => b.id === id)?.label ?? "Not set";
   const rows: [string, React.ReactNode][] = [
     ["Type", d.type ? PROPERTY_TYPE_META[d.type].label : "—"],
-    ["Name", d.name],
-    ["Address", `${d.address.addressLine1}${d.address.addressLine2 ? `, ${d.address.addressLine2}` : ""}, ${d.address.city}, ${d.address.state} ${d.address.postalCode}`],
+    ["Name", d.name || "—"],
+    ["Address", formatAddress(d.address)],
     ["Portfolio", options.portfolios.find((p) => p.id === d.portfolioId)?.name ?? "None"],
     ["Units", `${d.units.length} · ${formatMoney(sumCents(d.units.map((u) => u.rentCents ?? 0)))} / mo market rent`],
-    ["Operating account", bank(d.defaultOperatingAccountId)],
-    ["Deposit account", bank(d.defaultDepositAccountId)],
-    ["Reserve", formatMoney(d.reserveCents)],
+    ...(options.paymentsOn
+      ? ([
+          ["Operating account", bank(d.defaultOperatingAccountId)],
+          ["Deposit account", bank(d.defaultDepositAccountId)],
+          ["Reserve", formatMoney(d.reserveCents)],
+        ] as [string, React.ReactNode][])
+      : []),
     ["Owners", d.owners.length ? d.owners.map((o) => `${ownerList.find((x) => x.id === o.ownerId)?.name ?? "?"} (${o.percent}%)`).join(", ") : "None yet"],
   ];
   return (

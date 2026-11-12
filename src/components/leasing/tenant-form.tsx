@@ -54,8 +54,8 @@ export function TenantForm({ id, initial }: { id?: string; initial?: NewTenantIn
         <Field label="Company name" error={errors.companyName} required className="sm:col-span-2">{(a) => <Input {...a} value={v.companyName} onChange={(e) => set("companyName", e.target.value)} />}</Field>
       ) : (
         <>
-          <Field label="First name" error={errors.firstName} required>{(a) => <Input {...a} value={v.firstName} onChange={(e) => set("firstName", e.target.value)} />}</Field>
-          <Field label="Last name" error={errors.lastName} required>{(a) => <Input {...a} value={v.lastName} onChange={(e) => set("lastName", e.target.value)} />}</Field>
+          <Field label="First name" description="A first or last name is enough." error={errors.firstName}>{(a) => <Input {...a} value={v.firstName} onChange={(e) => set("firstName", e.target.value)} />}</Field>
+          <Field label="Last name" error={errors.lastName}>{(a) => <Input {...a} value={v.lastName} onChange={(e) => set("lastName", e.target.value)} />}</Field>
         </>
       )}
       <Field label="Email" error={errors.email}>{(a) => <Input {...a} type="email" value={v.email} onChange={(e) => set("email", e.target.value)} />}</Field>
