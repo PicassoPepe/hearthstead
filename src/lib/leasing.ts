@@ -15,8 +15,7 @@ export const newTenantSchema = z
   })
   .superRefine((v, ctx) => {
     if (v.kind === "PERSON") {
-      if (!v.firstName) ctx.addIssue({ code: "custom", path: ["firstName"], message: "Enter a first name" });
-      if (!v.lastName) ctx.addIssue({ code: "custom", path: ["lastName"], message: "Enter a last name" });
+      if (!v.firstName && !v.lastName) ctx.addIssue({ code: "custom", path: ["firstName"], message: "Enter a first name" });
     } else if (!v.companyName) ctx.addIssue({ code: "custom", path: ["companyName"], message: "Enter the company name" });
   });
 export type NewTenantInput = z.input<typeof newTenantSchema>;
@@ -44,29 +43,21 @@ export const leaseWizardSchema = z
     status: z.enum(["ACTIVE", "DRAFT"]).default("ACTIVE"),
     propertyId: z.string().min(1, "Choose a property"),
     unitIds: z.array(z.string().min(1)).min(1, "Choose at least one unit"),
-    termType: z.enum(["FIXED", "MONTH_TO_MONTH"]),
+    termType: z.enum(["FIXED", "MONTH_TO_MONTH"]).default("MONTH_TO_MONTH"),
     startDate: isoDate,
     endDate: z.union([z.literal(""), isoDate]).default(""),
     rentDueDay: z.number().int().min(1).max(28).default(1),
     tenants: z.array(leaseTenantSchema).min(1, "Add at least one tenant"),
     recurring: z.array(recurringInputSchema).default([]),
-    deposit: z.object({ amountCents: z.number().int().min(0), handling: z.enum(["CHARGE", "RECEIVED", "NONE"]) }),
+    deposit: z.object({ amountCents: z.number().int().min(0), handling: z.enum(["CHARGE", "RECEIVED", "NONE"]) }).default({ amountCents: 0, handling: "NONE" }),
     overrides: z.record(z.string(), z.unknown()).default({}),
     documents: z.enum(["NONE", "OFFLINE", "ESIGN"]).default("NONE"),
     portalInvite: z.boolean().default(false),
   })
   .superRefine((v, ctx) => {
-    if (v.termType === "FIXED") {
-      if (!v.endDate) ctx.addIssue({ code: "custom", path: ["endDate"], message: "Fixed-term leases need an end date" });
-      else if (v.endDate <= v.startDate) ctx.addIssue({ code: "custom", path: ["endDate"], message: "End date must be after the start date" });
-    }
-    const primaries = v.tenants.filter((t) => t.role === "PRIMARY").length;
-    if (primaries !== 1) ctx.addIssue({ code: "custom", path: ["tenants"], message: "Choose exactly one primary tenant" });
+    if (v.endDate && v.endDate <= v.startDate) ctx.addIssue({ code: "custom", path: ["endDate"], message: "End date must be after the start date" });
     const ids = v.tenants.flatMap((t) => ("tenantId" in t ? [t.tenantId] : []));
     if (new Set(ids).size !== ids.length) ctx.addIssue({ code: "custom", path: ["tenants"], message: "A tenant can only be added once" });
-    if (v.status === "ACTIVE" && !v.recurring.some((r) => r.kind === "RENT")) {
-      ctx.addIssue({ code: "custom", path: ["recurring"], message: "Add the monthly rent" });
-    }
     if (v.deposit.handling !== "NONE" && v.deposit.amountCents <= 0) ctx.addIssue({ code: "custom", path: ["deposit", "amountCents"], message: "Enter the deposit amount" });
     for (const k of Object.keys(v.overrides)) {
       if (!(LEASE_OVERRIDE_KEYS as readonly string[]).includes(k)) ctx.addIssue({ code: "custom", path: ["overrides"], message: `Unsupported override ${k}` });

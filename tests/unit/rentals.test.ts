@@ -17,9 +17,16 @@ const issues = (v: PropertyWizardInput) => {
 
 describe("propertyWizardSchema business rules", () => {
   it("accepts a valid multi-family property", () => expect(issues(base())).toEqual([]));
-  it("requires at least one unit", () => expect(issues({ ...base(), units: [] }).join()).toMatch(/at least one unit/));
-  it("single-family has exactly one unit", () => {
-    expect(issues({ ...base(), type: "SINGLE_FAMILY" }).join()).toMatch(/exactly one unit/);
+  it("a name is enough — units and address are optional, and no bank account is required", () => {
+    expect(issues({ ...base(), units: [], address: { addressLine1: "", city: "", state: "", postalCode: "" }, defaultOperatingAccountId: null, defaultDepositAccountId: null })).toEqual([]);
+  });
+  it("an address is enough without a name", () => expect(issues({ ...base(), name: "" })).toEqual([]));
+  it("needs a name or a street address", () => {
+    expect(issues({ ...base(), name: "", units: [], address: { addressLine1: "", city: "", state: "", postalCode: "" } }).join()).toMatch(/Enter the street address/);
+  });
+  it("single-family has at most one unit", () => {
+    expect(issues({ ...base(), type: "SINGLE_FAMILY" }).join()).toMatch(/only have one unit/);
+    expect(issues({ ...base(), type: "SINGLE_FAMILY", units: [] })).toEqual([]);
     expect(issues({ ...base(), type: "SINGLE_FAMILY", units: [{ name: "Main", marketRentCents: 1 }] })).toEqual([]);
   });
   it("unit names are unique (case-insensitive)", () => {
@@ -32,11 +39,13 @@ describe("propertyWizardSchema business rules", () => {
   it("an owner can't be listed twice", () => {
     expect(issues({ ...base(), owners: [{ ownerId: "a", percentBps: 5000 }, { ownerId: "a", percentBps: 5000 }] }).join()).toMatch(/added once/);
   });
-  it("validates address fields", () => {
+  it("checks a state or ZIP only when one is entered", () => {
     const v = base();
-    v.address = { addressLine1: "", city: "", state: "ZZ" as never, postalCode: "123" };
+    v.address = { addressLine1: "1 Main St", city: "", state: "ZZ", postalCode: "123" };
     const out = issues(v).join("\n");
-    for (const f of ["addressLine1", "city", "state", "postalCode"]) expect(out).toContain(`address.${f}`);
+    expect(out).toContain("address.state");
+    expect(out).toContain("address.postalCode");
+    expect(out).not.toContain("address.city");
   });
   it("rent can't be negative or fractional", () => {
     expect(issues({ ...base(), units: [{ name: "1", marketRentCents: -1 }] }).length).toBeGreaterThan(0);
@@ -76,8 +85,9 @@ describe("nextUnitName", () => {
 });
 
 describe("owners", () => {
-  it("people need first and last names; companies need a company name", () => {
-    expect(ownerSchema.safeParse({ kind: "PERSON", firstName: "Dana" }).success).toBe(false);
+  it("people need a name; companies need a company name", () => {
+    expect(ownerSchema.safeParse({ kind: "PERSON", firstName: "Dana" }).success).toBe(true);
+    expect(ownerSchema.safeParse({ kind: "PERSON" }).success).toBe(false);
     expect(ownerSchema.safeParse({ kind: "PERSON", firstName: "Dana", lastName: "W" }).success).toBe(true);
     expect(ownerSchema.safeParse({ kind: "COMPANY" }).success).toBe(false);
     expect(ownerSchema.safeParse({ kind: "COMPANY", companyName: "Bluestem LLC" }).success).toBe(true);

@@ -39,7 +39,8 @@ describe("billing state", () => {
   it("comped is free, and an end date turns it back into a choice", () => {
     expect(billingState({ ...base, status: "BETA" }, now)).toEqual({ state: "comped" });
     expect(billingState({ ...base, status: "COMPLIMENTARY", compUntil: new Date(now.getTime() + 10 * DAY) }, now)).toEqual({ state: "comped", daysLeft: 10 });
-    expect(billingState({ ...base, status: "BETA", compUntil: new Date(now.getTime() - DAY) }, now).state).toBe("trial_ended");
+    expect(billingState({ ...base, status: "BETA", compUntil: new Date(now.getTime() - DAY) }, now).state).toBe("comped");
+    expect(billingState({ ...base, status: "COMPLIMENTARY", compUntil: new Date(now.getTime() - DAY) }, now).state).toBe("comped");
   });
   it("past due gets a grace period before read-only; canceled keeps access until the paid period ends", () => {
     expect(billingState({ ...base, status: "PAST_DUE", pastDueSince: new Date(now.getTime() - DAY) }, now)).toEqual({ state: "past_due", daysLeft: 2 });

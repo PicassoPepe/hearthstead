@@ -38,7 +38,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const current = plans.find((p) => p.key === sub.planKey);
   const isComp = state === "comped";
   const summary: Record<string, string> = {
-    comped: `Your company uses DeedWood for free${sub.compUntil ? ` until ${fmtDate(sub.compUntil)}` : ""}. No card is needed.`,
+    comped: `Your company uses DeedWood for free${sub.compUntil && sub.compUntil > new Date() ? ` until ${fmtDate(sub.compUntil)}` : ""}. No card is needed.`,
     trial: `Your free trial has ${daysLeft} day${daysLeft === 1 ? "" : "s"} left. Choose a plan any time — nothing is charged until you do.`,
     trial_ended: "Your free trial has ended. Choose a plan to keep adding and changing things. Nothing has been deleted.",
     active: sub.cancelAtPeriodEnd && sub.currentPeriodEnd ? `Your plan ends on ${fmtDate(sub.currentPeriodEnd)} and won't renew.` : `You're on ${current?.displayName ?? "a paid plan"}${sub.currentPeriodEnd ? `. Next bill around ${fmtDate(sub.currentPeriodEnd)}` : ""}.`,

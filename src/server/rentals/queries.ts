@@ -1,6 +1,7 @@
 import "server-only";
 import type { AppContext } from "@/server/context";
-import { ownerDisplayName } from "@/lib/rentals";
+import { paymentsEnabled } from "@/lib/payments-flag";
+import { formatAddress, ownerDisplayName } from "@/lib/rentals";
 import { propertyScopeWhere } from "./service";
 import { balancesBy, occupiedUnitIds } from "@/server/leasing/queries";
 
@@ -22,6 +23,7 @@ export async function wizardOptions(ctx: AppContext) {
       systemKey: b.systemKey,
     })),
     owners: owners.map((o) => ({ id: o.id, name: ownerDisplayName(o) })),
+    paymentsOn: paymentsEnabled(),
   };
 }
 
@@ -57,8 +59,8 @@ export async function listProperties(ctx: AppContext): Promise<PropertyRow[]> {
     id: p.id,
     name: p.name,
     type: p.type,
-    address: `${p.addressLine1}, ${p.city}, ${p.state}`,
-    city: p.city,
+    address: formatAddress(p),
+    city: p.city ?? "",
     portfolio: p.portfolio?.name ?? "",
     portfolioId: p.portfolioId,
     units: p.units.length,

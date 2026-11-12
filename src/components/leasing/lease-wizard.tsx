@@ -59,9 +59,9 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
   const [rentCents, setRentCents] = React.useState<number | null>(preset?.rentCents ?? null);
   const [others, setOthers] = React.useState<ChargeRow[]>([]);
   const [depositCents, setDepositCents] = React.useState<number | null>(preset?.depositCents ?? null);
-  const [depositHandling, setDepositHandling] = React.useState<"CHARGE" | "RECEIVED" | "NONE">("CHARGE");
+  const [depositHandling, setDepositHandling] = React.useState<"CHARGE" | "RECEIVED" | "NONE">("NONE");
   const [overrides, setOverrides] = React.useState<Overrides>({});
-  const [documents, setDocuments] = React.useState<"NONE" | "OFFLINE" | "ESIGN">("ESIGN");
+  const [documents, setDocuments] = React.useState<"NONE" | "OFFLINE" | "ESIGN">("NONE");
   const [portalInvite, setPortalInvite] = React.useState(true);
   const [status, setStatus] = React.useState<"ACTIVE" | "DRAFT">("ACTIVE");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -142,6 +142,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
     {
       id: "unit",
       title: "Property, unit & term",
+      skippable: true,
       validate: () =>
         check(["propertyId", "unitIds", "startDate", "endDate", "rentDueDay"], (): Record<string, string> => {
           if (status === "ACTIVE" && conflicts.length) {
@@ -206,7 +207,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
             {(a) => <Input {...a} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />}
           </Field>
           {termType === "FIXED" ? (
-            <Field label="End date" error={err("endDate")} required>
+            <Field label="End date" description="Optional. Leave it blank for an open-ended term." error={err("endDate")}>
               {(a) => (
                 <div className="flex gap-2">
                   <Input {...a} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
@@ -224,6 +225,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
     {
       id: "tenants",
       title: "Tenants",
+      skippable: true,
       validate: () => check(["tenants"]),
       content: (
         <div className="grid gap-3">
@@ -260,8 +262,8 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
                 </Field>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="First name" error={err(`tenants.${i}.newTenant.firstName`)} required>{(a) => <Input {...a} value={t.firstName} onChange={(e) => setTenants(tenants.map((x) => (x.key === t.key ? { ...x, firstName: e.target.value } : x)))} />}</Field>
-                  <Field label="Last name" error={err(`tenants.${i}.newTenant.lastName`)} required>{(a) => <Input {...a} value={t.lastName} onChange={(e) => setTenants(tenants.map((x) => (x.key === t.key ? { ...x, lastName: e.target.value } : x)))} />}</Field>
+                  <Field label="First name" description="A first or last name is enough." error={err(`tenants.${i}.newTenant.firstName`)}>{(a) => <Input {...a} value={t.firstName} onChange={(e) => setTenants(tenants.map((x) => (x.key === t.key ? { ...x, firstName: e.target.value } : x)))} />}</Field>
+                  <Field label="Last name" error={err(`tenants.${i}.newTenant.lastName`)}>{(a) => <Input {...a} value={t.lastName} onChange={(e) => setTenants(tenants.map((x) => (x.key === t.key ? { ...x, lastName: e.target.value } : x)))} />}</Field>
                   <Field label="Email" error={err(`tenants.${i}.newTenant.email`)}>{(a) => <Input {...a} type="email" value={t.email} onChange={(e) => setTenants(tenants.map((x) => (x.key === t.key ? { ...x, email: e.target.value } : x)))} />}</Field>
                   <Field label="Phone">{(a) => <Input {...a} type="tel" value={t.phone} onChange={(e) => setTenants(tenants.map((x) => (x.key === t.key ? { ...x, phone: e.target.value } : x)))} />}</Field>
                 </div>
@@ -283,11 +285,14 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
     {
       id: "rent",
       title: "Rent & deposit",
+      optional: true,
+      skippable: true,
+      onSkip: () => { if (!depositCents) setDepositHandling("NONE"); },
       validate: () => check(["recurring", "deposit"]),
       content: (
         <div className="grid gap-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Monthly rent" error={err("recurring")} required>
+            <Field label="Monthly rent" description="Optional. You can add rent later." error={err("recurring")}>
               {(a) => <MoneyInput {...a} valueCents={rentCents} onChangeCents={setRentCents} />}
             </Field>
             <div className="rounded-lg border border-border bg-surface-muted/40 p-3 text-sm" aria-live="polite">
@@ -341,6 +346,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
       id: "settings",
       title: "Settings",
       optional: true,
+      skippable: true,
       content: (
         <div className="grid gap-1">
           <p className="mb-2 text-sm text-muted-foreground">These come from the property and company. Override any of them for just this lease.</p>
@@ -364,6 +370,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
           id: "documents",
           title: "Documents",
           optional: true,
+          skippable: true,
           content: (
             <fieldset className="grid gap-2 text-sm">
               <legend className="mb-2 text-muted-foreground">How will the lease be signed?</legend>
@@ -378,6 +385,7 @@ export function LeaseWizard({ options, preset }: { options: LeaseWizardOptions; 
       id: "portal",
       title: "Portal invite",
       optional: true,
+      skippable: true,
       content: (
         <label className="flex items-start gap-3 rounded-lg border border-border p-3 text-sm">
           <Switch checked={portalInvite} onCheckedChange={setPortalInvite} aria-label="Invite tenants to the resident portal" />

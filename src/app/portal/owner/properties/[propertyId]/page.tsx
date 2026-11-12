@@ -22,7 +22,7 @@ export default async function OwnerPropertyRecords({ params }: { params: Promise
       <p className="text-sm"><Link href="/portal/owner/properties" className="text-primary hover:underline">← Your properties</Link></p>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{property.name}</h1>
-        <p className="text-sm text-muted-foreground">{property.addressLine1}, {property.city}, {property.state} {property.postalCode} · you own {p.percentBps / 100}%</p>
+        <p className="text-sm text-muted-foreground">{[property.addressLine1, property.city, [property.state, property.postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "No address yet"} · you own {p.percentBps / 100}%</p>
       </div>
       <LandRecord mode="owner" propertyId={propertyId} propertyName={property.name} address={property} {...view} />
     </div>

@@ -66,8 +66,8 @@ export function OwnerForm({ id, initial, onDone }: { id?: string; initial?: Part
       </fieldset>
       {kind === "PERSON" ? (
         <>
-          <Field label="First name" error={e.firstName?.message} required>{(a) => <Input {...a} {...form.register("firstName")} />}</Field>
-          <Field label="Last name" error={e.lastName?.message} required>{(a) => <Input {...a} {...form.register("lastName")} />}</Field>
+          <Field label="First name" description="A first or last name is enough." error={e.firstName?.message}>{(a) => <Input {...a} {...form.register("firstName")} />}</Field>
+          <Field label="Last name" error={e.lastName?.message}>{(a) => <Input {...a} {...form.register("lastName")} />}</Field>
         </>
       ) : (
         <Field label="Company name" error={e.companyName?.message} required className="sm:col-span-2">{(a) => <Input {...a} {...form.register("companyName")} />}</Field>

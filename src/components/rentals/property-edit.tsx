@@ -23,7 +23,9 @@ export function PropertyEditButton({ id, initial, options }: { id: string; initi
   const [v, setV] = React.useState(initial);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [busy, setBusy] = React.useState(false);
-  const setAddr = (k: keyof PropertyEditInput["address"], val: string) => setV((p) => ({ ...p, address: { ...p.address, [k]: val } }));
+  const blankAddr = { addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "" };
+  const setAddr = (k: keyof typeof blankAddr, val: string) => setV((p) => ({ ...p, address: { ...blankAddr, ...p.address, [k]: val } }));
+  const addr = { ...blankAddr, ...v.address };
   const close = () => {
     setOpen(false);
     if (sp.get("edit")) router.replace(pathname + "?tab=overview", { scroll: false });
@@ -38,7 +40,7 @@ export function PropertyEditButton({ id, initial, options }: { id: string; initi
         <DialogContent side="right" aria-describedby="edit-prop-desc">
           <DialogHeader>
             <DialogTitle>Edit property</DialogTitle>
-            <DialogDescription id="edit-prop-desc">Name, address, portfolio and default bank accounts.</DialogDescription>
+            <DialogDescription id="edit-prop-desc">Name, address and portfolio. Bank accounts are optional.</DialogDescription>
           </DialogHeader>
           <form
             id="property-edit"
@@ -59,27 +61,28 @@ export function PropertyEditButton({ id, initial, options }: { id: string; initi
             }}
           >
             <DialogBody className="grid gap-4 sm:grid-cols-6">
-              <Field label="Property name" error={errors.name} required className="sm:col-span-6">
-                {(a) => <Input {...a} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />}
+              <Field label="Property name" description="A name or a street address is enough." error={errors.name} className="sm:col-span-6">
+                {(a) => <Input {...a} value={v.name ?? ""} onChange={(e) => setV({ ...v, name: e.target.value })} />}
               </Field>
-              <Field label="Street address" error={errors["address.addressLine1"]} required className="sm:col-span-4">
-                {(a) => <Input {...a} value={v.address.addressLine1} onChange={(e) => setAddr("addressLine1", e.target.value)} />}
+              <Field label="Street address" error={errors["address.addressLine1"]} className="sm:col-span-4">
+                {(a) => <Input {...a} value={addr.addressLine1} onChange={(e) => setAddr("addressLine1", e.target.value)} />}
               </Field>
               <Field label="Apt / suite" className="sm:col-span-2">
-                {(a) => <Input {...a} value={v.address.addressLine2 ?? ""} onChange={(e) => setAddr("addressLine2", e.target.value)} />}
+                {(a) => <Input {...a} value={addr.addressLine2} onChange={(e) => setAddr("addressLine2", e.target.value)} />}
               </Field>
-              <Field label="City" error={errors["address.city"]} required className="sm:col-span-3">
-                {(a) => <Input {...a} value={v.address.city} onChange={(e) => setAddr("city", e.target.value)} />}
+              <Field label="City" error={errors["address.city"]} className="sm:col-span-3">
+                {(a) => <Input {...a} value={addr.city} onChange={(e) => setAddr("city", e.target.value)} />}
               </Field>
-              <Field label="State" error={errors["address.state"]} required className="sm:col-span-1">
+              <Field label="State" error={errors["address.state"]} className="sm:col-span-1">
                 {(a) => (
-                  <NativeSelect {...a} value={v.address.state} onChange={(e) => setAddr("state", e.target.value)}>
+                  <NativeSelect {...a} value={addr.state} onChange={(e) => setAddr("state", e.target.value)}>
+                    <option value="">—</option>
                     {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </NativeSelect>
                 )}
               </Field>
-              <Field label="ZIP" error={errors["address.postalCode"]} required className="sm:col-span-2">
-                {(a) => <Input {...a} value={v.address.postalCode} onChange={(e) => setAddr("postalCode", e.target.value)} />}
+              <Field label="ZIP" error={errors["address.postalCode"]} className="sm:col-span-2">
+                {(a) => <Input {...a} value={addr.postalCode} onChange={(e) => setAddr("postalCode", e.target.value)} />}
               </Field>
               <Field label="Portfolio" className="sm:col-span-3">
                 {(a) => (

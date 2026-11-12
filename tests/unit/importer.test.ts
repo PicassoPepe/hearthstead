@@ -14,7 +14,8 @@ describe("autoMap", () => {
     const m = autoMap(["Name", "City"], "properties");
     const used = Object.values(m).filter(Boolean);
     expect(new Set(used).size).toBe(used.length);
-    expect(missingRequired(m, "properties")).toContain("Street address");
+    expect(missingRequired(m, "properties")).toEqual([]);
+    expect(missingRequired(autoMap(["City"], "properties"), "properties")).toContain("Property name");
   });
 });
 

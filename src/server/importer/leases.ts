@@ -35,18 +35,19 @@ export async function importLeases(db: ScopedDb, recs: Record<string, string>[],
     if (!start) issues.push({ row, field: "startDate", message: `"${r.startDate ?? ""}" isn't a date` });
     const end = r.endDate ? normalizeDate(r.endDate) : null;
     if (r.endDate && !end) issues.push({ row, field: "endDate", message: `"${r.endDate}" isn't a date` });
-    const rent = parseMoney(r.rent ?? "");
-    if (!rent || rent <= 0) issues.push({ row, field: "rent", message: `"${r.rent ?? ""}" isn't a valid rent` });
+    const rentRaw = (r.rent ?? "").trim();
+    const rent = rentRaw ? parseMoney(rentRaw) : 0;
+    if (rentRaw && (!rent || rent <= 0)) issues.push({ row, field: "rent", message: `"${r.rent ?? ""}" isn't a valid rent` });
     const deposit = r.deposit ? parseMoney(r.deposit) : 0;
     if (deposit == null || deposit < 0) issues.push({ row, field: "deposit", message: `"${r.deposit}" isn't a valid amount` });
     const opening = r.openingBalance ? parseMoney(r.openingBalance) : 0;
     if (opening == null) issues.push({ row, field: "openingBalance", message: `"${r.openingBalance}" isn't a valid amount` });
-    if (issues.length > n || !p || !unit || !start || !rent || !rentAcct) return;
+    if (issues.length > n || !p || !unit || !start || (rent && !rentAcct)) return;
 
     const parsed = leaseWizardSchema.safeParse({
       status: "ACTIVE", propertyId: p.id, unitIds: [unit.id], termType: end ? "FIXED" : "MONTH_TO_MONTH", startDate: start, endDate: end ?? "",
       tenants: [{ newTenant: { kind: "PERSON", firstName: r.firstName ?? "", lastName: r.lastName ?? "", email: r.email ?? "", phone: r.phone ?? "" }, role: "PRIMARY" }],
-      recurring: [{ kind: "RENT", accountId: rentAcct.id, description: "Rent", amountCents: rent }],
+      recurring: rent && rentAcct ? [{ kind: "RENT" as const, accountId: rentAcct.id, description: "Rent", amountCents: rent }] : [],
       deposit: { amountCents: deposit ?? 0, handling: deposit ? "RECEIVED" : "NONE" },
     });
     if (!parsed.success) {

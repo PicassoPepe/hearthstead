@@ -12,6 +12,9 @@ export type WizardStep = {
   validate?: () => string | null | Promise<string | null>;
   content: React.ReactNode;
   optional?: boolean;
+  /** Show "Skip for now" and advance without running validate. */
+  skippable?: boolean;
+  onSkip?: () => void;
 };
 
 /**
@@ -62,6 +65,11 @@ export function Wizard({
     } finally {
       setBusy(false);
     }
+  };
+
+  const skip = () => {
+    step.onSkip?.();
+    if (!last) go(index + 1);
   };
 
   return (
@@ -132,6 +140,11 @@ export function Wizard({
           {index > 0 ? (
             <Button type="button" variant="secondary" onClick={() => go(index - 1)} disabled={busy}>
               Back
+            </Button>
+          ) : null}
+          {step.skippable && !last ? (
+            <Button type="button" variant="ghost" onClick={skip} disabled={busy}>
+              Skip for now
             </Button>
           ) : null}
           <Button type="button" onClick={next} loading={busy}>

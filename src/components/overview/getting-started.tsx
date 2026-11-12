@@ -21,7 +21,7 @@ export function GettingStarted({ items }: { items: ChecklistItem[] }) {
         <div>
           <CardTitle>Getting started</CardTitle>
           <CardDescription>
-            {done} of {items.length} complete — finish setup to start collecting rent online. <Link href="/app/setup" className="font-medium text-primary underline-offset-4 hover:underline">Open setup guide</Link>
+            {done} of {items.length} complete. None of these are required. <Link href="/app/setup" className="font-medium text-primary underline-offset-4 hover:underline">Open setup guide</Link>
           </CardDescription>
         </div>
         <Button

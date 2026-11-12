@@ -98,7 +98,7 @@ export default async function PropertyPage({ params, searchParams }: { params: P
                 initial={{
                   name: p.name,
                   portfolioId: p.portfolioId,
-                  address: { addressLine1: p.addressLine1, addressLine2: p.addressLine2 ?? "", city: p.city, state: p.state as never, postalCode: p.postalCode },
+                  address: { addressLine1: p.addressLine1 ?? "", addressLine2: p.addressLine2 ?? "", city: p.city ?? "", state: p.state ?? "", postalCode: p.postalCode ?? "" },
                   yearBuilt: p.yearBuilt,
                   defaultOperatingAccountId: p.defaultOperatingAccountId,
                   defaultDepositAccountId: p.defaultDepositAccountId,

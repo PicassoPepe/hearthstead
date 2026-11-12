@@ -10,7 +10,7 @@ import { streetViewImage } from "@/server/images/place-photos";
 export async function GET(req: Request, { params }: { params: Promise<{ propertyId: string }> }) {
   const { propertyId } = await params;
   const staff = await getContext();
-  let p: { addressLine1: string; city: string; state: string; postalCode: string } | null = null;
+  let p: { addressLine1?: string | null; city?: string | null; state?: string | null; postalCode?: string | null } | null = null;
   if (staff) p = await staff.db.property.findFirst({ where: { id: propertyId, ...(staff.membership.propertyScope.length ? { id: { in: staff.membership.propertyScope } } : {}) } });
   else {
     const o = await getOwnerPortalContext();

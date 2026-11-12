@@ -2,8 +2,8 @@
  * "See it on…" links for a property. These open the other site's own page (free to view there);
  * DeedWood doesn't copy data from them — their terms don't allow it.
  */
-export function outsideLinks(address: { addressLine1: string; city: string; state: string; postalCode: string }, at?: { latitude: number | null; longitude: number | null }) {
-  const one = `${address.addressLine1}, ${address.city}, ${address.state} ${address.postalCode}`;
+export function outsideLinks(address: { addressLine1?: string | null; city?: string | null; state?: string | null; postalCode?: string | null }, at?: { latitude: number | null; longitude: number | null }) {
+  const one = [address.addressLine1, address.city, [address.state, address.postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "address";
   const q = encodeURIComponent(one);
   const hasPoint = at?.latitude != null && at?.longitude != null;
   const slug = one.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");

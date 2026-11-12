@@ -73,16 +73,17 @@ describe("property wizard", () => {
 });
 
 describe("units", () => {
-  it("names are unique per property and the last unit can't be archived", async () => {
+  it("names are unique per property and the last unit can be archived", async () => {
     const { id } = await svc.createPropertyFromWizard(dbA, wizard({ name: "Two Flat", units: [{ name: "1", marketRentCents: 0 }] }));
     await expect(svc.createUnit(dbA, id, { name: "1", marketRentCents: 0 })).rejects.toThrow(/already used/);
     const only = await dbA.unit.findFirstOrThrow({ where: { propertyId: id } });
-    await expect(svc.archiveUnit(dbA, only.id, true)).rejects.toThrow(/at least one unit/);
+    await svc.archiveUnit(dbA, only.id, true);
+    expect(await dbA.unit.count({ where: { propertyId: id } })).toBe(0);
     const second = await svc.createUnit(dbA, id, { name: "2", marketRentCents: 0 });
     await svc.archiveUnit(dbA, second.id, true);
-    expect(await dbA.unit.count({ where: { propertyId: id } })).toBe(1);
+    expect(await dbA.unit.count({ where: { propertyId: id } })).toBe(0);
     await svc.archiveUnit(dbA, second.id, false);
-    expect(await dbA.unit.count({ where: { propertyId: id } })).toBe(2);
+    expect(await dbA.unit.count({ where: { propertyId: id } })).toBe(1);
   });
 });
 

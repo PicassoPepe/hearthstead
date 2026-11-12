@@ -32,14 +32,35 @@ export const US_STATES = [
 ] as const;
 
 const optInt = (max: number) => z.number().int().min(0).max(max).nullable().optional();
+const optStr = (max: number) => z.string().trim().max(max).optional().default("");
 
-export const addressSchema = z.object({
-  addressLine1: z.string().trim().min(3, "Enter the street address").max(200),
-  addressLine2: z.string().trim().max(100).optional().default(""),
-  city: z.string().trim().min(2, "Enter the city").max(100),
-  state: z.enum(US_STATES, { message: "Choose a state" }),
-  postalCode: z.string().trim().regex(/^\d{5}(-\d{4})?$/, "Use a 5-digit ZIP"),
-});
+/** Every part is optional. A state or ZIP is checked only when someone typed one. */
+export const addressSchema = z
+  .object({
+    addressLine1: optStr(200),
+    addressLine2: optStr(100),
+    city: optStr(100),
+    state: optStr(2),
+    postalCode: optStr(10),
+  })
+  .superRefine((a, ctx) => {
+    if (a.state && !(US_STATES as readonly string[]).includes(a.state)) {
+      ctx.addIssue({ code: "custom", path: ["state"], message: "Choose a state" });
+    }
+    if (a.postalCode && !/^\d{5}(-\d{4})?$/.test(a.postalCode)) {
+      ctx.addIssue({ code: "custom", path: ["postalCode"], message: "Use a 5-digit ZIP" });
+    }
+  });
+
+/** A property is identifiable by a name or by a street or city. Nothing else is required. */
+function requireNameOrAddress(v: { name: string; address: { addressLine1: string; city: string } }, ctx: z.RefinementCtx) {
+  const named = v.name.trim().length > 0;
+  const addressed = v.address.addressLine1.trim().length > 0 || v.address.city.trim().length > 0;
+  if (!named && !addressed) {
+    ctx.addIssue({ code: "custom", path: ["name"], message: "Name the property, or enter an address" });
+    ctx.addIssue({ code: "custom", path: ["address", "addressLine1"], message: "Enter the street address" });
+  }
+}
 
 export const unitInputSchema = z.object({
   id: z.string().optional(),
@@ -47,7 +68,7 @@ export const unitInputSchema = z.object({
   beds: optInt(20),
   bathsTenths: optInt(200),
   sqft: optInt(1_000_000),
-  marketRentCents: z.number().int().min(0, "Rent can't be negative").max(100_000_000),
+  marketRentCents: z.number().int().min(0, "Rent can't be negative").max(100_000_000).optional().default(0),
   amenities: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
 });
 export type UnitInput = z.input<typeof unitInputSchema>;
@@ -63,19 +84,20 @@ export const ownershipInputSchema = z.object({
 export const propertyWizardSchema = z
   .object({
     type: z.enum(PROPERTY_TYPES, { message: "Choose a property type" }),
-    name: z.string().trim().min(2, "Name the property").max(120),
+    name: z.string().trim().max(120).optional().default(""),
     portfolioId: z.string().optional().nullable(),
-    address: addressSchema,
+    address: addressSchema.default({ addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "" }),
     yearBuilt: z.number().int().min(1700).max(2100).nullable().optional(),
-    units: z.array(unitInputSchema).min(1, "Add at least one unit").max(1000),
+    units: z.array(unitInputSchema).max(1000).default([]),
     defaultOperatingAccountId: z.string().optional().nullable(),
     defaultDepositAccountId: z.string().optional().nullable(),
     reserveCents: z.number().int().min(0).default(0),
     owners: z.array(ownershipInputSchema).default([]),
   })
   .superRefine((v, ctx) => {
-    if (PROPERTY_TYPE_META[v.type].singleUnit && v.units.length !== 1) {
-      ctx.addIssue({ code: "custom", path: ["units"], message: "A single-family property has exactly one unit." });
+    requireNameOrAddress(v, ctx);
+    if (PROPERTY_TYPE_META[v.type].singleUnit && v.units.length > 1) {
+      ctx.addIssue({ code: "custom", path: ["units"], message: "A single-family property can only have one unit." });
     }
     const names = v.units.map((u) => u.name.trim().toLowerCase());
     names.forEach((n, i) => {
@@ -90,15 +112,17 @@ export const propertyWizardSchema = z
   });
 export type PropertyWizardInput = z.input<typeof propertyWizardSchema>;
 
-export const propertyEditSchema = z.object({
-  name: z.string().trim().min(2, "Name the property").max(120),
-  portfolioId: z.string().optional().nullable(),
-  address: addressSchema,
-  yearBuilt: z.number().int().min(1700).max(2100).nullable().optional(),
-  defaultOperatingAccountId: z.string().optional().nullable(),
-  defaultDepositAccountId: z.string().optional().nullable(),
-  reserveCents: z.number().int().min(0),
-});
+export const propertyEditSchema = z
+  .object({
+    name: z.string().trim().max(120).optional().default(""),
+    portfolioId: z.string().optional().nullable(),
+    address: addressSchema.default({ addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "" }),
+    yearBuilt: z.number().int().min(1700).max(2100).nullable().optional(),
+    defaultOperatingAccountId: z.string().optional().nullable(),
+    defaultDepositAccountId: z.string().optional().nullable(),
+    reserveCents: z.number().int().min(0).default(0),
+  })
+  .superRefine(requireNameOrAddress);
 export type PropertyEditInput = z.input<typeof propertyEditSchema>;
 
 export const ownerSchema = z
@@ -118,9 +142,8 @@ export const ownerSchema = z
     send1099: z.boolean().default(true),
   })
   .superRefine((v, ctx) => {
-    if (v.kind === "PERSON" && (!v.firstName || !v.lastName)) {
-      if (!v.firstName) ctx.addIssue({ code: "custom", path: ["firstName"], message: "Enter a first name" });
-      if (!v.lastName) ctx.addIssue({ code: "custom", path: ["lastName"], message: "Enter a last name" });
+    if (v.kind === "PERSON" && !v.firstName && !v.lastName) {
+      ctx.addIssue({ code: "custom", path: ["firstName"], message: "Enter a first name" });
     }
     if (v.kind === "COMPANY" && !v.companyName) ctx.addIssue({ code: "custom", path: ["companyName"], message: "Enter the company name" });
   });
@@ -157,8 +180,10 @@ export function parseBaths(input: string): number | null {
   return m ? Number(m[1]) * 10 + Number(m[2] ?? 0) : null;
 }
 
-export function formatAddress(p: { addressLine1: string; addressLine2?: string | null; city: string; state: string; postalCode: string }): string {
-  return `${p.addressLine1}${p.addressLine2 ? `, ${p.addressLine2}` : ""}, ${p.city}, ${p.state} ${p.postalCode}`;
+export function formatAddress(p: { addressLine1?: string | null; addressLine2?: string | null; city?: string | null; state?: string | null; postalCode?: string | null }): string {
+  const street = `${p.addressLine1?.trim() ?? ""}${p.addressLine2?.trim() ? `, ${p.addressLine2.trim()}` : ""}`;
+  const region = [p.city?.trim(), [p.state?.trim(), p.postalCode?.trim()].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  return [street, region].filter(Boolean).join(", ") || "No address yet";
 }
 
 /** Suggest the next unit name from the existing ones: "101" → "102", "Unit A" → "Unit B", "3" → "4". */

@@ -25,6 +25,7 @@ function toData(r: ParcelResult) {
 export async function refreshLandRecord(db: ScopedDb, propertyId: string, lookup: typeof lookupParcel = lookupParcel) {
   const p = await db.property.findFirst({ where: { id: propertyId }, include: { ownerships: { where: { deletedAt: null }, include: { owner: true }, orderBy: { percentBps: "desc" } } } });
   if (!p) throw new UserFacingError("Property not found");
+  if (!p.addressLine1 || !p.city || !p.state || !p.postalCode) throw new UserFacingError("Add a street, city, state and ZIP before looking up land records.");
   let result: ParcelResult;
   try {
     result = await lookup({ addressLine1: p.addressLine1, city: p.city, state: p.state, postalCode: p.postalCode, ownerHint: p.ownerships.length ? p.ownerships.map((o) => ownerDisplayName(o.owner)).join(" & ") : null });

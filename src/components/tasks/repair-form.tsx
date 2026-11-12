@@ -48,13 +48,12 @@ export function RepairForm({ options, preset = {} }: { options: TaskFormOptions;
     <form noValidate className="grid gap-5" onSubmit={async (e) => {
       e.preventDefault();
       const errs: Record<string, string> = {};
-      if (!propertyId) errs.propertyId = "Choose the property";
       if (title.trim().length < 3) errs.title = "Say what's wrong in a few words";
       if (Object.keys(errs).length) return setErrors(errs);
       setBusy(true);
       const r = await createTaskAction({
         type: vendorId ? "WORK_ORDER" : "TASK", title, description: details, category: category || null, priority: urgency, dueDate: "",
-        propertyId, unitId: unitId || null, leaseId: null, vendorId: vendorId || null, assigneeIds: [], estimateCents: null, notifyVendor: Boolean(vendorId), parentTaskId: null, inspectionKind: null,
+        propertyId: propertyId || null, unitId: unitId || null, leaseId: null, vendorId: vendorId || null, assigneeIds: [], estimateCents: null, notifyVendor: Boolean(vendorId), parentTaskId: null, inspectionKind: null,
       });
       if (!r.ok) { setBusy(false); setErrors(r.fieldErrors ?? {}); return void toast.error(r.error); }
       if (photos.length) {
@@ -74,7 +73,7 @@ export function RepairForm({ options, preset = {} }: { options: TaskFormOptions;
       } else router.push(href);
     }}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="1. Which property?" required error={errors.propertyId}>{(a) => (
+        <Field label="1. Which property?" description="Optional. You can attach the property later." error={errors.propertyId}>{(a) => (
           <NativeSelect {...a} value={propertyId} onChange={(e) => { setPropertyId(e.target.value); setUnitId(""); }}>
             <option value="">Choose…</option>
             {options.properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

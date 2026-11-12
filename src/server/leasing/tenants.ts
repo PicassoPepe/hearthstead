@@ -8,7 +8,7 @@ export async function createTenant(db: ScopedDb, raw: NewTenantInput): Promise<{
   const t = await db.tenant.create({
     data: {
       organizationId: db.ctx.orgId, kind: v.kind,
-      firstName: v.kind === "PERSON" ? v.firstName : null, lastName: v.kind === "PERSON" ? v.lastName : null,
+      firstName: v.kind === "PERSON" ? v.firstName || null : null, lastName: v.kind === "PERSON" ? v.lastName || null : null,
       companyName: v.companyName || null, email: v.email ? v.email.toLowerCase() : null, phone: v.phone || null, createdById: db.ctx.userId,
     },
   });
@@ -23,7 +23,7 @@ export async function updateTenant(db: ScopedDb, id: string, raw: NewTenantInput
   const after = await db.tenant.update({
     where: { id },
     data: {
-      kind: v.kind, firstName: v.kind === "PERSON" ? v.firstName : null, lastName: v.kind === "PERSON" ? v.lastName : null,
+      kind: v.kind, firstName: v.kind === "PERSON" ? v.firstName || null : null, lastName: v.kind === "PERSON" ? v.lastName || null : null,
       companyName: v.companyName || null, email: v.email ? v.email.toLowerCase() : null, phone: v.phone || null,
     },
   });

@@ -44,8 +44,6 @@ export function TaskForm({ options, defaultType = "TASK", preset = {} }: { optio
       className="grid gap-4 sm:grid-cols-2"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (type === "INSPECTION" && !unitId) return setErrors({ unitId: "Inspections are for a unit" });
-        if (type === "WORK_ORDER" && !vendorId) return setErrors({ vendorId: "Choose the vendor doing the work" });
         setBusy(true);
         const input: TaskInput = {
           type, title, description, category: category || null, priority, dueDate, propertyId: propertyId || null, unitId: unitId || null,
@@ -86,7 +84,7 @@ export function TaskForm({ options, defaultType = "TASK", preset = {} }: { optio
           </NativeSelect>
         )}
       </Field>
-      <Field label="Unit" error={errors.unitId} required={type === "INSPECTION"}>
+      <Field label="Unit" error={errors.unitId}>
         {(a) => (
           <NativeSelect {...a} value={unitId} disabled={!property} onChange={(e) => setUnitId(e.target.value)}>
             <option value="">{property ? "Whole property" : "Choose a property first"}</option>
@@ -123,7 +121,7 @@ export function TaskForm({ options, defaultType = "TASK", preset = {} }: { optio
       </Field>
       <Field label="Due date">{(a) => <Input {...a} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />}</Field>
       {type !== "INSPECTION" ? (
-        <Field label="Vendor" error={errors.vendorId} required={type === "WORK_ORDER"} description={suggested.length ? `Suggested for this category: ${suggested.map((v) => v.name).join(", ")}` : undefined}>
+        <Field label="Vendor" error={errors.vendorId} description={suggested.length ? `Suggested for this category: ${suggested.map((v) => v.name).join(", ")}. Optional.` : "Optional. You can assign a vendor later."}>
           {(a) => (
             <NativeSelect {...a} value={vendorId} onChange={(e) => { setVendorId(e.target.value); if (e.target.value && type === "TASK") setType("WORK_ORDER"); }}>
               <option value="">No vendor</option>
